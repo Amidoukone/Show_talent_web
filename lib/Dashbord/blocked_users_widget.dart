@@ -1,28 +1,415 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../controller/user_controller.dart';
+import '../models/managed_account_provision_result.dart';
+import '../models/user.dart';
+import '../services/managed_account_service.dart';
+import '../utils/account_role_policy.dart';
+import '../utils/admin_callable_action_catalog.dart';
+import '../widgets/admin_account_status_chips.dart';
+import '../widgets/managed_account_invite_result_dialog.dart';
 
 class BlockedUsersWidget extends StatefulWidget {
   const BlockedUsersWidget({super.key});
 
   @override
-  _BlockedUsersWidgetState createState() => _BlockedUsersWidgetState();
+  State<BlockedUsersWidget> createState() => _BlockedUsersWidgetState();
 }
 
 class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
-  final UserController userController = Get.find<UserController>();
-  int currentPage = 0;
   static const int rowsPerPage = 4;
+
+  static const String _actionUnblock = 'unblock';
+  static const String _actionDelete = 'delete';
+  static const String _actionDisableAuth = 'disable_auth';
+  static const String _actionEnableAuth = 'enable_auth';
+  static const String _actionChangeRole = 'change_role';
+  static const String _actionResendInvite = 'resend_invite';
+
+  final UserController userController = Get.find<UserController>();
+  final ManagedAccountService _managedAccountService = ManagedAccountService();
+
+  int currentPage = 0;
+  String? _actionInFlightUid;
+  String? _actionInFlightLabel;
 
   @override
   void initState() {
     super.initState();
-    _fetchBlockedUsers();
+    userController.fetchUsers();
   }
 
-  void _fetchBlockedUsers() {
-    userController.fetchUsers(); // Assure que la liste est actualisée depuis Firestore
+  bool _isManagedAccount(AppUser user) {
+    return user.createdByAdmin || managedAccountRoles.contains(user.role);
+  }
+
+  void _setActionInFlight(AppUser user, String label) {
+    setState(() {
+      _actionInFlightUid = user.uid;
+      _actionInFlightLabel = label;
+    });
+  }
+
+  void _clearActionInFlight() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _actionInFlightUid = null;
+      _actionInFlightLabel = null;
+    });
+  }
+
+  Future<bool> _confirmAction({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    Color confirmColor = Colors.red,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: confirmColor),
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+
+    return confirmed == true;
+  }
+
+  Future<void> _runVoidAction({
+    required AppUser user,
+    required AdminCallableActionDescriptor action,
+    required Future<void> Function() request,
+    required String successMessage,
+  }) async {
+    _setActionInFlight(user, action.label);
+
+    try {
+      await request();
+      if (!mounted) {
+        return;
+      }
+
+      Get.snackbar('Succes', successMessage);
+    } on FirebaseFunctionsException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      Get.snackbar(
+        'Erreur',
+        error.message ?? 'Operation ${action.callableName} refusee.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      Get.snackbar(
+        'Erreur',
+        'Operation ${action.callableName} impossible : $error',
+      );
+    } finally {
+      _clearActionInFlight();
+    }
+  }
+
+  Future<void> _showInviteResultDialog(
+    ManagedAccountProvisionResult result,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return ManagedAccountInviteResultDialog(
+          result: result,
+          title: resendManagedAccountInviteAction.label,
+          subtitle:
+              'Les liens retournes par le backend partage peuvent etre copies depuis cette boite de dialogue.',
+        );
+      },
+    );
+  }
+
+  Future<void> _unblockManagedAccount(AppUser user) async {
+    final confirmed = await _confirmAction(
+      title: unblockManagedAccountAction.label,
+      message:
+          'Cette action retire seulement le blocage applicatif du compte ${user.email}.',
+      confirmLabel: 'Debloquer',
+      confirmColor: Colors.green,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: unblockManagedAccountAction,
+      request: () =>
+          _managedAccountService.unblockManagedAccount(uid: user.uid),
+      successMessage:
+          'Le blocage applicatif a ete retire pour ${user.email}. Firebase Auth n a pas ete modifie.',
+    );
+  }
+
+  Future<void> _deleteManagedAccount(AppUser user) async {
+    final confirmed = await _confirmAction(
+      title: deleteManagedAccountAction.label,
+      message:
+          'Cette suppression passe par le backend partage et peut supprimer l acces du compte ${user.email}.',
+      confirmLabel: 'Supprimer',
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: deleteManagedAccountAction,
+      request: () => _managedAccountService.deleteManagedAccount(uid: user.uid),
+      successMessage: 'La suppression admin a ete demandee pour ${user.email}.',
+    );
+  }
+
+  Future<void> _disableManagedAccountAuth(AppUser user) async {
+    final confirmed = await _confirmAction(
+      title: disableManagedAccountAuthAction.label,
+      message:
+          'Cette action desactive seulement Firebase Auth pour ${user.email}. Le blocage applicatif ne change pas.',
+      confirmLabel: 'Desactiver Auth',
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: disableManagedAccountAuthAction,
+      request: () =>
+          _managedAccountService.disableManagedAccountAuth(uid: user.uid),
+      successMessage:
+          'Firebase Auth a ete desactive pour ${user.email}. Le blocage applicatif n a pas ete modifie.',
+    );
+  }
+
+  Future<void> _enableManagedAccountAuth(AppUser user) async {
+    await _runVoidAction(
+      user: user,
+      action: enableManagedAccountAuthAction,
+      request: () =>
+          _managedAccountService.enableManagedAccountAuth(uid: user.uid),
+      successMessage:
+          'Firebase Auth a ete reactive pour ${user.email}. Le blocage applicatif n a pas ete modifie.',
+    );
+  }
+
+  Future<void> _changeManagedAccountRole(AppUser user) async {
+    if (!_isManagedAccount(user)) {
+      Get.snackbar(
+        'Action indisponible',
+        'Le changement de role n est propose que pour les comptes geres.',
+      );
+      return;
+    }
+
+    final selectedManagedRole = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        String nextRole = managedAccountRoles.contains(user.role)
+            ? user.role
+            : managedAccountRoles.first;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(changeManagedAccountRoleAction.label),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Compte cible : ${user.email}'),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: nextRole,
+                    decoration: const InputDecoration(
+                      labelText: 'Nouveau role',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: managedAccountRoles
+                        .map(
+                          (role) => DropdownMenuItem<String>(
+                            value: role,
+                            child: Text(role),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+
+                      setDialogState(() {
+                        nextRole = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Annuler'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(nextRole),
+                  child: const Text('Valider'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (selectedManagedRole == null || selectedManagedRole == user.role) {
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: changeManagedAccountRoleAction,
+      request: () => _managedAccountService.changeManagedAccountRole(
+        uid: user.uid,
+        role: selectedManagedRole,
+      ),
+      successMessage:
+          'Le role de ${user.email} a ete change vers $selectedManagedRole.',
+    );
+  }
+
+  Future<void> _resendManagedAccountInvite(AppUser user) async {
+    if (!_isManagedAccount(user)) {
+      Get.snackbar(
+        'Action indisponible',
+        'Le renvoi d invitation n est propose que pour les comptes geres.',
+      );
+      return;
+    }
+
+    _setActionInFlight(user, resendManagedAccountInviteAction.label);
+
+    try {
+      final result = await _managedAccountService.resendManagedAccountInvite(
+        uid: user.uid,
+      );
+      if (!mounted) {
+        return;
+      }
+
+      Get.snackbar(
+        'Succes',
+        'Les liens d invitation ont ete regeneres pour ${user.email}.',
+      );
+      await _showInviteResultDialog(result);
+    } on FirebaseFunctionsException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      Get.snackbar(
+        'Erreur',
+        error.message ??
+            'Impossible de renvoyer les liens d invitation pour ce compte.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      Get.snackbar(
+        'Erreur',
+        'Impossible de renvoyer les liens d invitation : $error',
+      );
+    } finally {
+      _clearActionInFlight();
+    }
+  }
+
+  List<PopupMenuEntry<String>> _buildActionMenuItems(AppUser user) {
+    final items = <PopupMenuEntry<String>>[
+      const PopupMenuItem(
+        value: _actionUnblock,
+        child: Text('Debloquer'),
+      ),
+      PopupMenuItem(
+        value: user.authDisabled ? _actionEnableAuth : _actionDisableAuth,
+        child: Text(user.authDisabled ? 'Reactiver Auth' : 'Desactiver Auth'),
+      ),
+    ];
+
+    if (_isManagedAccount(user)) {
+      items.add(const PopupMenuDivider());
+      items.addAll(const [
+        PopupMenuItem(
+          value: _actionChangeRole,
+          child: Text('Changer le role'),
+        ),
+        PopupMenuItem(
+          value: _actionResendInvite,
+          child: Text('Renvoyer l invitation'),
+        ),
+      ]);
+    }
+
+    items.add(const PopupMenuDivider());
+    items.add(
+      const PopupMenuItem(
+        value: _actionDelete,
+        child: Text('Supprimer'),
+      ),
+    );
+
+    return items;
+  }
+
+  Future<void> _handleActionSelection(String value, AppUser user) async {
+    switch (value) {
+      case _actionUnblock:
+        await _unblockManagedAccount(user);
+        break;
+      case _actionDelete:
+        await _deleteManagedAccount(user);
+        break;
+      case _actionDisableAuth:
+        await _disableManagedAccountAuth(user);
+        break;
+      case _actionEnableAuth:
+        await _enableManagedAccountAuth(user);
+        break;
+      case _actionChangeRole:
+        await _changeManagedAccountRole(user);
+        break;
+      case _actionResendInvite:
+        await _resendManagedAccountInvite(user);
+        break;
+    }
   }
 
   @override
@@ -30,13 +417,13 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
     return Center(
       child: SingleChildScrollView(
         child: Container(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           width: MediaQuery.of(context).size.width * 0.95,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 spreadRadius: 2,
                 blurRadius: 8,
               ),
@@ -47,232 +434,251 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12.0),
+                padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  'Utilisateurs Bloqués',
+                  'Utilisateurs bloques',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
               ),
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3CD),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Debloquer retire seulement le blocage applicatif. '
+                  'Les actions Auth restent separees. '
+                  'Le changement de role et le renvoi d invitation sont limites aux comptes geres.',
+                  style: TextStyle(color: Colors.black87),
+                ),
+              ),
               Obx(() {
-                final blockedUsers = userController.userList.where((user) => user.estBloque).toList();
+                final blockedUsers = userController.userList
+                    .where((user) => user.estBloque)
+                    .toList();
                 final totalPages = (blockedUsers.length / rowsPerPage).ceil();
                 final startIndex = currentPage * rowsPerPage;
-                final endIndex = (startIndex + rowsPerPage).clamp(0, blockedUsers.length);
-                final displayedUsers = blockedUsers.sublist(startIndex, endIndex);
+                final endIndex =
+                    (startIndex + rowsPerPage).clamp(0, blockedUsers.length);
+                final displayedUsers =
+                    blockedUsers.sublist(startIndex, endIndex);
 
-                return blockedUsers.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Aucun utilisateur bloqué.',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
+                if (blockedUsers.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Aucun utilisateur bloque.',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    DataTable(
+                      columnSpacing: 24,
+                      horizontalMargin: 12,
+                      columns: const [
+                        DataColumn(
+                          label: Expanded(
+                            child: Text(
+                              'Nom',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                         ),
-                      )
-                    : Column(
-                        children: [
-                          DataTable(
-                            columnSpacing: 24.0,
-                            horizontalMargin: 12.0,
-                            columns: const [
-                              DataColumn(
-                                label: Expanded(
-                                  child: Text(
-                                    'Nom',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
+                        DataColumn(
+                          label: Expanded(
+                            child: Text(
+                              'Email',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
-                              DataColumn(
-                                label: Expanded(
-                                  child: Text(
-                                    'Email',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Expanded(
+                            child: Text(
+                              'Role',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
-                              DataColumn(
-                                label: Expanded(
-                                  child: Text(
-                                    'Actions',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Expanded(
+                            child: Text(
+                              'Statut',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                            rows: List<DataRow>.generate(
-                              displayedUsers.length,
-                              (index) => DataRow(
-                                cells: [
-                                  DataCell(Row(
-                                    children: [
-                                      const Icon(Icons.block, color: Colors.red),
-                                      const SizedBox(width: 8),
-                                      Text(displayedUsers[index].nom),
-                                    ],
-                                  )),
-                                  DataCell(Text(displayedUsers[index].email)),
-                                  DataCell(
-                                    PopupMenuButton<String>(
-                                      onSelected: (value) {
-                                        if (value == 'unblock') {
-                                          _unblockUser(displayedUsers[index].uid);
-                                        } else if (value == 'delete') {
-                                          _confirmDeleteUser(displayedUsers[index].uid);
-                                        }
-                                      },
-                                      itemBuilder: (context) => const [
-                                        PopupMenuItem(
-                                          value: 'unblock',
-                                          child: Text('Débloquer'),
-                                        ),
-                                        PopupMenuItem(
-                                          value: 'delete',
-                                          child: Text('Supprimer'),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Expanded(
+                            child: Text(
+                              'Actions',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ],
+                      rows: List<DataRow>.generate(
+                        displayedUsers.length,
+                        (index) => DataRow(
+                          cells: [
+                            DataCell(
+                              Row(
+                                children: [
+                                  const Icon(Icons.block, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  Text(displayedUsers[index].nom),
                                 ],
                               ),
                             ),
-                            headingRowColor: WidgetStateProperty.all(Colors.grey.shade200),
-                            dataRowColor: WidgetStateProperty.all(Colors.grey.shade50),
-                            dividerThickness: 1,
-                            dataRowHeight: 56,
-                            headingRowHeight: 56,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Page ${currentPage + 1} sur $totalPages',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              Row(
+                            DataCell(Text(displayedUsers[index].email)),
+                            DataCell(
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  ElevatedButton.icon(
-                                    onPressed: currentPage > 0
-                                        ? () {
-                                            setState(() {
-                                              currentPage--;
-                                            });
-                                          }
-                                        : null,
-                                    icon: const Icon(Icons.arrow_back),
-                                    label: const Text("Précédent"),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blueAccent,
-                                      foregroundColor: Colors.white,
+                                  Text(displayedUsers[index].role),
+                                  if (displayedUsers[index].createdByAdmin)
+                                    const Text(
+                                      'cree par admin',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.teal,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  ElevatedButton.icon(
-                                    onPressed: currentPage < totalPages - 1
-                                        ? () {
-                                            setState(() {
-                                              currentPage++;
-                                            });
-                                          }
-                                        : null,
-                                    icon: const Icon(Icons.arrow_forward),
-                                    label: const Text("Suivant"),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blueAccent,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                  ),
                                 ],
                               ),
-                            ],
+                            ),
+                            DataCell(
+                              AdminAccountStatusChips(
+                                user: displayedUsers[index],
+                              ),
+                            ),
+                            DataCell(
+                              _actionInFlightUid == displayedUsers[index].uid
+                                  ? Row(
+                                      children: [
+                                        const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          _actionInFlightLabel ??
+                                              'Traitement...',
+                                        ),
+                                      ],
+                                    )
+                                  : PopupMenuButton<String>(
+                                      onSelected: (value) =>
+                                          _handleActionSelection(
+                                        value,
+                                        displayedUsers[index],
+                                      ),
+                                      itemBuilder: (context) =>
+                                          _buildActionMenuItems(
+                                        displayedUsers[index],
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      headingRowColor:
+                          WidgetStateProperty.all(Colors.grey.shade200),
+                      dataRowColor:
+                          WidgetStateProperty.all(Colors.grey.shade50),
+                      dividerThickness: 1,
+                      dataRowMinHeight: 56,
+                      dataRowMaxHeight: 56,
+                      headingRowHeight: 56,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Page ${currentPage + 1} sur $totalPages',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      );
+                        ),
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: currentPage > 0
+                                  ? () {
+                                      setState(() {
+                                        currentPage--;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.arrow_back),
+                              label: const Text('Precedent'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueAccent,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton.icon(
+                              onPressed: currentPage < totalPages - 1
+                                  ? () {
+                                      setState(() {
+                                        currentPage++;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.arrow_forward),
+                              label: const Text('Suivant'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueAccent,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                );
               }),
             ],
           ),
         ),
       ),
     );
-  }
-
-  // Boîte de dialogue de confirmation pour la suppression d'un utilisateur
-  Future<void> _confirmDeleteUser(String userId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirmation'),
-          content: const Text('Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Annuler', style: TextStyle(color: Colors.red)),
-              onPressed: () {
-                Navigator.of(context).pop(false); // Annuler la suppression
-              },
-            ),
-            TextButton(
-              child: const Text('Supprimer', style: TextStyle(color: Colors.green)),
-              onPressed: () {
-                Navigator.of(context).pop(true); // Confirmer la suppression
-              },
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true) {
-      _deleteUser(userId); // Appeler la fonction de suppression si confirmé
-    }
-  }
-
-  void _unblockUser(String userId) async {
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'estActif': true,
-        'estBloque': false,
-      });
-      _fetchBlockedUsers(); // Rafraîchit la liste après le déblocage
-      Get.snackbar(
-        'Succès',
-        'Utilisateur débloqué avec succès.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-    } catch (error) {
-      Get.snackbar(
-        'Erreur',
-        'Impossible de débloquer l\'utilisateur.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
-  }
-
-  void _deleteUser(String userId) async {
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(userId).delete();
-      _fetchBlockedUsers(); // Rafraîchit la liste après la suppression
-      Get.snackbar(
-        'Succès',
-        'Utilisateur supprimé avec succès.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-    } catch (error) {
-      Get.snackbar(
-        'Erreur',
-        'Impossible de supprimer l\'utilisateur.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
   }
 }

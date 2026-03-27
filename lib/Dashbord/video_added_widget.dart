@@ -76,8 +76,10 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
 
                 final totalPages = (filteredVideos.length / rowsPerPage).ceil();
                 final startIndex = currentPage * rowsPerPage;
-                final endIndex = (startIndex + rowsPerPage).clamp(0, filteredVideos.length);
-                final displayedVideos = filteredVideos.sublist(startIndex, endIndex);
+                final endIndex =
+                    (startIndex + rowsPerPage).clamp(0, filteredVideos.length);
+                final displayedVideos =
+                    filteredVideos.sublist(startIndex, endIndex);
 
                 return filteredVideos.isEmpty
                     ? const Center(
@@ -96,7 +98,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Aperçu',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -105,7 +109,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Titre',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -114,7 +120,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Ajouté par',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -123,7 +131,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Actions',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -140,10 +150,12 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                         displayedVideos[index].thumbnail,
                                         width: 100,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
                                           return const Icon(
                                             Icons.video_library,
-                                            color: Color.fromARGB(255, 40, 129, 84),
+                                            color: Color.fromARGB(
+                                                255, 40, 129, 84),
                                             size: 50,
                                           );
                                         },
@@ -151,26 +163,46 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                     ),
                                   ),
                                   DataCell(Text(displayedVideos[index].caption,
-                                      style: const TextStyle(fontWeight: FontWeight.bold))),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold))),
                                   DataCell(
                                     Text(userController.userList
-                                            .firstWhere(
-                                              (user) => user.uid == displayedVideos[index].uid,
-                                              orElse: () => AppUser(nom: 'Inconnu', uid: '', email: '', role: '', photoProfil: '', estActif: true, estBloque: false, followers: 0, followings: 0, dateInscription: DateTime.now(), dernierLogin: DateTime.now()),
-                                            )
-                                            .nom),
+                                        .firstWhere(
+                                          (user) =>
+                                              user.uid ==
+                                              displayedVideos[index].uid,
+                                          orElse: () => AppUser(
+                                              nom: 'Inconnu',
+                                              uid: '',
+                                              email: '',
+                                              role: '',
+                                              photoProfil: '',
+                                              estActif: true,
+                                              estBloque: false,
+                                              authDisabled: false,
+                                              createdByAdmin: false,
+                                              followers: 0,
+                                              followings: 0,
+                                              dateInscription: DateTime.now(),
+                                              dernierLogin: DateTime.now()),
+                                        )
+                                        .nom),
                                   ),
                                   DataCell(
                                     PopupMenuButton<String>(
                                       onSelected: (value) {
                                         if (value == 'view_video') {
                                           Get.to(() => VideoPlayerScreen(
-                                                videoUrl: displayedVideos[index].videoUrl,
-                                                userId: displayedVideos[index].uid,
-                                                videoId: displayedVideos[index].id,
+                                                videoUrl: displayedVideos[index]
+                                                    .videoUrl,
+                                                userId:
+                                                    displayedVideos[index].uid,
+                                                videoId:
+                                                    displayedVideos[index].id,
                                               ));
                                         } else if (value == 'delete_video') {
-                                          _confirmDelete(context, displayedVideos[index].id);
+                                          _confirmDelete(context,
+                                              displayedVideos[index].id);
                                         }
                                       },
                                       itemBuilder: (context) => const [
@@ -188,8 +220,10 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                 ],
                               ),
                             ),
-                            headingRowColor: WidgetStateProperty.all(Colors.grey.shade200),
-                            dataRowColor: WidgetStateProperty.all(Colors.grey.shade50),
+                            headingRowColor:
+                                WidgetStateProperty.all(Colors.grey.shade200),
+                            dataRowColor:
+                                WidgetStateProperty.all(Colors.grey.shade50),
                             dividerThickness: 1,
                             dataRowHeight: 56,
                             headingRowHeight: 56,
@@ -200,7 +234,8 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                             children: [
                               Text(
                                 'Page ${currentPage + 1} sur $totalPages',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               Row(
                                 children: [
@@ -255,7 +290,8 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Confirmation'),
-          content: const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
+          content:
+              const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -265,7 +301,8 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop(); // Fermer le dialogue avant la suppression
+                Navigator.of(context)
+                    .pop(); // Fermer le dialogue avant la suppression
                 await videoController.deleteVideo(videoId);
                 Get.snackbar(
                   'Succès',
@@ -275,7 +312,8 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                   colorText: Colors.white,
                 );
               },
-              child: const Text('Supprimer', style: TextStyle(color: Colors.green)),
+              child: const Text('Supprimer',
+                  style: TextStyle(color: Colors.green)),
             ),
           ],
         );

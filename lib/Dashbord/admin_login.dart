@@ -1,59 +1,65 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:show_talent/Dashbord/admin_dashboard_screen.dart';
-import '../controller/user_controller.dart'; 
+
+import '../controller/user_controller.dart';
+import 'admin_dashboard_screen.dart';
 import 'admin_signup.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
 
   @override
-  _AdminLoginScreenState createState() => _AdminLoginScreenState();
+  State<AdminLoginScreen> createState() => _AdminLoginScreenState();
 }
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _obscurePassword = true;
   final UserController userController = Get.find<UserController>();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _loginAdmin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      Get.snackbar(
+          'Connexion impossible', 'Saisissez votre e-mail et mot de passe.');
+      return;
+    }
+
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      final accessResult = await userController.evaluateAdminAccess(
+        firebaseUser: userCredential.user!,
+        forceRefresh: true,
       );
 
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .get();
-
-      if (!userDoc.exists) {
-        Get.snackbar('Erreur', 'Utilisateur non trouvé dans Firestore');
+      if (!accessResult.isAuthorized) {
+        Get.snackbar('Acces refuse', accessResult.message ?? 'Acces refuse.');
         await FirebaseAuth.instance.signOut();
+        userController.clearSessionState();
         return;
       }
 
-      var userData = userDoc.data() as Map<String, dynamic>;
-
-      if (userData['estBloque'] == true) {
-        Get.snackbar('Accès refusé', 'Votre compte est bloqué.');
-        await FirebaseAuth.instance.signOut();
-        return;
-      }
-
-      if (userData['role'] == 'admin') {
-        userController.setUserFromFirestore(userData);
-        Get.offAll(() => AdminDashboardScreen());
-      } else {
-        Get.snackbar('Accès refusé', 'Vous n\'êtes pas un administrateur.');
-        FirebaseAuth.instance.signOut();
-      }
-    } catch (e) {
-      Get.snackbar('Erreur de connexion', e.toString());
+      Get.offAll(() => AdminDashboardScreen());
+    } on FirebaseAuthException catch (error) {
+      Get.snackbar(
+        'Connexion impossible',
+        error.message ?? 'Erreur Firebase Auth : ${error.code}',
+      );
+    } catch (error) {
+      Get.snackbar('Connexion impossible', error.toString());
     }
   }
 
@@ -68,28 +74,28 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Affichage du logo et du nom
               Image.asset(
                 'assets/logo.png',
-                width: 100, // Ajustez la largeur selon vos besoins
-                height: 100, 
+                width: 100,
+                height: 100,
               ),
               const SizedBox(height: 30),
               const Text(
                 'Connexion Admin',
                 style: TextStyle(
-                  fontSize: 26, 
-                  fontWeight: FontWeight.bold, 
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
                   color: Color(0xFF214D4F),
                 ),
               ),
               const SizedBox(height: 30),
               TextField(
                 controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Adresse e-mail',
                   prefixIcon: const Icon(Icons.email),
@@ -107,7 +113,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
                     onPressed: () {
                       setState(() {
@@ -129,8 +137,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.symmetric(
-                    vertical: 16.0,
-                    horizontal: 24.0,
+                    vertical: 16,
+                    horizontal: 24,
                   ),
                 ),
                 child: const Text(
@@ -138,18 +146,26 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
               ),
+              const SizedBox(height: 16),
+              const Text(
+                'L acces au dashboard repose sur les custom claims admin '
+                'uniquement.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black54),
+              ),
               const SizedBox(height: 60),
               TextButton(
-                onPressed: () {
-                  Get.to(() => const AdminSignupScreen());
-                },
+                onPressed: () => Get.to(() => const AdminSignupScreen()),
                 child: const Text(
-                  'Créer admin',
-                  style: TextStyle(color: Color.fromARGB(255, 230, 238, 250), fontSize: 16),
+                  'Acces admin gere par la plateforme',
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 230, 238, 250),
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
-          ), 
+          ),
         ),
       ),
     );

@@ -62,7 +62,8 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                   onChanged: (value) {
                     setState(() {
                       searchQuery = value.toLowerCase();
-                      currentPage = 0; // Réinitialise la page lors de la recherche
+                      currentPage =
+                          0; // Réinitialise la page lors de la recherche
                     });
                   },
                 ),
@@ -75,8 +76,10 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
 
                 final totalPages = (filteredVideos.length / rowsPerPage).ceil();
                 final startIndex = currentPage * rowsPerPage;
-                final endIndex = (startIndex + rowsPerPage).clamp(0, filteredVideos.length);
-                final displayedVideos = filteredVideos.sublist(startIndex, endIndex);
+                final endIndex =
+                    (startIndex + rowsPerPage).clamp(0, filteredVideos.length);
+                final displayedVideos =
+                    filteredVideos.sublist(startIndex, endIndex);
 
                 return filteredVideos.isEmpty
                     ? const Center(
@@ -96,7 +99,9 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Aperçu',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -105,7 +110,9 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Titre',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -114,7 +121,9 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Ajouté par',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -123,7 +132,9 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                                 label: Expanded(
                                   child: Text(
                                     'Actions',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                     textAlign: TextAlign.center,
                                   ),
                                 ),
@@ -141,7 +152,8 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                                         width: 80,
                                         height: 50,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
                                           return const Icon(
                                             Icons.video_library,
                                             color: Colors.grey,
@@ -151,20 +163,27 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                                       ),
                                     ),
                                   ),
-                                  DataCell(Text(displayedVideos[index].caption)),
-                                  DataCell(Text(_getUploaderName(displayedVideos[index].uid))),
+                                  DataCell(
+                                      Text(displayedVideos[index].caption)),
+                                  DataCell(Text(_getUploaderName(
+                                      displayedVideos[index].uid))),
                                   DataCell(
                                     Center(
                                       child: PopupMenuButton<String>(
                                         onSelected: (value) {
                                           if (value == 'view_video') {
                                             Get.to(() => VideoPlayerScreen(
-                                                  videoUrl: displayedVideos[index].videoUrl,
-                                                  userId: displayedVideos[index].uid,
-                                                  videoId: displayedVideos[index].id,
+                                                  videoUrl:
+                                                      displayedVideos[index]
+                                                          .videoUrl,
+                                                  userId: displayedVideos[index]
+                                                      .uid,
+                                                  videoId:
+                                                      displayedVideos[index].id,
                                                 ));
                                           } else if (value == 'delete_video') {
-                                            _confirmDelete(context, displayedVideos[index].id);
+                                            _confirmDelete(context,
+                                                displayedVideos[index].id);
                                           }
                                         },
                                         itemBuilder: (context) => const [
@@ -183,8 +202,10 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                                 ],
                               ),
                             ),
-                            headingRowColor: WidgetStateProperty.all(Colors.grey.shade200),
-                            dataRowColor: WidgetStateProperty.all(Colors.grey.shade50),
+                            headingRowColor:
+                                WidgetStateProperty.all(Colors.grey.shade200),
+                            dataRowColor:
+                                WidgetStateProperty.all(Colors.grey.shade50),
                             dividerThickness: 1,
                             dataRowHeight: 56,
                             headingRowHeight: 56,
@@ -196,7 +217,8 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
                             children: [
                               Text(
                                 'Page ${currentPage + 1} sur $totalPages',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               Row(
                                 children: [
@@ -255,11 +277,13 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
         role: '',
         photoProfil: '',
         estActif: true,
+        estBloque: false,
+        authDisabled: false,
+        createdByAdmin: false,
         followers: 0,
         followings: 0,
         dateInscription: DateTime.now(),
         dernierLogin: DateTime.now(),
-        estBloque: false,
       ),
     );
     return uploader.nom;
@@ -271,7 +295,8 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Confirmation'),
-          content: const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
+          content:
+              const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -279,7 +304,8 @@ class _VideoManagementWidgetState extends State<VideoManagementWidget> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop(); // Ferme le dialogue avant la suppression
+                Navigator.of(context)
+                    .pop(); // Ferme le dialogue avant la suppression
                 await videoController.deleteVideo(videoId);
                 Get.snackbar(
                   'Succès',

@@ -1,18 +1,19 @@
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:show_talent/Dashbord/admin_dashboard_screen.dart';
-import 'package:show_talent/Dashbord/admin_login.dart';
+
+import '../Dashbord/admin_dashboard_screen.dart';
+import '../Dashbord/admin_login.dart';
 import '../models/user.dart';
+import '../utils/account_role_policy.dart';
 
 class AuthController extends GetxController {
   static AuthController instance = Get.find();
 
-  late Rx<User?> _firebaseUser;  // Firebase User
-  final Rx<AppUser?> _user = Rx<AppUser?>(null);  // Utilisation de Rx<AppUser?> ici pour suivre les changements utilisateur
+  late Rx<User?> _firebaseUser;
+  final Rx<AppUser?> _user = Rx<AppUser?>(null);
 
-  AppUser? get user => _user.value;  // Getter sécurisé pour accéder à l'utilisateur
+  AppUser? get user => _user.value;
 
   @override
   void onReady() {
@@ -22,67 +23,111 @@ class AuthController extends GetxController {
     ever(_firebaseUser, _setInitialScreen);
   }
 
-  // Définir l'écran initial en fonction de l'état de connexion
-  _setInitialScreen(User? firebaseUser) async {
+  Future<void> _setInitialScreen(User? firebaseUser) async {
     if (firebaseUser == null) {
-      _user.value = null;  // Réinitialiser l'utilisateur local
-      Get.offAll(() => const AdminLoginScreen());  // Rediriger vers la page de login admin
-    } else {
-      AppUser? appUser = await getAppUserFromFirestore(firebaseUser.uid);
-      if (appUser != null && appUser.role == 'admin') {  // Vérifier si l'utilisateur est un admin
-        _user.value = appUser;  // Stocker l'utilisateur récupéré
-        Get.offAll(() =>  AdminDashboardScreen());  // Rediriger vers le dashboard admin
-      } else {
-        Get.snackbar('Accès refusé', 'Vous n\'êtes pas un administrateur.');
-        FirebaseAuth.instance.signOut();  // Déconnexion immédiate si non-admin
-        Get.offAll(() => const AdminLoginScreen());  // Retourner au login admin
-      }
+      _user.value = null;
+      Get.offAll(() => const AdminLoginScreen());
+      return;
     }
+
+    final appUser = await getAppUserFromFirestore(firebaseUser.uid);
+    final grantedClaims = await _extractAdminClaims(firebaseUser);
+
+    if (appUser != null &&
+        appUser.role == 'admin' &&
+        appUser.estBloque != true &&
+        appUser.authDisabled != true &&
+        grantedClaims.isNotEmpty) {
+      _user.value = appUser;
+      Get.offAll(() => AdminDashboardScreen());
+      return;
+    }
+
+    Get.snackbar(
+      'Acces refuse',
+      appUser == null
+          ? 'Utilisateur introuvable dans /users.'
+          : appUser.role != 'admin'
+              ? 'Votre compte n est pas autorise sur le portail admin.'
+              : appUser.estBloque == true
+                  ? 'Votre compte est bloque.'
+                  : appUser.authDisabled == true
+                      ? 'Firebase Auth est desactive pour ce compte.'
+                      : 'Les custom claims admin sont requis pour acceder au dashboard.',
+    );
+    await FirebaseAuth.instance.signOut();
+    _user.value = null;
+    Get.offAll(() => const AdminLoginScreen());
   }
 
-  // Récupérer les informations de l'utilisateur depuis Firestore
   Future<AppUser?> getAppUserFromFirestore(String uid) async {
     try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (doc.exists) {
         return AppUser.fromMap(doc.data() as Map<String, dynamic>);
       }
-    } catch (e) {
-      Get.snackbar('Erreur', 'Impossible de récupérer les informations utilisateur : $e');
+    } catch (error) {
+      Get.snackbar(
+        'Erreur',
+        'Impossible de recuperer les informations utilisateur : $error',
+      );
     }
+
     return null;
   }
 
-  // Connexion des utilisateurs (admins dans ce cas)
-  void loginAdmin(String email, String password) async {
-    try {
-      if (email.isNotEmpty && password.isNotEmpty) {
-        UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+  Future<List<String>> _extractAdminClaims(User firebaseUser) async {
+    final tokenResult = await firebaseUser.getIdTokenResult(true);
+    final claims = Map<String, dynamic>.from(tokenResult.claims ?? const {});
+    return extractGrantedAdminClaims(claims);
+  }
 
-        // Vérification du rôle après connexion
-        AppUser? appUser = await getAppUserFromFirestore(userCredential.user!.uid);
-        if (appUser != null && appUser.role == 'admin') {
-          _user.value = appUser;
-          Get.offAll(() =>  AdminDashboardScreen());  // Rediriger vers le dashboard admin
-        } else {
-          Get.snackbar('Accès refusé', 'Vous n\'êtes pas un administrateur.');
-          FirebaseAuth.instance.signOut();  // Déconnexion immédiate
-        }
-      } else {
+  Future<void> loginAdmin(String email, String password) async {
+    try {
+      if (email.isEmpty || password.isEmpty) {
         Get.snackbar('Erreur', 'Veuillez remplir toutes les informations.');
+        return;
       }
-    } catch (e) {
-      Get.snackbar('Erreur de connexion', 'Erreur : $e');
+
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      final appUser = await getAppUserFromFirestore(userCredential.user!.uid);
+      final grantedClaims = await _extractAdminClaims(userCredential.user!);
+
+      if (appUser != null &&
+          appUser.role == 'admin' &&
+          appUser.estBloque != true &&
+          appUser.authDisabled != true &&
+          grantedClaims.isNotEmpty) {
+        _user.value = appUser;
+        Get.offAll(() => AdminDashboardScreen());
+        return;
+      }
+
+      Get.snackbar(
+        'Acces refuse',
+        appUser == null
+            ? 'Utilisateur introuvable dans /users.'
+            : appUser.role != 'admin'
+                ? 'Votre compte n est pas autorise sur le portail admin.'
+                : appUser.estBloque == true
+                    ? 'Votre compte est bloque.'
+                    : appUser.authDisabled == true
+                        ? 'Firebase Auth est desactive pour ce compte.'
+                        : 'Les custom claims admin sont requis pour acceder au dashboard.',
+      );
+      await FirebaseAuth.instance.signOut();
+      _user.value = null;
+    } catch (error) {
+      Get.snackbar('Erreur de connexion', 'Erreur : $error');
     }
   }
 
-  // Déconnexion de l'administrateur
-  void signOut() async {
+  Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
-    _user.value = null;  // Réinitialiser l'utilisateur lors de la déconnexion
-    Get.offAll(() => const AdminLoginScreen());  // Rediriger vers la page de login admin
+    _user.value = null;
+    Get.offAll(() => const AdminLoginScreen());
   }
 }

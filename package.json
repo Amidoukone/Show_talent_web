@@ -1,0 +1,12 @@
+{
+  "name": "show-talent-admin-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "create-admin": "node scripts/create_admin_account.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.5.0",
+    "jose": "^4.15.4"
+  }
+}

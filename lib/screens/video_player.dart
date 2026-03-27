@@ -2,26 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
-  final String videoUrl;
-  final String userId; // Ajoutez cet attribut si vous devez l'utiliser pour l'utilisateur
-  final String videoId; // Ajoutez cet attribut pour l'ID de la vidéo
+  const VideoPlayerScreen({
+    required this.videoUrl,
+    required this.userId,
+    required this.videoId,
+    super.key,
+  });
 
-  const VideoPlayerScreen({super.key, required this.videoUrl, required this.userId, required this.videoId});
+  final String videoUrl;
+  final String userId;
+  final String videoId;
 
   @override
-  _VideoPlayerScreenState createState() => _VideoPlayerScreenState();
+  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
-  late VideoPlayerController _controller;
+  late final VideoPlayerController _controller;
+  late final Future<void> _initializeVideo;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.network(widget.videoUrl)
-      ..initialize().then((_) {
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    _initializeVideo = _controller.initialize().then((_) {
+      _controller
+        ..setLooping(true)
+        ..play();
+      if (mounted) {
         setState(() {});
-      });
+      }
+    });
   }
 
   @override
@@ -34,32 +45,66 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lecteur de Vidéo'),
-        backgroundColor: const Color.fromARGB(255, 27, 56, 56), // Couleur de fond de l'app bar
-        iconTheme: const IconThemeData(color: Colors.white), // Icônes en blanc
+        title: const Text('Lecture video'),
+        backgroundColor: const Color(0xFF214D4F),
       ),
-      body: Container(
-        color: const Color.fromARGB(255, 0, 0, 0), // Couleur de fond vert foncé
-        child: Center(
-          child: _controller.value.isInitialized
-              ? AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
-                  child: VideoPlayer(_controller),
-                )
-              : const CircularProgressIndicator(),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            _controller.value.isPlaying ? _controller.pause() : _controller.play();
-          });
+      body: FutureBuilder<void>(
+        future: _initializeVideo,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!_controller.value.isInitialized) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Impossible de charger la video.\n${widget.videoUrl}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: _controller.value.aspectRatio,
+                    child: VideoPlayer(_controller),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _controller.value.isPlaying
+                            ? Icons.pause_circle_filled
+                            : Icons.play_circle_fill,
+                        size: 36,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          if (_controller.value.isPlaying) {
+                            _controller.pause();
+                          } else {
+                            _controller.play();
+                          }
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
         },
-        backgroundColor: Colors.green[800],
-        child: Icon(
-          _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-          color: Colors.white, // Icône du bouton play en blanc
-        ), // Couleur de fond du bouton
       ),
     );
   }

@@ -11,6 +11,8 @@ class AppUser {
   String photoProfil;
   bool estActif;
   bool estBloque; // Nouveau champ
+  bool authDisabled;
+  bool createdByAdmin;
   int followers;
   int followings;
   DateTime dateInscription;
@@ -47,6 +49,8 @@ class AppUser {
     required this.photoProfil,
     required this.estActif,
     required this.estBloque, // Nouveau champ dans le constructeur
+    required this.authDisabled,
+    required this.createdByAdmin,
     required this.followers,
     required this.followings,
     required this.dateInscription,
@@ -80,10 +84,14 @@ class AppUser {
       photoProfil: map['photoProfil'] ?? '',
       estActif: map['estActif'] ?? true,
       estBloque: map['estBloque'] ?? false, // Initialiser le champ estBloque
+      authDisabled: map['authDisabled'] == true,
+      createdByAdmin: map['createdByAdmin'] == true,
       followers: map['followers'] is int ? map['followers'] : 0,
       followings: map['followings'] is int ? map['followings'] : 0,
-      dateInscription: (map['dateInscription'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      dernierLogin: (map['dernierLogin'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dateInscription:
+          (map['dateInscription'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      dernierLogin:
+          (map['dernierLogin'] as Timestamp?)?.toDate() ?? DateTime.now(),
       bio: map['bio'],
       position: map['position'],
       clubActuel: map['clubActuel'],
@@ -91,7 +99,8 @@ class AppUser {
       buts: map['buts'],
       assistances: map['assistances'],
       videosPubliees: map['videosPubliees'] != null
-          ? List<Video>.from(map['videosPubliees'].map((video) => Video.fromMap(video)))
+          ? List<Video>.from(
+              map['videosPubliees'].map((video) => Video.fromMap(video)))
           : [],
       performances: map['performances'] != null
           ? Map<String, double>.from(map['performances'])
@@ -99,22 +108,27 @@ class AppUser {
       nomClub: map['nomClub'],
       ligue: map['ligue'],
       offrePubliees: map['offrePubliees'] != null
-          ? List<Offre>.from(map['offrePubliees'].map((offre) => Offre.fromMap(offre)))
+          ? List<Offre>.from(
+              map['offrePubliees'].map((offre) => Offre.fromMap(offre)))
           : [],
       eventPublies: map['eventPublies'] != null
-          ? List<Event>.from(map['eventPublies'].map((event) => Event.fromMap(event)))
+          ? List<Event>.from(
+              map['eventPublies'].map((event) => Event.fromMap(event)))
           : [],
       entreprise: map['entreprise'],
       nombreDeRecrutements: map['nombreDeRecrutements'],
       team: map['team'],
       joueursSuivis: map['joueursSuivis'] != null
-          ? List<AppUser>.from(map['joueursSuivis'].map((joueur) => AppUser.fromMap(joueur)))
+          ? List<AppUser>.from(
+              map['joueursSuivis'].map((joueur) => AppUser.fromMap(joueur)))
           : [],
       clubsSuivis: map['clubsSuivis'] != null
-          ? List<AppUser>.from(map['clubsSuivis'].map((club) => AppUser.fromMap(club)))
+          ? List<AppUser>.from(
+              map['clubsSuivis'].map((club) => AppUser.fromMap(club)))
           : [],
       videosLikees: map['videosLikees'] != null
-          ? List<Video>.from(map['videosLikees'].map((video) => Video.fromMap(video)))
+          ? List<Video>.from(
+              map['videosLikees'].map((video) => Video.fromMap(video)))
           : [],
     );
   }
@@ -128,6 +142,8 @@ class AppUser {
       'photoProfil': photoProfil,
       'estActif': estActif,
       'estBloque': estBloque, // Ajouter le champ ici
+      'authDisabled': authDisabled,
+      'createdByAdmin': createdByAdmin,
       'followers': followers,
       'followings': followings,
       'dateInscription': dateInscription,

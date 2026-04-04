@@ -1,30 +1,26 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
-import 'package:show_talent/main.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:show_talent/utils/account_role_policy.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('public self-signup roles stay limited to joueur and fan', () {
+    expect(publicSelfSignupRoles, equals(const ['joueur', 'fan']));
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('managed account roles stay admin-provisioned', () {
+    expect(
+      managedAccountRoles,
+      equals(const ['club', 'recruteur', 'agent']),
+    );
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('extractGrantedAdminClaims keeps only enabled admin claims', () {
+    final claims = <String, dynamic>{
+      'admin': true,
+      'platformAdmin': false,
+      'superAdmin': true,
+      'other': true,
+    };
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(extractGrantedAdminClaims(claims), equals(['admin', 'superAdmin']));
   });
 }

@@ -6,9 +6,12 @@ import '../controller/user_controller.dart';
 import '../models/managed_account_provision_result.dart';
 import '../models/user.dart';
 import '../services/managed_account_service.dart';
+import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/admin_callable_action_catalog.dart';
 import '../widgets/admin_account_status_chips.dart';
+import '../widgets/admin_feedback.dart';
+import '../widgets/admin_ui.dart';
 import '../widgets/managed_account_invite_result_dialog.dart';
 
 class UserManagementWidget extends StatefulWidget {
@@ -37,6 +40,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   final UserController userController = Get.find<UserController>();
   final ManagedAccountService _managedAccountService = ManagedAccountService();
+  final TextEditingController _searchController = TextEditingController();
 
   String searchQuery = '';
   String? selectedRole;
@@ -49,6 +53,24 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     super.initState();
     selectedRole = widget.selectedRole;
     userController.fetchUsers();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _isCompactLayout(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < 1120;
+
+  void _clearFilters() {
+    setState(() {
+      searchQuery = '';
+      selectedRole = 'Tous';
+      currentPage = 0;
+      _searchController.clear();
+    });
   }
 
   bool _isManagedAccount(AppUser user) {
@@ -117,24 +139,30 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         return;
       }
 
-      Get.snackbar('Succes', successMessage);
+      showAdminFeedback(
+        title: 'Succes',
+        message: successMessage,
+        tone: AdminBannerTone.success,
+      );
     } on FirebaseFunctionsException catch (error) {
       if (!mounted) {
         return;
       }
 
-      Get.snackbar(
-        'Erreur',
-        error.message ?? 'Operation ${action.callableName} refusee.',
+      showAdminFeedback(
+        title: 'Erreur',
+        message: error.message ?? 'Operation ${action.callableName} refusee.',
+        tone: AdminBannerTone.danger,
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      Get.snackbar(
-        'Erreur',
-        'Operation ${action.callableName} impossible : $error',
+      showAdminFeedback(
+        title: 'Erreur',
+        message: 'Operation ${action.callableName} impossible : $error',
+        tone: AdminBannerTone.danger,
       );
     } finally {
       _clearActionInFlight();
@@ -230,9 +258,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   Future<void> _changeManagedAccountRole(AppUser user) async {
     if (!_isManagedAccount(user)) {
-      Get.snackbar(
-        'Action indisponible',
-        'Le changement de role n est propose que pour les comptes geres.',
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message: 'Le changement de role n est propose que pour les comptes geres.',
+        tone: AdminBannerTone.warning,
       );
       return;
     }
@@ -314,9 +343,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   Future<void> _resendManagedAccountInvite(AppUser user) async {
     if (!_isManagedAccount(user)) {
-      Get.snackbar(
-        'Action indisponible',
-        'Le renvoi d invitation n est propose que pour les comptes geres.',
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message:
+            'Le renvoi d invitation n est propose que pour les comptes geres.',
+        tone: AdminBannerTone.warning,
       );
       return;
     }
@@ -331,9 +362,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         return;
       }
 
-      Get.snackbar(
-        'Succes',
-        'Les liens d invitation ont ete regeneres pour ${user.email}.',
+      showAdminFeedback(
+        title: 'Succes',
+        message: 'Les liens d invitation ont ete regeneres pour ${user.email}.',
+        tone: AdminBannerTone.success,
       );
       await _showInviteResultDialog(result);
     } on FirebaseFunctionsException catch (error) {
@@ -341,19 +373,22 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         return;
       }
 
-      Get.snackbar(
-        'Erreur',
-        error.message ??
+      showAdminFeedback(
+        title: 'Erreur',
+        message:
+            error.message ??
             'Impossible de renvoyer les liens d invitation pour ce compte.',
+        tone: AdminBannerTone.danger,
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      Get.snackbar(
-        'Erreur',
-        'Impossible de renvoyer les liens d invitation : $error',
+      showAdminFeedback(
+        title: 'Erreur',
+        message: 'Impossible de renvoyer les liens d invitation : $error',
+        tone: AdminBannerTone.danger,
       );
     } finally {
       _clearActionInFlight();
@@ -364,24 +399,54 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final items = <PopupMenuEntry<String>>[
       const PopupMenuItem(
         value: _actionBlock,
-        child: Text('Bloquer'),
+        child: Row(
+          children: [
+            Icon(Icons.block_rounded, size: 18, color: AdminTheme.danger),
+            SizedBox(width: 8),
+            Text('Bloquer'),
+          ],
+        ),
       ),
       PopupMenuItem(
         value: user.authDisabled ? _actionEnableAuth : _actionDisableAuth,
-        child: Text(user.authDisabled ? 'Reactiver Auth' : 'Desactiver Auth'),
+        child: Row(
+          children: [
+            Icon(
+              user.authDisabled
+                  ? Icons.lock_open_rounded
+                  : Icons.lock_outline_rounded,
+              size: 18,
+              color: user.authDisabled ? AdminTheme.success : AdminTheme.warning,
+            ),
+            const SizedBox(width: 8),
+            Text(user.authDisabled ? 'Reactiver Auth' : 'Desactiver Auth'),
+          ],
+        ),
       ),
     ];
 
     if (_isManagedAccount(user)) {
       items.add(const PopupMenuDivider());
-      items.addAll(const [
+      items.addAll([
         PopupMenuItem(
           value: _actionChangeRole,
-          child: Text('Changer le role'),
+          child: Row(
+            children: const [
+              Icon(Icons.manage_accounts_outlined, size: 18, color: AdminTheme.cyan),
+              SizedBox(width: 8),
+              Text('Changer le role'),
+            ],
+          ),
         ),
         PopupMenuItem(
           value: _actionResendInvite,
-          child: Text('Renvoyer l invitation'),
+          child: Row(
+            children: const [
+              Icon(Icons.mark_email_read_outlined, size: 18, color: AdminTheme.accent),
+              SizedBox(width: 8),
+              Text('Renvoyer l invitation'),
+            ],
+          ),
         ),
       ]);
     }
@@ -390,7 +455,13 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     items.add(
       const PopupMenuItem(
         value: _actionDelete,
-        child: Text('Supprimer'),
+        child: Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, size: 18, color: AdminTheme.danger),
+            SizedBox(width: 8),
+            Text('Supprimer'),
+          ],
+        ),
       ),
     );
 
@@ -422,327 +493,277 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          width: MediaQuery.of(context).size.width * 0.95,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                spreadRadius: 2,
-                blurRadius: 8,
-              ),
-            ],
-            color: Colors.white,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Gestion des utilisateurs',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  DropdownButton<String>(
-                    value: selectedRole,
-                    items: <String>[
-                      'Tous',
-                      'joueur',
-                      'club',
-                      'recruteur',
-                      'agent',
-                      'fan',
-                    ].map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedRole = newValue;
-                        currentPage = 0;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3CD),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Toutes les mutations cross-user passent desormais par les callables du backend partage. '
-                  'Blocage applicatif, Auth et activite restent distingues. '
-                  'Le changement de role et le renvoi d invitation sont limites aux comptes geres.',
-                  style: TextStyle(color: Colors.black87),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Rechercher un utilisateur',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    prefixIcon: const Icon(Icons.search),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      searchQuery = value;
-                      currentPage = 0;
-                    });
-                  },
-                ),
-              ),
-              Obx(() {
-                final filteredUsers = userController.userList.where((user) {
-                  final isBlocked = user.estBloque;
-                  final matchesRole =
-                      selectedRole == 'Tous' || user.role == selectedRole;
-                  final normalizedQuery = searchQuery.toLowerCase();
-                  final matchesSearch =
-                      user.nom.toLowerCase().contains(normalizedQuery) ||
-                          user.email.toLowerCase().contains(normalizedQuery);
+    final compact = _isCompactLayout(context);
+    final panelPadding = compact ? 16.0 : 22.0;
+    final spacing = compact ? 12.0 : 16.0;
+    final tableColumnSpacing = compact ? 16.0 : 24.0;
+    final rowHeight = compact ? 52.0 : 56.0;
 
-                  return matchesRole &&
-                      matchesSearch &&
-                      (widget.showBlockedUsers ? isBlocked : !isBlocked);
-                }).toList();
-
-                final totalPages = (filteredUsers.length / rowsPerPage).ceil();
-                final startIndex = currentPage * rowsPerPage;
-                final endIndex =
-                    (startIndex + rowsPerPage).clamp(0, filteredUsers.length);
-                final displayedUsers =
-                    filteredUsers.sublist(startIndex, endIndex);
-
-                if (filteredUsers.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'Aucun utilisateur trouve.',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                      ),
-                    ),
+    return AdminGlassPanel(
+      padding: EdgeInsets.all(panelPadding),
+      highlight: true,
+      accentColor: AdminTheme.accent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AdminSectionHeader(
+            badge: 'User ops',
+            title: 'Gestion des utilisateurs',
+            subtitle: 'Recherche, roles, statuts et actions admin centralisees.',
+            trailing: AdminGlassPanel(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              radius: 18,
+              accentColor: AdminTheme.cyan,
+              child: DropdownButton<String>(
+                value: selectedRole,
+                dropdownColor: AdminTheme.surfaceRaised,
+                underline: const SizedBox.shrink(),
+                items: <String>[
+                  'Tous',
+                  'joueur',
+                  'club',
+                  'recruteur',
+                  'agent',
+                  'fan',
+                ].map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
                   );
-                }
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedRole = newValue;
+                    currentPage = 0;
+                  });
+                },
+              ),
+            ),
+          ),
+          SizedBox(height: spacing),
+          const AdminInfoBanner(
+            title: 'Regles de mutation',
+            message:
+                'Toutes les mutations cross-user passent desormais par les callables du backend partage. Blocage applicatif, Auth et activite restent distingues. Le changement de role et le renvoi d invitation sont limites aux comptes geres.',
+            icon: Icons.rule_folder_outlined,
+            tone: AdminBannerTone.warning,
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
+            child: AdminSearchField(
+              controller: _searchController,
+              hintText: 'Rechercher un utilisateur',
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value;
+                  currentPage = 0;
+                });
+              },
+            ),
+          ),
+          Obx(() {
+            final filteredUsers = userController.userList.where((user) {
+              final isBlocked = user.estBloque;
+              final matchesRole = selectedRole == 'Tous' || user.role == selectedRole;
+              final normalizedQuery = searchQuery.toLowerCase();
+              final matchesSearch =
+                  user.nom.toLowerCase().contains(normalizedQuery) ||
+                  user.email.toLowerCase().contains(normalizedQuery);
 
-                return Column(
+              return matchesRole &&
+                  matchesSearch &&
+                  (widget.showBlockedUsers ? isBlocked : !isBlocked);
+            }).toList();
+
+            final totalPages = (filteredUsers.length / rowsPerPage).ceil();
+            final startIndex = currentPage * rowsPerPage;
+            final endIndex = (startIndex + rowsPerPage).clamp(
+              0,
+              filteredUsers.length,
+            );
+            final displayedUsers = filteredUsers.sublist(startIndex, endIndex);
+
+            if (filteredUsers.isEmpty) {
+              final hasFilters =
+                  searchQuery.trim().isNotEmpty || selectedRole != 'Tous';
+
+              return AdminEmptyState(
+                title: 'Aucun utilisateur trouve',
+                message:
+                    'Ajuste le filtre ou la recherche pour afficher des comptes.',
+                icon: Icons.person_search_rounded,
+                actionLabel: hasFilters
+                    ? 'Reinitialiser les filtres'
+                    : 'Recharger la liste',
+                actionIcon: hasFilters
+                    ? Icons.filter_alt_off_rounded
+                    : Icons.refresh_rounded,
+                onAction: () {
+                  if (hasFilters) {
+                    _clearFilters();
+                  } else {
+                    userController.fetchUsers();
+                  }
+                },
+              );
+            }
+
+            final managedUsers =
+                filteredUsers.where((user) => _isManagedAccount(user)).length;
+
+            return Column(
+              children: [
+                Wrap(
+                  spacing: compact ? 10 : 12,
+                  runSpacing: compact ? 10 : 12,
                   children: [
-                    DataTable(
-                      columnSpacing: 24,
-                      horizontalMargin: 12,
-                      columns: const [
-                        DataColumn(
-                          label: Expanded(
-                            child: Text(
-                              'Nom',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Expanded(
-                            child: Text(
-                              'Email',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Expanded(
-                            child: Text(
-                              'Role',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Expanded(
-                            child: Text(
-                              'Statut',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Expanded(
-                            child: Text(
-                              'Actions',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ],
-                      rows: List<DataRow>.generate(
-                        displayedUsers.length,
-                        (index) => DataRow(
-                          cells: [
-                            DataCell(
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.person,
-                                    color: Colors.blueAccent,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(displayedUsers[index].nom),
-                                ],
-                              ),
-                            ),
-                            DataCell(Text(displayedUsers[index].email)),
-                            DataCell(
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(displayedUsers[index].role),
-                                  if (displayedUsers[index].createdByAdmin)
-                                    const Text(
-                                      'cree par admin',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.teal,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            DataCell(
-                              AdminAccountStatusChips(
-                                user: displayedUsers[index],
-                              ),
-                            ),
-                            DataCell(
-                              _actionInFlightUid == displayedUsers[index].uid
-                                  ? Row(
-                                      children: [
-                                        const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          _actionInFlightLabel ??
-                                              'Traitement...',
-                                        ),
-                                      ],
-                                    )
-                                  : PopupMenuButton<String>(
-                                      onSelected: (value) =>
-                                          _handleActionSelection(
-                                        value,
-                                        displayedUsers[index],
-                                      ),
-                                      itemBuilder: (context) =>
-                                          _buildActionMenuItems(
-                                        displayedUsers[index],
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      headingRowColor:
-                          WidgetStateProperty.all(Colors.grey.shade200),
-                      dataRowColor:
-                          WidgetStateProperty.all(Colors.grey.shade50),
-                      dividerThickness: 1,
-                      dataRowMinHeight: 56,
-                      dataRowMaxHeight: 56,
-                      headingRowHeight: 56,
+                    AdminMiniStat(
+                      label: 'Resultats',
+                      value: '${filteredUsers.length}',
+                      icon: Icons.groups_2_rounded,
+                      accentColor: AdminTheme.cyan,
+                      subtitle: 'Comptes visibles',
+                      minWidth: compact ? 180 : 220,
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Page ${currentPage + 1} sur $totalPages',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            ElevatedButton.icon(
-                              onPressed: currentPage > 0
-                                  ? () {
-                                      setState(() {
-                                        currentPage--;
-                                      });
-                                    }
-                                  : null,
-                              icon: const Icon(Icons.arrow_back),
-                              label: const Text('Precedent'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[700],
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton.icon(
-                              onPressed: currentPage < totalPages - 1
-                                  ? () {
-                                      setState(() {
-                                        currentPage++;
-                                      });
-                                    }
-                                  : null,
-                              icon: const Icon(Icons.arrow_forward),
-                              label: const Text('Suivant'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[700],
-                                foregroundColor: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    AdminMiniStat(
+                      label: 'Comptes geres',
+                      value: '$managedUsers',
+                      icon: Icons.manage_accounts_outlined,
+                      accentColor: AdminTheme.accent,
+                      subtitle: 'Dans la selection',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Action en cours',
+                      value: _actionInFlightUid == null ? '0' : '1',
+                      icon: Icons.bolt_rounded,
+                      accentColor: AdminTheme.warning,
+                      subtitle: _actionInFlightLabel ?? 'Aucune',
+                      minWidth: compact ? 180 : 220,
                     ),
                   ],
-                );
-              }),
-            ],
-          ),
-        ),
+                ),
+                SizedBox(height: spacing),
+                AdminDataTableCard(
+                  compact: compact,
+                  child: DataTable(
+                    columnSpacing: tableColumnSpacing,
+                    horizontalMargin: compact ? 10 : 12,
+                    columns: const [
+                      DataColumn(label: Text('Nom', textAlign: TextAlign.center)),
+                      DataColumn(
+                        label: Text('Email', textAlign: TextAlign.center),
+                      ),
+                      DataColumn(label: Text('Role', textAlign: TextAlign.center)),
+                      DataColumn(
+                        label: Text('Statut', textAlign: TextAlign.center),
+                      ),
+                      DataColumn(
+                        label: Text('Actions', textAlign: TextAlign.center),
+                      ),
+                    ],
+                    rows: List<DataRow>.generate(
+                      displayedUsers.length,
+                      (index) => DataRow(
+                        cells: [
+                          DataCell(
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.person_rounded,
+                                  color: AdminTheme.cyan,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(displayedUsers[index].nom),
+                              ],
+                            ),
+                          ),
+                          DataCell(Text(displayedUsers[index].email)),
+                          DataCell(
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(displayedUsers[index].role),
+                                if (displayedUsers[index].createdByAdmin)
+                                  const Text(
+                                    'cree par admin',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AdminTheme.accent,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          DataCell(
+                            AdminAccountStatusChips(
+                              user: displayedUsers[index],
+                            ),
+                          ),
+                          DataCell(
+                            _actionInFlightUid == displayedUsers[index].uid
+                                ? Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(_actionInFlightLabel ?? 'Traitement...'),
+                                    ],
+                                  )
+                                : PopupMenuButton<String>(
+                                    tooltip: 'Actions utilisateur',
+                                    onSelected: (value) => _handleActionSelection(
+                                      value,
+                                      displayedUsers[index],
+                                    ),
+                                    itemBuilder: (context) =>
+                                        _buildActionMenuItems(displayedUsers[index]),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    headingRowColor: WidgetStateProperty.all(
+                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                    ),
+                    dataRowColor: WidgetStateProperty.all(
+                      AdminTheme.surface.withValues(alpha: 0.14),
+                    ),
+                    dividerThickness: 1,
+                    dataRowMinHeight: rowHeight,
+                    dataRowMaxHeight: rowHeight,
+                    headingRowHeight: rowHeight,
+                  ),
+                ),
+                SizedBox(height: spacing),
+                AdminPaginationBar(
+                  currentPage: currentPage,
+                  totalPages: totalPages,
+                  onPrevious: currentPage > 0
+                      ? () {
+                          setState(() {
+                            currentPage--;
+                          });
+                        }
+                      : null,
+                  onNext: currentPage < totalPages - 1
+                      ? () {
+                          setState(() {
+                            currentPage++;
+                          });
+                        }
+                      : null,
+                ),
+              ],
+            );
+          }),
+        ],
       ),
     );
   }

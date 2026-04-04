@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/user.dart';
+import '../theme/admin_theme.dart';
 
 class AdminAccountStatusChips extends StatelessWidget {
   const AdminAccountStatusChips({
@@ -17,32 +18,32 @@ class AdminAccountStatusChips extends StatelessWidget {
     if (user.estBloque) {
       statuses.add(const _StatusItem(
         label: 'bloque',
-        backgroundColor: Color(0xFFF8D7DA),
-        textColor: Color(0xFF8A1C28),
+        backgroundColor: Color(0x33FF7E8A),
+        textColor: AdminTheme.danger,
       ));
     }
 
     if (user.authDisabled) {
       statuses.add(const _StatusItem(
         label: 'auth desactive',
-        backgroundColor: Color(0xFFFFE5B4),
-        textColor: Color(0xFF8A5A00),
+        backgroundColor: Color(0x33F4D27A),
+        textColor: AdminTheme.warning,
       ));
     }
 
     if (!user.estActif) {
       statuses.add(const _StatusItem(
         label: 'inactif',
-        backgroundColor: Color(0xFFE2E3E5),
-        textColor: Color(0xFF495057),
+        backgroundColor: Color(0x334A655C),
+        textColor: AdminTheme.textMuted,
       ));
     }
 
     if (statuses.isEmpty) {
       statuses.add(const _StatusItem(
         label: 'actif',
-        backgroundColor: Color(0xFFDFF3E4),
-        textColor: Color(0xFF1E6B35),
+        backgroundColor: Color(0x3367F1AB),
+        textColor: AdminTheme.success,
       ));
     }
 
@@ -55,6 +56,9 @@ class AdminAccountStatusChips extends StatelessWidget {
           decoration: BoxDecoration(
             color: status.backgroundColor,
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: status.textColor.withValues(alpha: 0.18),
+            ),
           ),
           child: Text(
             status.label,

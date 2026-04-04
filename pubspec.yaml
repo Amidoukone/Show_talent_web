@@ -73,6 +73,10 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+dependency_overrides:
+  vector_math:
+    path: third_party/vector_math
+
 
 
 # For information on the generic Dart part of this file, see the

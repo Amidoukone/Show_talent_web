@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs';
+﻿import { existsSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 
 import admin from 'firebase-admin';
 
 const DEFAULT_PROJECT_ID = 'show-talent-5987d';
 const DEFAULT_ADMIN_EMAIL = 'admin@adfoot.com';
-const DEFAULT_ADMIN_NAME = 'Admin AD.FOOT';
+const DEFAULT_ADMIN_NAME = 'Admin Adfoot';
 const DEFAULT_ADMIN_ROLE = 'admin';
 const DEFAULT_ADMIN_CLAIM = 'admin';
 const SUPPORTED_ADMIN_CLAIMS = new Set([
@@ -79,7 +79,7 @@ Variables d'environnement supportees:
 
 Exemple PowerShell:
   $env:FIREBASE_SERVICE_ACCOUNT_KEY_PATH="C:\\secrets\\serviceAccount.json"
-  npm.cmd run create-admin -- --email admin@adfoot.com --password "TempPass123!" --name "Admin AD.FOOT" --claim admin
+  npm.cmd run create-admin -- --email admin@adfoot.com --password "TempPass123!" --name "Admin Adfoot" --claim admin
 `.trim());
 }
 
@@ -298,3 +298,5 @@ main().catch((error) => {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });
+
+

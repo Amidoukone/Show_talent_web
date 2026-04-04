@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../models/admin_access_result.dart';
@@ -40,6 +41,9 @@ class UserController extends GetxController {
         final data = doc.data();
         return AppUser.fromMap(data);
       }).toList();
+    }, onError: (Object error) {
+      debugPrint('Flux Firestore users indisponible: $error');
+      _userList.clear();
     });
   }
 

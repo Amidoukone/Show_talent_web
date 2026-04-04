@@ -15,8 +15,12 @@ class EventController extends GetxController {
 
   // Récupération de la liste des événements depuis Firestore
   void _fetchEvents() {
-    FirebaseFirestore.instance.collection('events').snapshots().listen((snapshot) {
-      _events.value = snapshot.docs.map((doc) => Event.fromMap(doc.data())).toList();
+    FirebaseFirestore.instance
+        .collection('events')
+        .snapshots()
+        .listen((snapshot) {
+      _events.value =
+          snapshot.docs.map((doc) => Event.fromMap(doc.data())).toList();
       update(); // Mise à jour de l'UI
     });
   }
@@ -74,11 +78,13 @@ class EventController extends GetxController {
 
       if (eventDoc.exists) {
         // Conversion du document en objet `Event`
-        Map<String, dynamic> eventData = eventDoc.data() as Map<String, dynamic>;
+        Map<String, dynamic> eventData =
+            eventDoc.data() as Map<String, dynamic>;
         Event event = Event.fromMap(eventData);
 
         // Vérifier si le participant est déjà inscrit
-        bool alreadyRegistered = event.participants.any((p) => p.uid == participant.uid);
+        bool alreadyRegistered =
+            event.participants.any((p) => p.uid == participant.uid);
 
         if (!alreadyRegistered) {
           // Ajouter le participant et mettre à jour l'événement dans Firestore
@@ -86,7 +92,9 @@ class EventController extends GetxController {
           await FirebaseFirestore.instance
               .collection('events')
               .doc(eventId)
-              .update({'participants': event.participants.map((p) => p.toMap()).toList()});
+              .update({
+            'participants': event.participants.map((p) => p.toMap()).toList()
+          });
 
           Get.snackbar('Succès', 'Inscription réussie');
         } else {
@@ -107,11 +115,12 @@ class EventController extends GetxController {
         return event.dateDebut.isAfter(DateTime.now());
       }).toList();
 
-      for (Event event in upcomingEvents) {
+      for (final _ in upcomingEvents) {
         // Envoyer des notifications automatiques aux utilisateurs ici
         // Exemple d'intégration avec un service de notification
       }
-      Get.snackbar('Notifications', 'Notifications envoyées pour les événements à venir');
+      Get.snackbar('Notifications',
+          'Notifications envoyées pour les événements à venir');
     } catch (e) {
       Get.snackbar('Erreur', 'Échec de l\'envoi des notifications');
     }

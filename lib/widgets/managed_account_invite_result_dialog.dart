@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../models/managed_account_provision_result.dart';
+import '../theme/admin_theme.dart';
+import 'admin_ui.dart';
 
 class ManagedAccountInviteResultDialog extends StatelessWidget {
   const ManagedAccountInviteResultDialog({
@@ -24,19 +26,54 @@ class ManagedAccountInviteResultDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(title),
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: AdminTheme.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
       content: SizedBox(
-        width: 520,
+        width: 560,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(subtitle),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AdminTheme.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (result.uid.isNotEmpty)
+                Text(
+                  'UID : ${result.uid}',
+                  style: const TextStyle(color: AdminTheme.textPrimary),
+                ),
+              if (result.email.isNotEmpty)
+                Text(
+                  'E-mail : ${result.email}',
+                  style: const TextStyle(color: AdminTheme.textPrimary),
+                ),
+              if (result.role.isNotEmpty)
+                Text(
+                  'Role : ${result.role}',
+                  style: const TextStyle(color: AdminTheme.textPrimary),
+                ),
               const SizedBox(height: 16),
-              if (result.uid.isNotEmpty) Text('UID : ${result.uid}'),
-              if (result.email.isNotEmpty) Text('E-mail : ${result.email}'),
-              if (result.role.isNotEmpty) Text('Role : ${result.role}'),
+              const AdminInfoBanner(
+                title: 'Liens renvoyes par le backend',
+                message:
+                    'Tu peux copier les liens ci-dessous pour les reutiliser dans ton flux admin sans regenirer les actions.',
+                icon: Icons.link_rounded,
+                tone: AdminBannerTone.info,
+              ),
               _LinkTile(
                 label: 'Password setup link',
                 value: result.passwordSetupLink,
@@ -52,7 +89,7 @@ class ManagedAccountInviteResultDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(
+        OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Fermer'),
         ),
@@ -77,23 +114,33 @@ class _LinkTile extends StatelessWidget {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(12),
+        color: AdminTheme.surfaceSoft.withValues(alpha: 0.38),
+        border: Border.all(color: AdminTheme.border.withValues(alpha: 0.9)),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AdminTheme.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           if (value == null)
-            const Text('Aucun lien retourne.')
+            const Text(
+              'Aucun lien retourne.',
+              style: TextStyle(color: AdminTheme.textMuted),
+            )
           else ...[
-            SelectableText(value!),
+            SelectableText(
+              value!,
+              style: const TextStyle(color: AdminTheme.textSecondary),
+            ),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,

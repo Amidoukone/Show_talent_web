@@ -49,3 +49,21 @@ app.*.map.json
 .credentials/
 serviceAccount*.json
 firebase-adminsdk*.json
+
+# Environment / local secrets
+.env
+.env.*
+*.env
+*.env.*
+
+# Local platform config files (avoid accidental key exposure)
+android/local.properties
+android/app/google-services.json
+lib/firebase_options.dart
+ios/Runner/GoogleService-Info.plist
+
+# Keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx

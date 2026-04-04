@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../theme/admin_theme.dart';
+import '../widgets/admin_ui.dart';
 import 'admin_login.dart';
 
 class AdminSignupScreen extends StatefulWidget {
@@ -14,81 +16,155 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Acces admin'),
-        centerTitle: true,
-        backgroundColor: const Color(0xFF214D4F),
-        elevation: 0,
-      ),
-      body: Center(
-        child: SingleChildScrollView(
+      body: SafeArea(
+        child: AdminAppBackground(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.admin_panel_settings,
-                size: 80,
-                color: Color(0xFF214D4F),
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                'Creation admin cote client desactivee',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF214D4F),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3CD),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Column(
-                  children: [
-                    Text(
-                      'Les comptes admin et leurs custom claims doivent etre '
-                      'attribues cote serveur. Cette application ne cree plus '
-                      'de comptes admin avec createUserWithEmailAndPassword.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.black87),
+          child: LayoutBuilder(
+            builder: (context, viewportConstraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: (viewportConstraints.maxHeight - 16).clamp(
+                      0.0,
+                      double.infinity,
                     ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Les comptes club, recruteur et agent se provisionnent '
-                      'depuis le dashboard via la Cloud Function partagee '
-                      'provisionManagedAccount.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.black87),
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 980),
+                      child: AdminGlassPanel(
+                        padding: const EdgeInsets.all(30),
+                        highlight: true,
+                        accentColor: AdminTheme.warning,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final stacked = constraints.maxWidth < 760;
+
+                            final intro = Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const AdminPill(
+                                  label: 'Provisionnement securise',
+                                  icon: Icons.rule_rounded,
+                                  color: AdminTheme.warning,
+                                ),
+                                const SizedBox(height: 22),
+                                Container(
+                                  width: 76,
+                                  height: 76,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AdminTheme.warning.withValues(
+                                      alpha: 0.14,
+                                    ),
+                                    border: Border.all(
+                                      color: AdminTheme.warning.withValues(
+                                        alpha: 0.26,
+                                      ),
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.admin_panel_settings_rounded,
+                                    size: 36,
+                                    color: AdminTheme.warning,
+                                  ),
+                                ),
+                                const SizedBox(height: 22),
+                                const Text(
+                                  'Creation admin cote client desactivee',
+                                  style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w800,
+                                    color: AdminTheme.textPrimary,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Le portail admin ne cree plus de compte sensible localement. La gouvernance reste centralisee par les claims et les outils backend.',
+                                  style: TextStyle(
+                                    color: AdminTheme.textSecondary,
+                                    height: 1.6,
+                                  ),
+                                ),
+                              ],
+                            );
+
+                            final body = Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const AdminInfoBanner(
+                                  title: 'Attribution des roles',
+                                  message:
+                                      'Les comptes admin et leurs custom claims doivent etre attribues cote serveur. La creation locale avec createUserWithEmailAndPassword est retiree.',
+                                  icon: Icons.security_rounded,
+                                  tone: AdminBannerTone.warning,
+                                ),
+                                const SizedBox(height: 16),
+                                const AdminInfoBanner(
+                                  title: 'Provisionnement metier',
+                                  message:
+                                      'Les comptes club, recruteur et agent se provisionnent depuis le dashboard avec la Cloud Function partagee provisionManagedAccount.',
+                                  icon: Icons.hub_outlined,
+                                  tone: AdminBannerTone.info,
+                                ),
+                                const SizedBox(height: 24),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () => Get.offAll(
+                                        () => const AdminLoginScreen(),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.arrow_back_rounded,
+                                      ),
+                                      label: const Text(
+                                        'Retour a la connexion',
+                                      ),
+                                    ),
+                                    ElevatedButton.icon(
+                                      onPressed: () => Get.offAll(
+                                        () => const AdminLoginScreen(),
+                                      ),
+                                      icon: const Icon(Icons.login_rounded),
+                                      label: const Text('Ouvrir le portail'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+
+                            if (stacked) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  intro,
+                                  const SizedBox(height: 24),
+                                  body,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(flex: 9, child: intro),
+                                const SizedBox(width: 28),
+                                Expanded(flex: 11, child: body),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              ElevatedButton.icon(
-                onPressed: () => Get.offAll(() => const AdminLoginScreen()),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF214D4F),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 24,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text(
-                  'Retour a la connexion',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),

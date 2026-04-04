@@ -1,10 +1,10 @@
-# show_talent
+﻿# Adfoot Admin Portal
 
-A new Flutter project.
+Portail d administration Adfoot (Flutter) relie au backend Firebase partage.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+Ce projet fournit le portail admin et les scripts d exploitation pour l environnement partage mobile/admin.
 
 A few resources to get you started if this is your first Flutter project:
 
@@ -30,6 +30,37 @@ Documents de reference associes :
 
 - [docs/prd-runbook-exploitation-inter-depots.md](docs/prd-runbook-exploitation-inter-depots.md)
 - [docs/runbook-production-admin-mobile.md](docs/runbook-production-admin-mobile.md)
+
+## Secrets and Firebase config
+
+Les fichiers suivants sont strictement locaux et ne doivent jamais etre pushes :
+
+- `android/app/google-services.json`
+- `ios/Runner/GoogleService-Info.plist`
+- `lib/firebase_options.dart`
+- `.credentials/*`
+- `.env*`
+
+Templates disponibles dans le repo :
+
+- `android/app/google-services.example.json`
+- `lib/firebase_options.example.dart`
+
+Configuration locale rapide (PowerShell) :
+
+```powershell
+Copy-Item android/app/google-services.example.json android/app/google-services.json
+Copy-Item lib/firebase_options.example.dart lib/firebase_options.dart
+```
+
+Puis generez les vraies valeurs Firebase avec FlutterFire CLI :
+
+```powershell
+flutterfire configure
+```
+
+Important : si une cle a deja ete exposee dans l historique Git, revoquez/rotatez la cle
+dans Firebase/Google Cloud et purgez l historique du depot avant de pousser.
 
 ## Roles
 
@@ -161,7 +192,7 @@ npm install
 3. Run the script with the admin identity you want to provision:
 
 ```bash
-npm run create-admin -- --email admin@adfoot.com --password "TempPass123!" --name "Admin AD.FOOT" --claim admin
+npm run create-admin -- --email admin@adfoot.com --password "TempPass123!" --name "Admin Adfoot" --claim admin
 ```
 
 The script will:
@@ -188,7 +219,7 @@ Quick PowerShell example:
 
 ```powershell
 $env:FIREBASE_SERVICE_ACCOUNT_KEY_PATH="C:\secrets\serviceAccount.json"
-npm.cmd run create-admin -- --email admin@adfoot.com --password "TempPass123!" --name "Admin AD.FOOT" --claim admin
+npm.cmd run create-admin -- --email admin@adfoot.com --password "TempPass123!" --name "Admin Adfoot" --claim admin
 ```
 
 If PowerShell blocks `npm.ps1`, use `npm.cmd` as shown above.
@@ -203,3 +234,6 @@ Available options:
 - `--projectId`
 - `--serviceAccount`
 - `--help`
+
+
+

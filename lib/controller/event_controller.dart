@@ -1,128 +1,115 @@
-import 'package:get/get.dart';
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:show_talent/models/event.dart';
-import 'package:show_talent/models/user.dart';
+import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
+
+import '../models/admin_action_response.dart';
+import '../models/event.dart';
+import '../services/admin_content_service.dart';
 
 class EventController extends GetxController {
-  final Rx<List<Event>> _events = Rx<List<Event>>([]);
-  List<Event> get events => _events.value;
+  EventController({
+    FirebaseFirestore? firestore,
+    AdminContentService? adminContentService,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _adminContentService = adminContentService ?? AdminContentService();
+
+  final FirebaseFirestore _firestore;
+  final AdminContentService _adminContentService;
+
+  static const List<String> moderationStatuses = <String>[
+    'brouillon',
+    'ouvert',
+    'ferme',
+    'archive',
+  ];
+
+  final RxList<Event> events = <Event>[].obs;
+  final RxBool isLoading = true.obs;
+  final RxString lastError = ''.obs;
+
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _eventsSubscription;
 
   @override
   void onInit() {
     super.onInit();
-    _fetchEvents();
+    _listenEvents();
   }
 
-  // Récupération de la liste des événements depuis Firestore
-  void _fetchEvents() {
-    FirebaseFirestore.instance
-        .collection('events')
-        .snapshots()
-        .listen((snapshot) {
-      _events.value =
-          snapshot.docs.map((doc) => Event.fromMap(doc.data())).toList();
-      update(); // Mise à jour de l'UI
-    });
+  @override
+  void onClose() {
+    _eventsSubscription?.cancel();
+    super.onClose();
   }
 
-  // Méthode pour créer un nouvel événement (par les clubs/recruteurs)
-  Future<void> createEvent(Event event) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('events')
-          .doc(event.id)
-          .set(event.toMap());
+  void _listenEvents() {
+    isLoading.value = true;
+    _eventsSubscription?.cancel();
 
-      Get.snackbar('Succès', 'Événement créé avec succès');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Échec de la création de l\'événement');
-    }
-  }
+    _eventsSubscription = _firestore.collection('events').snapshots().listen(
+      (snapshot) {
+        final parsed = <Event>[];
 
-  // Méthode pour mettre à jour un événement (par les clubs/recruteurs)
-  Future<void> updateEvent(Event event) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('events')
-          .doc(event.id)
-          .update(event.toMap());
-
-      Get.snackbar('Succès', 'Événement mis à jour avec succès');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Échec de la mise à jour de l\'événement');
-    }
-  }
-
-  // Méthode pour supprimer un événement (par les clubs/recruteurs)
-  Future<void> deleteEvent(String eventId) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('events')
-          .doc(eventId)
-          .delete();
-
-      Get.snackbar('Succès', 'Événement supprimé avec succès');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Échec de la suppression de l\'événement');
-    }
-  }
-
-  // Méthode pour s'inscrire à un événement (par les joueurs)
-  Future<void> registerToEvent(String eventId, AppUser participant) async {
-    try {
-      // Récupération de l'événement à partir de Firestore
-      DocumentSnapshot eventDoc = await FirebaseFirestore.instance
-          .collection('events')
-          .doc(eventId)
-          .get();
-
-      if (eventDoc.exists) {
-        // Conversion du document en objet `Event`
-        Map<String, dynamic> eventData =
-            eventDoc.data() as Map<String, dynamic>;
-        Event event = Event.fromMap(eventData);
-
-        // Vérifier si le participant est déjà inscrit
-        bool alreadyRegistered =
-            event.participants.any((p) => p.uid == participant.uid);
-
-        if (!alreadyRegistered) {
-          // Ajouter le participant et mettre à jour l'événement dans Firestore
-          event.participants.add(participant);
-          await FirebaseFirestore.instance
-              .collection('events')
-              .doc(eventId)
-              .update({
-            'participants': event.participants.map((p) => p.toMap()).toList()
-          });
-
-          Get.snackbar('Succès', 'Inscription réussie');
-        } else {
-          Get.snackbar('Erreur', 'Vous êtes déjà inscrit à cet événement');
+        for (final doc in snapshot.docs) {
+          try {
+            parsed.add(Event.fromDoc(doc));
+          } catch (error) {
+            debugPrint('Event ignore (parsing): ${doc.id} -> $error');
+          }
         }
-      } else {
-        Get.snackbar('Erreur', 'L\'événement n\'existe pas');
-      }
-    } catch (e) {
-      Get.snackbar('Erreur', 'Échec de l\'inscription à l\'événement');
-    }
+
+        parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
+        events.assignAll(parsed);
+        lastError.value = '';
+        isLoading.value = false;
+      },
+      onError: (Object error) {
+        debugPrint('Flux Firestore events indisponible: $error');
+        events.clear();
+        lastError.value = 'events_stream_failed';
+        isLoading.value = false;
+      },
+    );
   }
 
-  // Méthode pour notifier les utilisateurs des événements à venir
-  Future<void> notifyUpcomingEvents() async {
-    try {
-      List<Event> upcomingEvents = _events.value.where((event) {
-        return event.dateDebut.isAfter(DateTime.now());
-      }).toList();
+  void refreshEvents() {
+    _listenEvents();
+  }
 
-      for (final _ in upcomingEvents) {
-        // Envoyer des notifications automatiques aux utilisateurs ici
-        // Exemple d'intégration avec un service de notification
-      }
-      Get.snackbar('Notifications',
-          'Notifications envoyées pour les événements à venir');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Échec de l\'envoi des notifications');
+  Future<AdminActionResponse> setEventStatus({
+    required String eventId,
+    required String status,
+  }) async {
+    final normalized = Event.normalizeStatus(status);
+    if (!moderationStatuses.contains(normalized)) {
+      return AdminActionResponse.failure(
+        code: 'invalid_status',
+        message: 'Statut evenement invalide.',
+      );
     }
+
+    final response = await _adminContentService.setEventStatus(
+      eventId: eventId,
+      status: normalized,
+    );
+
+    if (response.success) {
+      final index = events.indexWhere((event) => event.id == eventId);
+      if (index != -1) {
+        events[index].statut = normalized;
+        events.refresh();
+      }
+    }
+
+    return response;
+  }
+
+  Future<AdminActionResponse> deleteEvent(String eventId) async {
+    final response = await _adminContentService.deleteEvent(eventId: eventId);
+    if (response.success) {
+      events.removeWhere((event) => event.id == eventId);
+    }
+    return response;
   }
 }

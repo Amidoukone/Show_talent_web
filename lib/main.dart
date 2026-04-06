@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:show_talent/Dashbord/admin_dashboard_screen.dart';
@@ -7,6 +7,8 @@ import 'package:show_talent/Dashbord/admin_signup.dart';
 import 'package:show_talent/Dashbord/statistiques_screen.dart';
 import 'package:show_talent/theme/admin_theme.dart';
 import 'firebase_options.dart';
+import 'controller/event_controller.dart';
+import 'controller/offre_controller.dart';
 import 'controller/user_controller.dart';
 import 'controller/video_controller.dart';
 
@@ -19,6 +21,8 @@ void main() async {
 
   Get.put(UserController());
   Get.put(VideoController());
+  Get.put(OffreController());
+  Get.put(EventController());
 
   runApp(const MyApp());
 }
@@ -42,4 +46,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

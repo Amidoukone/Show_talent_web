@@ -30,6 +30,7 @@ Documents de reference associes :
 
 - [docs/prd-runbook-exploitation-inter-depots.md](docs/prd-runbook-exploitation-inter-depots.md)
 - [docs/runbook-production-admin-mobile.md](docs/runbook-production-admin-mobile.md)
+- [docs/admin-offer-event-delete-deploy-smoketest.md](docs/admin-offer-event-delete-deploy-smoketest.md)
 
 ## Secrets and Firebase config
 

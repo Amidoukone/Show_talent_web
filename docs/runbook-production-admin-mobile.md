@@ -122,7 +122,7 @@ Regle :
 
 - si `existingUser == true`, traiter le cas comme reprise/collision
 
-## Mutations autorisees sur comptes geres
+## Mutations admin autorisees
 
 Uniquement via backend partage :
 
@@ -134,10 +134,18 @@ Uniquement via backend partage :
 - changement de role : `changeManagedAccountRole`
 - suppression : `deleteManagedAccount`
 - mise a jour profil : `updateManagedAccountProfile`
+- changement de statut offre : `adminSetOfferStatus`
+- suppression offre : `adminDeleteOffer`
+- changement de statut event : `adminSetEventStatus`
+- suppression event : `adminDeleteEvent`
 
 ## Verifications operationnelles minimales
 
 A valider en smoke test :
+
+Voir la sequence detaillee :
+
+- `docs/admin-offer-event-delete-deploy-smoketest.md`
 
 - login admin reussi avec un operateur valide
 - refus d acces sans claim admin
@@ -149,6 +157,8 @@ A valider en smoke test :
 - presence de `/users/{uid}`
 - absence de claim admin sur compte gere
 - bon fonctionnement des liens mot de passe et verification e-mail
+- connexion mobile possible pour `club|recruteur|agent` apres verification e-mail
+- redirection mobile vers verification e-mail tant que `emailVerified == false`
 - succes de `blockManagedAccount`
 - succes de `unblockManagedAccount`
 - succes de `disableManagedAccountAuth`
@@ -156,6 +166,10 @@ A valider en smoke test :
 - succes de `resendManagedAccountInvite`
 - succes de `changeManagedAccountRole`
 - succes de `deleteManagedAccount`
+- succes de `adminSetOfferStatus`
+- succes de `adminDeleteOffer`
+- succes de `adminSetEventStatus`
+- succes de `adminDeleteEvent`
 - refus maintenu cote mobile pour creation publique de `club|recruteur|agent`
 
 ## Garde-fous production

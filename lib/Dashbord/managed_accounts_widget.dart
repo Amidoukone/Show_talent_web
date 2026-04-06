@@ -1,7 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../controller/user_controller.dart';
@@ -13,6 +12,7 @@ import '../utils/admin_callable_action_catalog.dart';
 import '../utils/account_role_policy.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/managed_account_invite_result_dialog.dart';
 
 class ManagedAccountsWidget extends StatefulWidget {
   const ManagedAccountsWidget({super.key});
@@ -33,6 +33,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   bool _isSubmitting = false;
   String? _errorMessage;
   ManagedAccountProvisionResult? _lastResult;
+  String? _lastRecipientName;
 
   @override
   void initState() {
@@ -85,6 +86,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     });
 
     try {
+      final recipientName = _nameController.text.trim();
       final result = await _managedAccountService.provisionManagedAccount(
         email: _emailController.text,
         nom: _nameController.text,
@@ -98,6 +100,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
 
       setState(() {
         _lastResult = result;
+        _lastRecipientName = recipientName;
         _nameController.clear();
         _emailController.clear();
         _phoneController.clear();
@@ -109,6 +112,11 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
             ? 'Le compte gere existant a ete mis a jour.'
             : 'Le compte gere a ete cree.',
         tone: AdminBannerTone.success,
+      );
+
+      await _showInviteResultDialog(
+        result,
+        recipientName: recipientName,
       );
     } on FirebaseFunctionsException catch (error) {
       if (!mounted) {
@@ -136,17 +144,21 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     }
   }
 
-  Future<void> _copyToClipboard(String label, String value) async {
-    await Clipboard.setData(ClipboardData(text: value));
-    if (!mounted) {
-      return;
-    }
-
-    showAdminFeedback(
-      title: 'Lien copie',
-      message: '$label copie dans le presse-papiers.',
-      tone: AdminBannerTone.info,
-      position: SnackPosition.BOTTOM,
+  Future<void> _showInviteResultDialog(
+    ManagedAccountProvisionResult result, {
+    String? recipientName,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return ManagedAccountInviteResultDialog(
+          result: result,
+          recipientName: recipientName,
+          title: 'Liens et consignes a transmettre',
+          subtitle:
+              'Le message ci-dessous est deja ordonne pour le titulaire. Copie-le tel quel ou reutilise les liens individuellement.',
+        );
+      },
     );
   }
 
@@ -169,52 +181,6 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       message: message,
       icon: icon,
       tone: tone,
-    );
-  }
-
-  Widget _buildLinkTile(String label, String? value) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AdminTheme.surfaceSoft.withValues(alpha: 0.38),
-        border: Border.all(color: AdminTheme.border.withValues(alpha: 0.86)),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AdminTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (value == null)
-            const Text(
-              'Aucun lien retourne.',
-              style: TextStyle(color: AdminTheme.textMuted),
-            )
-          else ...[
-            SelectableText(
-              value,
-              style: const TextStyle(color: AdminTheme.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: () => _copyToClipboard(label, value),
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text('Copier'),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -531,44 +497,15 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                         AdminSubsectionCard(
                           title: 'Resultat du provisionnement',
                           subtitle:
-                              'Les liens de configuration peuvent etre copies directement depuis cette section.',
+                              'Le message pret a envoyer et les liens individuels restent disponibles dans cette section.',
                           accentColor: AdminTheme.accent,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                'UID : ${_lastResult!.uid}',
-                                style: const TextStyle(
-                                  color: AdminTheme.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                'E-mail : ${_lastResult!.email}',
-                                style: const TextStyle(
-                                  color: AdminTheme.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                'Role : ${_lastResult!.role}',
-                                style: const TextStyle(
-                                  color: AdminTheme.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                _lastResult!.existingUser
-                                    ? 'Etat : utilisateur existant mis a jour'
-                                    : 'Etat : nouveau compte gere cree',
-                                style: const TextStyle(
-                                  color: AdminTheme.textSecondary,
-                                ),
-                              ),
-                              _buildLinkTile(
-                                'Password setup link',
-                                _lastResult!.passwordSetupLink,
-                              ),
-                              _buildLinkTile(
-                                'Email verification link',
-                                _lastResult!.emailVerificationLink,
+                              ManagedAccountInviteSummary(
+                                result: _lastResult!,
+                                recipientName: _lastRecipientName,
+                                copyPosition: SnackPosition.BOTTOM,
                               ),
                               const SizedBox(height: 12),
                               Align(
@@ -577,6 +514,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                                   onPressed: () {
                                     setState(() {
                                       _lastResult = null;
+                                      _lastRecipientName = null;
                                       _errorMessage = null;
                                     });
                                   },

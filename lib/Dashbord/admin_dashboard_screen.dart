@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../controller/event_controller.dart';
+import '../controller/offre_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
+import '../models/event.dart';
+import '../models/offre.dart';
 import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
 import '../widgets/admin_ui.dart';
 import 'blocked_users_widget.dart';
+import 'event_management_widget.dart';
 import 'managed_accounts_widget.dart';
+import 'offer_management_widget.dart';
 import 'statistiques_screen.dart';
 import 'user_management_widget.dart';
 import 'video_added_widget.dart';
@@ -20,6 +26,8 @@ class AdminDashboardScreen extends StatefulWidget {
 
   final UserController userController = Get.find<UserController>();
   final VideoController videoController = Get.find<VideoController>();
+  final OffreController offreController = Get.find<OffreController>();
+  final EventController eventController = Get.find<EventController>();
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -52,6 +60,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       icon: Icons.report_gmailerrorred_rounded,
     ),
     _DashboardItem(
+      title: 'Offres',
+      subtitle: 'Moderation des offres via actions admin centralisees.',
+      icon: Icons.work_outline_rounded,
+    ),
+    _DashboardItem(
+      title: 'Events',
+      subtitle: 'Moderation des evenements depuis le portail admin.',
+      icon: Icons.event_note_rounded,
+    ),
+    _DashboardItem(
       title: 'Utilisateurs bloques',
       subtitle: 'Deblocage, statut Auth et revue des comptes restrints.',
       icon: Icons.block_rounded,
@@ -75,6 +93,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       const ManagedAccountsWidget(),
       const VideoAddedWidget(),
       const VideoReportedWidget(),
+      const OfferManagementWidget(),
+      const EventManagementWidget(),
       const BlockedUsersWidget(),
       StatisticsOverviewPanel(
         userController: widget.userController,
@@ -333,7 +353,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: Obx(() {
               final adminUser = widget.userController.user;
-              final claimCount = widget.userController.grantedAdminClaims.length;
+              final claimCount =
+                  widget.userController.grantedAdminClaims.length;
 
               return AdminGlassPanel(
                 padding: const EdgeInsets.all(12),
@@ -459,6 +480,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Obx(() {
       final users = widget.userController.userList;
       final videos = widget.videoController.videoList;
+      final offers = widget.offreController.offres;
+      final events = widget.eventController.events;
       final managedCount = users
           .where(
             (user) =>
@@ -467,9 +490,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .length;
       final reportedCount = widget.videoController.getReportedVideos().length;
       final blockedCount = users.where((user) => user.estBloque).length;
+      final openOffers = offers
+          .where((offre) => Offre.normalizeStatus(offre.statut) == 'ouverte')
+          .length;
+      final openEvents = events
+          .where((event) => Event.normalizeStatus(event.statut) == 'ouvert')
+          .length;
 
       final totalUsers = users.length;
       final totalVideos = videos.length;
+      final totalOffers = offers.length;
+      final totalEvents = events.length;
 
       final cards = [
         AdminMetricCard(
@@ -494,6 +525,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           icon: Icons.ondemand_video_rounded,
           progress: totalVideos == 0 ? 0 : 1,
           accentColor: AdminTheme.accentSoft,
+        ),
+        AdminMetricCard(
+          title: 'Offres',
+          value: '$totalOffers',
+          subtitle: '$openOffers ouvertes',
+          icon: Icons.work_outline_rounded,
+          progress: totalOffers == 0 ? 0 : openOffers / totalOffers,
+          accentColor: AdminTheme.cyan,
+        ),
+        AdminMetricCard(
+          title: 'Events',
+          value: '$totalEvents',
+          subtitle: '$openEvents ouverts',
+          icon: Icons.event_note_rounded,
+          progress: totalEvents == 0 ? 0 : openEvents / totalEvents,
+          accentColor: AdminTheme.success,
         ),
         AdminMetricCard(
           title: 'Blocages',
@@ -554,8 +601,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 avatar: Icon(
                   item.icon,
                   size: 18,
-                  color:
-                      selected ? AdminTheme.background : AdminTheme.textSecondary,
+                  color: selected
+                      ? AdminTheme.background
+                      : AdminTheme.textSecondary,
                 ),
                 selected: selected,
                 onSelected: (_) => _onItemTapped(index),
@@ -568,7 +616,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       : AdminTheme.border.withValues(alpha: 0.8),
                 ),
                 labelStyle: TextStyle(
-                  color: selected ? AdminTheme.background : AdminTheme.textPrimary,
+                  color:
+                      selected ? AdminTheme.background : AdminTheme.textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
               ),

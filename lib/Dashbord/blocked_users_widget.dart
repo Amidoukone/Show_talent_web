@@ -145,15 +145,17 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
 
   Future<void> _showInviteResultDialog(
     ManagedAccountProvisionResult result,
+    String? recipientName,
   ) async {
     await showDialog<void>(
       context: context,
       builder: (context) {
         return ManagedAccountInviteResultDialog(
           result: result,
+          recipientName: recipientName,
           title: resendManagedAccountInviteAction.label,
           subtitle:
-              'Les liens retournes par le backend partage peuvent etre copies depuis cette boite de dialogue.',
+              'Le message ci-dessous est deja ordonne pour le titulaire. Copie-le tel quel ou reutilise les liens individuellement.',
         );
       },
     );
@@ -343,7 +345,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
         message: 'Les liens d invitation ont ete regeneres pour ${user.email}.',
         tone: AdminBannerTone.success,
       );
-      await _showInviteResultDialog(result);
+      await _showInviteResultDialog(result, user.nom);
     } on FirebaseFunctionsException catch (error) {
       if (!mounted) {
         return;

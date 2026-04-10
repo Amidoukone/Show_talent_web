@@ -60,8 +60,8 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser == null) {
       showAdminFeedback(
-        title: 'Session expiree',
-        message: 'Reconnectez-vous avant de provisionner un compte gere.',
+        title: 'Session expirée',
+        message: 'Reconnectez-vous avant de provisionner un compte géré.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -74,8 +74,8 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     if (grantedClaims.isEmpty) {
       setState(() {
         _errorMessage =
-            'Aucun custom claim admin/platformAdmin/superAdmin detecte. '
-            'Le provisionnement est bloque cote client.';
+            'Aucun custom claim admin/platformAdmin/superAdmin détecté. '
+            'Le provisionnement est bloqué côté client.';
       });
       return;
     }
@@ -107,10 +107,10 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       });
 
       showAdminFeedback(
-        title: 'Provisionnement termine',
+        title: 'Provisionnement terminé',
         message: result.existingUser
-            ? 'Le compte gere existant a ete mis a jour.'
-            : 'Le compte gere a ete cree.',
+            ? 'Le compte géré existant a été mis à jour.'
+            : 'Le compte géré a été créé.',
         tone: AdminBannerTone.success,
       );
 
@@ -125,7 +125,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
 
       setState(() {
         _errorMessage =
-            error.message ?? 'La Cloud Function a refuse le provisionnement.';
+            error.message ?? 'La Cloud Function a refusé le provisionnement.';
       });
     } catch (error) {
       if (!mounted) {
@@ -154,9 +154,9 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
         return ManagedAccountInviteResultDialog(
           result: result,
           recipientName: recipientName,
-          title: 'Liens et consignes a transmettre',
+          title: 'Liens et consignes à transmettre',
           subtitle:
-              'Le message ci-dessous est deja ordonne pour le titulaire. Copie-le tel quel ou reutilise les liens individuellement.',
+              'Le message ci-dessous est déjà ordonné pour le titulaire. Copiez-le tel quel ou réutilisez les liens individuellement.',
         );
       },
     );
@@ -237,7 +237,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                           ),
                         ),
                         child: Text(
-                          action.isConnectedInUi ? 'Branchee' : 'Backend pret',
+                          action.isConnectedInUi ? 'Branchée' : 'Backend prêt',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -281,278 +281,277 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-            const AdminSectionHeader(
-              badge: 'Provisioning',
-              title: 'Provisionnement des comptes geres',
-              subtitle:
-                  'Creation, mise a jour et restitution des liens d activation via le backend partage.',
-            ),
-            SizedBox(height: compact ? 10 : 12),
-            Text(
-              'Projet Firebase partage : '
-              '${DefaultFirebaseOptions.currentPlatform.projectId}. '
-              'Seuls les roles club, recruteur et agent passent ici.',
-              style: const TextStyle(color: AdminTheme.textSecondary),
-            ),
-            SizedBox(height: spacing),
-            Obx(() {
-              return Wrap(
-                spacing: compact ? 10 : 12,
-                runSpacing: compact ? 10 : 12,
+          const AdminSectionHeader(
+            badge: 'Provisionnement',
+            title: 'Provisionnement des comptes gérés',
+            subtitle:
+                "Création, mise à jour et restitution des liens d'activation via le backend partagé.",
+          ),
+          SizedBox(height: compact ? 10 : 12),
+          Text(
+            'Projet Firebase partagé : '
+            '${DefaultFirebaseOptions.currentPlatform.projectId}. '
+            'Seuls les rôles club, recruteur et agent passent ici.',
+            style: const TextStyle(color: AdminTheme.textSecondary),
+          ),
+          SizedBox(height: spacing),
+          Obx(() {
+            return Wrap(
+              spacing: compact ? 10 : 12,
+              runSpacing: compact ? 10 : 12,
+              children: [
+                AdminMiniStat(
+                  label: 'Claims admin',
+                  value: '${_userController.grantedAdminClaims.length}',
+                  icon: Icons.verified_user_outlined,
+                  accentColor: AdminTheme.cyan,
+                  subtitle: _userController.hasRequiredAdminClaims
+                      ? 'Session valide'
+                      : 'À vérifier',
+                  minWidth: compact ? 180 : 220,
+                ),
+                AdminMiniStat(
+                  label: 'Actions branchées',
+                  value: '${connectedAdminCallableActions.length}',
+                  icon: Icons.hub_outlined,
+                  accentColor: AdminTheme.accent,
+                  subtitle: 'Disponibles dans cette vue',
+                  minWidth: compact ? 180 : 220,
+                ),
+                AdminMiniStat(
+                  label: 'Actions en attente',
+                  value: '${backendReadyButPendingUiActions.length}',
+                  icon: Icons.extension_outlined,
+                  accentColor: AdminTheme.warning,
+                  subtitle: 'Backend déjà prêt',
+                  minWidth: compact ? 180 : 220,
+                ),
+              ],
+            );
+          }),
+          SizedBox(height: spacing),
+          Obx(() {
+            if (_userController.hasRequiredAdminClaims) {
+              return _buildInfoBanner(
+                backgroundColor: const Color(0xFFDFF3E4),
+                icon: Icons.verified_user,
+                title: 'Claims admin valides',
+                message:
+                    'Claims détectés : ${_userController.grantedAdminClaims.join(', ')}',
+              );
+            }
+
+            return _buildInfoBanner(
+              backgroundColor: const Color(0xFFFFF3CD),
+              icon: Icons.warning_amber_rounded,
+              title: 'Claims admin manquants',
+              message: 'Cette UI vérifie admin/platformAdmin/superAdmin avant '
+                  'd appeler provisionManagedAccount.',
+            );
+          }),
+          SizedBox(height: spacing),
+          _buildInfoBanner(
+            backgroundColor: const Color(0xFFEAF4FF),
+            icon: Icons.security,
+            title: 'Contrat backend',
+            message: 'La création des comptes gérés ne passe plus par Auth '
+                'ou Firestore directement depuis le client admin.',
+          ),
+          SizedBox(height: spacing),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 1180 && !compact;
+
+              final inventorySection = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  AdminMiniStat(
-                    label: 'Claims admin',
-                    value: '${_userController.grantedAdminClaims.length}',
-                    icon: Icons.verified_user_outlined,
-                    accentColor: AdminTheme.cyan,
-                    subtitle: _userController.hasRequiredAdminClaims
-                        ? 'Session valide'
-                        : 'A verifier',
-                    minWidth: compact ? 180 : 220,
+                  _buildActionInventoryCard(
+                    title: 'Actions déjà branchées dans l’UI',
+                    actions: connectedAdminCallableActions,
                   ),
-                  AdminMiniStat(
-                    label: 'Actions branchees',
-                    value: '${connectedAdminCallableActions.length}',
-                    icon: Icons.hub_outlined,
-                    accentColor: AdminTheme.accent,
-                    subtitle: 'Disponibles dans cette vue',
-                    minWidth: compact ? 180 : 220,
-                  ),
-                  AdminMiniStat(
-                    label: 'Actions en attente',
-                    value: '${backendReadyButPendingUiActions.length}',
-                    icon: Icons.extension_outlined,
-                    accentColor: AdminTheme.warning,
-                    subtitle: 'Backend deja pret',
-                    minWidth: compact ? 180 : 220,
+                  SizedBox(height: spacing),
+                  _buildActionInventoryCard(
+                    title:
+                        'Actions backend présentes mais UI encore à raccorder',
+                    actions: backendReadyButPendingUiActions,
                   ),
                 ],
               );
-            }),
-            SizedBox(height: spacing),
-            Obx(() {
-              if (_userController.hasRequiredAdminClaims) {
-                return _buildInfoBanner(
-                  backgroundColor: const Color(0xFFDFF3E4),
-                  icon: Icons.verified_user,
-                  title: 'Claims admin valides',
-                  message:
-                      'Claims detectes : ${_userController.grantedAdminClaims.join(', ')}',
-                );
-              }
 
-              return _buildInfoBanner(
-                backgroundColor: const Color(0xFFFFF3CD),
-                icon: Icons.warning_amber_rounded,
-                title: 'Claims admin manquants',
-                message:
-                    'Cette UI verifie admin/platformAdmin/superAdmin avant '
-                    'd appeler provisionManagedAccount.',
-              );
-            }),
-            SizedBox(height: spacing),
-            _buildInfoBanner(
-              backgroundColor: const Color(0xFFEAF4FF),
-              icon: Icons.security,
-              title: 'Contrat backend',
-              message: 'La creation des comptes geres ne passe plus par Auth '
-                  'ou Firestore directement depuis le client admin.',
-            ),
-            SizedBox(height: spacing),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 1180 && !compact;
-
-                final inventorySection = Column(
+              final formSection = AdminSubsectionCard(
+                title: 'Créer ou mettre à jour un compte',
+                subtitle:
+                    'Le formulaire client appelle provisionManagedAccount et restitue ensuite les liens retournés par le backend partagé.',
+                accentColor: AdminTheme.cyan,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildActionInventoryCard(
-                      title: 'Actions deja branchees dans l UI',
-                      actions: connectedAdminCallableActions,
-                    ),
-                    SizedBox(height: spacing),
-                    _buildActionInventoryCard(
-                      title:
-                          'Actions backend presentes mais UI encore a raccorder',
-                      actions: backendReadyButPendingUiActions,
-                    ),
-                  ],
-                );
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _nameController,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Nom complet',
+                              prefixIcon: Icon(Icons.person_outline_rounded),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Le nom est obligatoire.';
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: compact ? 12 : 16),
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Adresse e-mail',
+                              prefixIcon: Icon(Icons.mail_outline_rounded),
+                            ),
+                            validator: (value) {
+                              final trimmed = value?.trim() ?? '';
+                              if (trimmed.isEmpty) {
+                                return 'L’e-mail est obligatoire.';
+                              }
+                              if (!trimmed.contains('@')) {
+                                return 'Saisissez un e-mail valide.';
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: compact ? 12 : 16),
+                          TextFormField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Téléphone (optionnel)',
+                              prefixIcon: Icon(Icons.call_outlined),
+                            ),
+                          ),
+                          SizedBox(height: compact ? 12 : 16),
+                          DropdownButtonFormField<String>(
+                            value: _selectedRole,
+                            decoration: const InputDecoration(
+                              labelText: 'Rôle géré',
+                              prefixIcon: Icon(Icons.badge_outlined),
+                            ),
+                            items: managedAccountRoles
+                                .map(
+                                  (role) => DropdownMenuItem<String>(
+                                    value: role,
+                                    child: Text(role),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) {
+                                return;
+                              }
 
-                final formSection = AdminSubsectionCard(
-                  title: 'Creer ou mettre a jour un compte',
-                  subtitle:
-                      'Le formulaire client appelle provisionManagedAccount et restitue ensuite les liens retournes par le backend partage.',
-                  accentColor: AdminTheme.cyan,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Form(
-                        key: _formKey,
+                              setState(() {
+                                _selectedRole = value;
+                              });
+                            },
+                          ),
+                          SizedBox(height: compact ? 16 : 20),
+                          ElevatedButton.icon(
+                            onPressed: _isSubmitting ? null : _submit,
+                            icon: _isSubmitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.person_add_alt_1),
+                            label: Text(
+                              _isSubmitting
+                                  ? 'Provisionnement en cours...'
+                                  : 'Provisionner le compte géré',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_errorMessage != null) ...[
+                      SizedBox(height: compact ? 14 : 20),
+                      _buildInfoBanner(
+                        backgroundColor: const Color(0xFFF8D7DA),
+                        icon: Icons.error_outline,
+                        title: 'Provisionnement refusé',
+                        message: _errorMessage!,
+                      ),
+                    ],
+                    if (_lastResult != null) ...[
+                      SizedBox(height: compact ? 14 : 20),
+                      AdminSubsectionCard(
+                        title: 'Résultat du provisionnement',
+                        subtitle:
+                            'Le message prêt à envoyer et les liens individuels restent disponibles dans cette section.',
+                        accentColor: AdminTheme.accent,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            TextFormField(
-                              controller: _nameController,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Nom complet',
-                                prefixIcon: Icon(Icons.person_outline_rounded),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Le nom est obligatoire.';
-                                }
-                                return null;
-                              },
+                            ManagedAccountInviteSummary(
+                              result: _lastResult!,
+                              recipientName: _lastRecipientName,
+                              copyPosition: SnackPosition.BOTTOM,
                             ),
-                            SizedBox(height: compact ? 12 : 16),
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Adresse e-mail',
-                                prefixIcon: Icon(Icons.mail_outline_rounded),
-                              ),
-                              validator: (value) {
-                                final trimmed = value?.trim() ?? '';
-                                if (trimmed.isEmpty) {
-                                  return 'L e-mail est obligatoire.';
-                                }
-                                if (!trimmed.contains('@')) {
-                                  return 'Saisissez un e-mail valide.';
-                                }
-                                return null;
-                              },
-                            ),
-                            SizedBox(height: compact ? 12 : 16),
-                            TextFormField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Telephone (optionnel)',
-                                prefixIcon: Icon(Icons.call_outlined),
-                              ),
-                            ),
-                            SizedBox(height: compact ? 12 : 16),
-                            DropdownButtonFormField<String>(
-                              value: _selectedRole,
-                              decoration: const InputDecoration(
-                                labelText: 'Role gere',
-                                prefixIcon: Icon(Icons.badge_outlined),
-                              ),
-                              items: managedAccountRoles
-                                  .map(
-                                    (role) => DropdownMenuItem<String>(
-                                      value: role,
-                                      child: Text(role),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (value) {
-                                if (value == null) {
-                                  return;
-                                }
-
-                                setState(() {
-                                  _selectedRole = value;
-                                });
-                              },
-                            ),
-                            SizedBox(height: compact ? 16 : 20),
-                            ElevatedButton.icon(
-                              onPressed: _isSubmitting ? null : _submit,
-                              icon: _isSubmitting
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(Icons.person_add_alt_1),
-                              label: Text(
-                                _isSubmitting
-                                    ? 'Provisionnement en cours...'
-                                    : 'Provisionner le compte gere',
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _lastResult = null;
+                                    _lastRecipientName = null;
+                                    _errorMessage = null;
+                                  });
+                                },
+                                icon: const Icon(Icons.restart_alt_rounded),
+                                label: const Text('Nouvelle opération'),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      if (_errorMessage != null) ...[
-                        SizedBox(height: compact ? 14 : 20),
-                        _buildInfoBanner(
-                          backgroundColor: const Color(0xFFF8D7DA),
-                          icon: Icons.error_outline,
-                          title: 'Provisionnement refuse',
-                          message: _errorMessage!,
-                        ),
-                      ],
-                      if (_lastResult != null) ...[
-                        SizedBox(height: compact ? 14 : 20),
-                        AdminSubsectionCard(
-                          title: 'Resultat du provisionnement',
-                          subtitle:
-                              'Le message pret a envoyer et les liens individuels restent disponibles dans cette section.',
-                          accentColor: AdminTheme.accent,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              ManagedAccountInviteSummary(
-                                result: _lastResult!,
-                                recipientName: _lastRecipientName,
-                                copyPosition: SnackPosition.BOTTOM,
-                              ),
-                              const SizedBox(height: 12),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton.icon(
-                                  onPressed: () {
-                                    setState(() {
-                                      _lastResult = null;
-                                      _lastRecipientName = null;
-                                      _errorMessage = null;
-                                    });
-                                  },
-                                  icon: const Icon(Icons.restart_alt_rounded),
-                                  label: const Text('Nouvelle operation'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
-                );
+                  ],
+                ),
+              );
 
-                if (wide) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 6, child: formSection),
-                      SizedBox(width: spacing),
-                      Expanded(flex: 5, child: inventorySection),
-                    ],
-                  );
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              if (wide) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    inventorySection,
-                    SizedBox(height: spacing),
-                    formSection,
+                    Expanded(flex: 6, child: formSection),
+                    SizedBox(width: spacing),
+                    Expanded(flex: 5, child: inventorySection),
                   ],
                 );
-              },
-            ),
-          ],
-        ),
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  inventorySection,
+                  SizedBox(height: spacing),
+                  formSection,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

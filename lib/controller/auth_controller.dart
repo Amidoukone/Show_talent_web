@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../Dashbord/admin_dashboard_screen.dart';
 import '../Dashbord/admin_login.dart';
 import '../models/user.dart';
+import '../utils/admin_access_messages.dart';
 import '../utils/account_role_policy.dart';
 
 class AuthController extends GetxController {
@@ -34,8 +35,8 @@ class AuthController extends GetxController {
     final grantedClaims = await _extractAdminClaims(firebaseUser);
 
     if (appUser != null &&
-        appUser.role == 'admin' &&
-        appUser.estBloque != true &&
+        isAdminPortalOnlyRole(appUser.role) &&
+        !appUser.hasActiveAppBlock &&
         appUser.authDisabled != true &&
         grantedClaims.isNotEmpty) {
       _user.value = appUser;
@@ -44,16 +45,11 @@ class AuthController extends GetxController {
     }
 
     Get.snackbar(
-      'Acces refuse',
-      appUser == null
-          ? 'Utilisateur introuvable dans /users.'
-          : appUser.role != 'admin'
-              ? 'Votre compte n est pas autorise sur le portail admin.'
-              : appUser.estBloque == true
-                  ? 'Votre compte est bloque.'
-                  : appUser.authDisabled == true
-                      ? 'Firebase Auth est desactive pour ce compte.'
-                      : 'Les custom claims admin sont requis pour acceder au dashboard.',
+      'Accès refusé',
+      AdminAccessMessages.deniedForUser(
+        appUser,
+        hasClaims: grantedClaims.isNotEmpty,
+      ),
     );
     await FirebaseAuth.instance.signOut();
     _user.value = null;
@@ -70,7 +66,7 @@ class AuthController extends GetxController {
     } catch (error) {
       Get.snackbar(
         'Erreur',
-        'Impossible de recuperer les informations utilisateur : $error',
+        'Impossible de récupérer les informations utilisateur : $error',
       );
     }
 
@@ -86,7 +82,7 @@ class AuthController extends GetxController {
   Future<void> loginAdmin(String email, String password) async {
     try {
       if (email.isEmpty || password.isEmpty) {
-        Get.snackbar('Erreur', 'Veuillez remplir toutes les informations.');
+        Get.snackbar('Erreur', 'Veuillez remplir tous les champs requis.');
         return;
       }
 
@@ -97,8 +93,8 @@ class AuthController extends GetxController {
       final grantedClaims = await _extractAdminClaims(userCredential.user!);
 
       if (appUser != null &&
-          appUser.role == 'admin' &&
-          appUser.estBloque != true &&
+          isAdminPortalOnlyRole(appUser.role) &&
+          !appUser.hasActiveAppBlock &&
           appUser.authDisabled != true &&
           grantedClaims.isNotEmpty) {
         _user.value = appUser;
@@ -107,21 +103,16 @@ class AuthController extends GetxController {
       }
 
       Get.snackbar(
-        'Acces refuse',
-        appUser == null
-            ? 'Utilisateur introuvable dans /users.'
-            : appUser.role != 'admin'
-                ? 'Votre compte n est pas autorise sur le portail admin.'
-                : appUser.estBloque == true
-                    ? 'Votre compte est bloque.'
-                    : appUser.authDisabled == true
-                        ? 'Firebase Auth est desactive pour ce compte.'
-                        : 'Les custom claims admin sont requis pour acceder au dashboard.',
+        'Accès refusé',
+        AdminAccessMessages.deniedForUser(
+          appUser,
+          hasClaims: grantedClaims.isNotEmpty,
+        ),
       );
       await FirebaseAuth.instance.signOut();
       _user.value = null;
     } catch (error) {
-      Get.snackbar('Erreur de connexion', 'Erreur : $error');
+      Get.snackbar('Erreur de connexion', 'Connexion impossible : $error');
     }
   }
 

@@ -58,11 +58,11 @@ void main() {
 
       expect(
         steps,
-        contains('Ouvrir d abord le lien de definition du mot de passe.'),
+        contains('Ouvrir d’abord le lien de définition du mot de passe.'),
       );
       expect(
         steps,
-        contains('Ouvrir ensuite le lien de validation d e-mail.'),
+        contains('Ouvrir ensuite le lien de validation d’e-mail.'),
       );
       expect(steps.last, contains('recruteur@example.com'));
     });
@@ -80,10 +80,10 @@ void main() {
       final message = result.buildWhatsappMessage(recipientName: 'Club Test');
 
       expect(message, contains('Bonjour Club Test,'));
-      expect(message, contains('Votre compte club Adfoot est pret.'));
-      expect(message, contains('1. Definir votre mot de passe :'));
+      expect(message, contains('Votre compte club Adfoot est prêt.'));
+      expect(message, contains('1. Définir votre mot de passe :'));
       expect(message, contains('2. Vous connecter avec :'));
-      expect(message, contains('Votre e-mail est deja valide.'));
+      expect(message, contains('Votre e-mail est déjà validé.'));
       expect(message, isNot(contains('Valider votre e-mail')));
     });
 
@@ -102,21 +102,21 @@ void main() {
 
       expect(subject, 'Activation de votre compte agent Adfoot');
       expect(message, contains('Bonjour Agent Test,'));
-      expect(message, contains('Votre compte agent Adfoot a ete cree.'));
+      expect(message, contains('Votre compte agent Adfoot a été créé.'));
       expect(
         message,
         contains(
-          '1. Ouvrez le lien ci-dessous pour definir votre mot de passe :',
+          '1. Ouvrez le lien ci-dessous pour définir votre mot de passe :',
         ),
       );
       expect(
         message,
         contains(
-          '2. Apres avoir defini votre mot de passe, ouvrez ce lien pour valider votre adresse e-mail :',
+          '2. Après avoir défini votre mot de passe, ouvrez ce lien pour valider votre adresse e-mail :',
         ),
       );
-      expect(message, contains('3. Une fois ces deux etapes terminees'));
-      expect(message, contains('L administration Adfoot'));
+      expect(message, contains('3. Une fois ces deux étapes terminées'));
+      expect(message, contains('L’administration Adfoot'));
     });
 
     test('buildInviteMessage stays aligned with email format', () {

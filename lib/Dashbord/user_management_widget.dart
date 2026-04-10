@@ -28,6 +28,18 @@ class UserManagementWidget extends StatefulWidget {
   State<UserManagementWidget> createState() => _UserManagementWidgetState();
 }
 
+class _BlockRequestDraft {
+  const _BlockRequestDraft({
+    required this.isTemporary,
+    required this.durationDays,
+    required this.reason,
+  });
+
+  final bool isTemporary;
+  final int? durationDays;
+  final String? reason;
+}
+
 class _UserManagementWidgetState extends State<UserManagementWidget> {
   static const int rowsPerPage = 4;
 
@@ -74,7 +86,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   bool _isManagedAccount(AppUser user) {
-    return user.createdByAdmin || managedAccountRoles.contains(user.role);
+    return user.createdByAdmin || isManagedAccountRole(user.role);
   }
 
   void _setActionInFlight(AppUser user, String label) {
@@ -140,7 +152,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succes',
+        title: 'Succès',
         message: successMessage,
         tone: AdminBannerTone.success,
       );
@@ -151,7 +163,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: error.message ?? 'Operation ${action.callableName} refusee.',
+        message: error.message ?? 'Opération ${action.callableName} refusée.',
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -161,7 +173,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: 'Operation ${action.callableName} impossible : $error',
+        message: 'Opération ${action.callableName} impossible : $error',
         tone: AdminBannerTone.danger,
       );
     } finally {
@@ -181,29 +193,117 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           recipientName: recipientName,
           title: resendManagedAccountInviteAction.label,
           subtitle:
-              'Le message ci-dessous est deja ordonne pour le titulaire. Copie-le tel quel ou reutilise les liens individuellement.',
+              'Le message ci-dessous est déjà ordonné pour le titulaire. Copiez-le tel quel ou réutilisez les liens individuellement.',
         );
       },
     );
   }
 
-  Future<void> _blockManagedAccount(AppUser user) async {
-    final confirmed = await _confirmAction(
-      title: blockManagedAccountAction.label,
-      message:
-          'Cette action active seulement le blocage applicatif du compte ${user.email}.',
-      confirmLabel: 'Bloquer',
+  Future<_BlockRequestDraft?> _promptBlockReason(AppUser user) async {
+    final reasonController = TextEditingController();
+    final draft = await showDialog<_BlockRequestDraft>(
+      context: context,
+      builder: (BuildContext context) {
+        bool isTemporary = true;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(blockManagedAccountAction.label),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Le compte ${user.email} sera retiré de la session mobile en cours. Choisissez une suspension temporaire ou un blocage permanent.',
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: isTemporary ? 'temporary_15' : 'permanent',
+                      decoration: const InputDecoration(
+                        labelText: 'Type de sanction',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'temporary_15',
+                          child: Text('Suspendre 15 jours'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'permanent',
+                          child: Text('Bloquer définitivement'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setDialogState(() {
+                          isTemporary = value != 'permanent';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: reasonController,
+                      maxLines: 3,
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        labelText:
+                            'Motif visible par l’utilisateur (optionnel)',
+                        hintText: isTemporary
+                            ? 'Exemple : vidéo non adaptée, suspension de 15 jours'
+                            : 'Exemple : récidive grave, compte bloqué définitivement',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Annuler'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(
+                    _BlockRequestDraft(
+                      isTemporary: isTemporary,
+                      durationDays: isTemporary ? 15 : null,
+                      reason: reasonController.text,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: Text(isTemporary ? 'Suspendre' : 'Bloquer'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
-    if (!confirmed) {
+
+    reasonController.dispose();
+    return draft;
+  }
+
+  Future<void> _blockManagedAccount(AppUser user) async {
+    final draft = await _promptBlockReason(user);
+    if (draft == null) {
       return;
     }
 
+    final normalizedReason = draft.reason?.trim() ?? '';
     await _runVoidAction(
       user: user,
       action: blockManagedAccountAction,
-      request: () => _managedAccountService.blockManagedAccount(uid: user.uid),
-      successMessage:
-          'Le blocage applicatif a ete active pour ${user.email}. Firebase Auth n a pas ete modifie.',
+      request: () => _managedAccountService.blockManagedAccount(
+        uid: user.uid,
+        reason: normalizedReason.isEmpty ? null : normalizedReason,
+        durationDays: draft.durationDays,
+      ),
+      successMessage: draft.isTemporary
+          ? 'Le compte ${user.email} est suspendu pendant ${draft.durationDays} jours. L’accès mobile est coupé immédiatement${normalizedReason.isEmpty ? '.' : ' et le motif sera affiché à l’utilisateur.'}'
+          : 'Le compte ${user.email} est bloqué définitivement. L’accès mobile est coupé immédiatement${normalizedReason.isEmpty ? '.' : ' et le motif sera affiché à l’utilisateur.'}',
     );
   }
 
@@ -211,7 +311,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: deleteManagedAccountAction.label,
       message:
-          'Cette suppression passe par le backend partage et peut supprimer l acces du compte ${user.email}.',
+          'Cette suppression passe par le backend partagé et peut supprimer l’accès du compte ${user.email}.',
       confirmLabel: 'Supprimer',
     );
     if (!confirmed) {
@@ -222,7 +322,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       user: user,
       action: deleteManagedAccountAction,
       request: () => _managedAccountService.deleteManagedAccount(uid: user.uid),
-      successMessage: 'La suppression admin a ete demandee pour ${user.email}.',
+      successMessage: 'La suppression admin a été demandée pour ${user.email}.',
     );
   }
 
@@ -230,8 +330,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: disableManagedAccountAuthAction.label,
       message:
-          'Cette action desactive seulement Firebase Auth pour ${user.email}. Le blocage applicatif ne change pas.',
-      confirmLabel: 'Desactiver Auth',
+          'Cette action désactive Firebase Auth pour ${user.email}. Si le compte est déjà bloqué applicativement, la session mobile restera également fermée.',
+      confirmLabel: 'Désactiver Auth',
     );
     if (!confirmed) {
       return;
@@ -243,7 +343,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       request: () =>
           _managedAccountService.disableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'Firebase Auth a ete desactive pour ${user.email}. Le blocage applicatif n a pas ete modifie.',
+          'Firebase Auth a été désactivé pour ${user.email}. Le blocage applicatif n’a pas été modifié.',
     );
   }
 
@@ -254,7 +354,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       request: () =>
           _managedAccountService.enableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'Firebase Auth a ete reactive pour ${user.email}. Le blocage applicatif n a pas ete modifie.',
+          'Firebase Auth a été réactivé pour ${user.email}. Le blocage applicatif n’a pas été modifié.',
     );
   }
 
@@ -262,7 +362,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     if (!_isManagedAccount(user)) {
       showAdminFeedback(
         title: 'Action indisponible',
-        message: 'Le changement de role n est propose que pour les comptes geres.',
+        message:
+            'Le changement de rôle n’est proposé que pour les comptes gérés.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -271,8 +372,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final selectedManagedRole = await showDialog<String>(
       context: context,
       builder: (BuildContext context) {
-        String nextRole = managedAccountRoles.contains(user.role)
-            ? user.role
+        final currentRole = normalizeUserRole(user.role);
+        String nextRole = isManagedAccountRole(currentRole)
+            ? currentRole
             : managedAccountRoles.first;
 
         return StatefulBuilder(
@@ -288,7 +390,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   DropdownButtonFormField<String>(
                     value: nextRole,
                     decoration: const InputDecoration(
-                      labelText: 'Nouveau role',
+                      labelText: 'Nouveau rôle',
                       border: OutlineInputBorder(),
                     ),
                     items: managedAccountRoles
@@ -327,7 +429,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       },
     );
 
-    if (selectedManagedRole == null || selectedManagedRole == user.role) {
+    final currentRole = normalizeUserRole(user.role);
+    if (selectedManagedRole == null || selectedManagedRole == currentRole) {
       return;
     }
 
@@ -339,7 +442,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         role: selectedManagedRole,
       ),
       successMessage:
-          'Le role de ${user.email} a ete change vers $selectedManagedRole.',
+          'Le rôle de ${user.email} a été changé vers $selectedManagedRole.',
     );
   }
 
@@ -348,7 +451,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'Le renvoi d invitation n est propose que pour les comptes geres.',
+            'Le renvoi d’invitation n’est proposé que pour les comptes gérés.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -365,8 +468,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succes',
-        message: 'Les liens d invitation ont ete regeneres pour ${user.email}.',
+        title: 'Succès',
+        message: 'Les liens d’invitation ont été régénérés pour ${user.email}.',
         tone: AdminBannerTone.success,
       );
       await _showInviteResultDialog(result, user.nom);
@@ -377,9 +480,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message:
-            error.message ??
-            'Impossible de renvoyer les liens d invitation pour ce compte.',
+        message: error.message ??
+            'Impossible de renvoyer les liens d’invitation pour ce compte.',
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -389,7 +491,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: 'Impossible de renvoyer les liens d invitation : $error',
+        message: 'Impossible de renvoyer les liens d’invitation : $error',
         tone: AdminBannerTone.danger,
       );
     } finally {
@@ -418,10 +520,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   ? Icons.lock_open_rounded
                   : Icons.lock_outline_rounded,
               size: 18,
-              color: user.authDisabled ? AdminTheme.success : AdminTheme.warning,
+              color:
+                  user.authDisabled ? AdminTheme.success : AdminTheme.warning,
             ),
             const SizedBox(width: 8),
-            Text(user.authDisabled ? 'Reactiver Auth' : 'Desactiver Auth'),
+            Text(user.authDisabled ? 'Réactiver Auth' : 'Désactiver Auth'),
           ],
         ),
       ),
@@ -434,9 +537,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           value: _actionChangeRole,
           child: Row(
             children: const [
-              Icon(Icons.manage_accounts_outlined, size: 18, color: AdminTheme.cyan),
+              Icon(Icons.manage_accounts_outlined,
+                  size: 18, color: AdminTheme.cyan),
               SizedBox(width: 8),
-              Text('Changer le role'),
+              Text('Changer le rôle'),
             ],
           ),
         ),
@@ -444,9 +548,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           value: _actionResendInvite,
           child: Row(
             children: const [
-              Icon(Icons.mark_email_read_outlined, size: 18, color: AdminTheme.accent),
+              Icon(Icons.mark_email_read_outlined,
+                  size: 18, color: AdminTheme.accent),
               SizedBox(width: 8),
-              Text('Renvoyer l invitation'),
+              Text('Renvoyer l’invitation'),
             ],
           ),
         ),
@@ -459,7 +564,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         value: _actionDelete,
         child: Row(
           children: [
-            Icon(Icons.delete_outline_rounded, size: 18, color: AdminTheme.danger),
+            Icon(Icons.delete_outline_rounded,
+                size: 18, color: AdminTheme.danger),
             SizedBox(width: 8),
             Text('Supprimer'),
           ],
@@ -509,9 +615,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AdminSectionHeader(
-            badge: 'User ops',
+            badge: 'Opérations utilisateurs',
             title: 'Gestion des utilisateurs',
-            subtitle: 'Recherche, roles, statuts et actions admin centralisees.',
+            subtitle:
+                'Recherche, rôles, statuts et actions admin centralisées.',
             trailing: AdminGlassPanel(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               radius: 18,
@@ -544,9 +651,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           ),
           SizedBox(height: spacing),
           const AdminInfoBanner(
-            title: 'Regles de mutation',
+            title: 'Règles de mutation',
             message:
-                'Toutes les mutations cross-user passent desormais par les callables du backend partage. Blocage applicatif, Auth et activite restent distingues. Le changement de role et le renvoi d invitation sont limites aux comptes geres.',
+                'Toutes les mutations cross-user passent désormais par les callables du backend partagé. Blocage applicatif, Auth et activité restent distingués. Le changement de rôle et le renvoi d’invitation sont limités aux comptes gérés.',
             icon: Icons.rule_folder_outlined,
             tone: AdminBannerTone.warning,
           ),
@@ -565,12 +672,13 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           ),
           Obx(() {
             final filteredUsers = userController.userList.where((user) {
-              final isBlocked = user.estBloque;
-              final matchesRole = selectedRole == 'Tous' || user.role == selectedRole;
+              final isBlocked = user.hasActiveAppBlock;
+              final matchesRole =
+                  selectedRole == 'Tous' || user.role == selectedRole;
               final normalizedQuery = searchQuery.toLowerCase();
               final matchesSearch =
                   user.nom.toLowerCase().contains(normalizedQuery) ||
-                  user.email.toLowerCase().contains(normalizedQuery);
+                      user.email.toLowerCase().contains(normalizedQuery);
 
               return matchesRole &&
                   matchesSearch &&
@@ -592,10 +700,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               return AdminEmptyState(
                 title: 'Aucun utilisateur trouve',
                 message:
-                    'Ajuste le filtre ou la recherche pour afficher des comptes.',
+                    'Ajustez le filtre ou la recherche pour afficher des comptes.',
                 icon: Icons.person_search_rounded,
                 actionLabel: hasFilters
-                    ? 'Reinitialiser les filtres'
+                    ? 'Réinitialiser les filtres'
                     : 'Recharger la liste',
                 actionIcon: hasFilters
                     ? Icons.filter_alt_off_rounded
@@ -628,7 +736,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Comptes geres',
+                      label: 'Comptes gérés',
                       value: '$managedUsers',
                       icon: Icons.manage_accounts_outlined,
                       accentColor: AdminTheme.accent,
@@ -652,11 +760,13 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                     columnSpacing: tableColumnSpacing,
                     horizontalMargin: compact ? 10 : 12,
                     columns: const [
-                      DataColumn(label: Text('Nom', textAlign: TextAlign.center)),
+                      DataColumn(
+                          label: Text('Nom', textAlign: TextAlign.center)),
                       DataColumn(
                         label: Text('Email', textAlign: TextAlign.center),
                       ),
-                      DataColumn(label: Text('Role', textAlign: TextAlign.center)),
+                      DataColumn(
+                          label: Text('Rôle', textAlign: TextAlign.center)),
                       DataColumn(
                         label: Text('Statut', textAlign: TextAlign.center),
                       ),
@@ -689,7 +799,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                                 Text(displayedUsers[index].role),
                                 if (displayedUsers[index].createdByAdmin)
                                   const Text(
-                                    'cree par admin',
+                                    'créé par admin',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AdminTheme.accent,
@@ -715,17 +825,20 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text(_actionInFlightLabel ?? 'Traitement...'),
+                                      Text(_actionInFlightLabel ??
+                                          'Traitement...'),
                                     ],
                                   )
                                 : PopupMenuButton<String>(
                                     tooltip: 'Actions utilisateur',
-                                    onSelected: (value) => _handleActionSelection(
+                                    onSelected: (value) =>
+                                        _handleActionSelection(
                                       value,
                                       displayedUsers[index],
                                     ),
                                     itemBuilder: (context) =>
-                                        _buildActionMenuItems(displayedUsers[index]),
+                                        _buildActionMenuItems(
+                                            displayedUsers[index]),
                                   ),
                           ),
                         ],

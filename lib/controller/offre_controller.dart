@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
@@ -29,21 +30,33 @@ class OffreController extends GetxController {
   final RxBool isLoading = true.obs;
   final RxString lastError = ''.obs;
 
+  StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _offresSubscription;
 
   @override
   void onInit() {
     super.onInit();
-    _listenOffres();
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
+          _handleAuthStateChanged,
+        );
+    _handleAuthStateChanged(FirebaseAuth.instance.currentUser);
   }
 
   @override
   void onClose() {
+    _authSubscription?.cancel();
     _offresSubscription?.cancel();
     super.onClose();
   }
 
   void _listenOffres() {
+    if (FirebaseAuth.instance.currentUser == null) {
+      offres.clear();
+      lastError.value = '';
+      isLoading.value = false;
+      return;
+    }
+
     isLoading.value = true;
     _offresSubscription?.cancel();
 
@@ -55,7 +68,7 @@ class OffreController extends GetxController {
           try {
             parsed.add(Offre.fromDoc(doc));
           } catch (error) {
-            debugPrint('Offre ignoree (parsing): ${doc.id} -> $error');
+            debugPrint('Offre ignorée (parsing) : ${doc.id} -> $error');
           }
         }
 
@@ -65,7 +78,7 @@ class OffreController extends GetxController {
         isLoading.value = false;
       },
       onError: (Object error) {
-        debugPrint('Flux Firestore offres indisponible: $error');
+        debugPrint('Flux Firestore offres indisponible : $error');
         offres.clear();
         lastError.value = 'offres_stream_failed';
         isLoading.value = false;
@@ -73,7 +86,32 @@ class OffreController extends GetxController {
     );
   }
 
+  Future<void> _handleAuthStateChanged(User? user) async {
+    if (user == null) {
+      await _stopOffresStream(clearData: true);
+      return;
+    }
+
+    _listenOffres();
+  }
+
+  Future<void> _stopOffresStream({bool clearData = false}) async {
+    await _offresSubscription?.cancel();
+    _offresSubscription = null;
+
+    if (clearData) {
+      offres.clear();
+      lastError.value = '';
+      isLoading.value = false;
+    }
+  }
+
   Future<void> getAllOffres() async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      await _stopOffresStream(clearData: true);
+      return;
+    }
+
     _listenOffres();
   }
 
@@ -85,7 +123,7 @@ class OffreController extends GetxController {
     if (!moderationStatuses.contains(normalized)) {
       return AdminActionResponse.failure(
         code: 'invalid_status',
-        message: 'Statut offre invalide.',
+        message: "Statut d'offre invalide.",
       );
     }
 

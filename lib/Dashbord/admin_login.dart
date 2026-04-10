@@ -1,4 +1,4 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -29,7 +29,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         normalized.contains('web-internal-error') ||
         normalized.contains('identity toolkit') ||
         normalized.contains('api key')) {
-      return 'Firebase Auth refuse la requete. Si le projet Google Cloud ou Firebase est suspendu, la connexion admin est bloquee meme si l interface fonctionne.';
+      return "Firebase Auth refuse la requête. Si le projet Google Cloud ou Firebase est suspendu, la connexion admin est bloquée même si l'interface fonctionne.";
     }
 
     return error.message ?? 'Erreur Firebase Auth : ${error.code}';
@@ -64,7 +64,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       );
 
       if (!accessResult.isAuthorized) {
-        Get.snackbar('Acces refuse', accessResult.message ?? 'Acces refuse.');
+        Get.snackbar('Accès refusé', accessResult.message ?? 'Accès refusé.');
         await FirebaseAuth.instance.signOut();
         userController.clearSessionState();
         return;
@@ -191,7 +191,7 @@ class _LoginShowcasePanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const AdminPill(
-                label: 'Admin experience',
+                label: 'Expérience admin',
                 icon: Icons.shield_outlined,
               ),
               const SizedBox(height: 24),
@@ -234,7 +234,7 @@ class _LoginShowcasePanel extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'La direction artistique reprend un univers sombre, lumineux et plus editorial afin de donner une presence plus professionnelle au back-office.',
+                'La direction artistique reprend un univers sombre, lumineux et plus éditorial afin de donner une présence plus professionnelle au back-office.',
                 style: TextStyle(
                   color: AdminTheme.textSecondary,
                   height: 1.6,
@@ -249,23 +249,23 @@ class _LoginShowcasePanel extends StatelessWidget {
                   final cards = [
                     const _ShowcaseCard(
                       icon: Icons.people_alt_rounded,
-                      title: 'Comptes geres',
+                      title: 'Comptes gérés',
                       subtitle:
-                          'Provisionnement, claims et activation centralises.',
+                          'Provisionnement, claims et activation centralisés.',
                       accentColor: AdminTheme.accent,
                     ),
                     const _ShowcaseCard(
                       icon: Icons.play_circle_outline_rounded,
-                      title: 'Moderation video',
+                      title: 'Modération vidéo',
                       subtitle:
                           'Lecture, suppression et suivi des signalements.',
                       accentColor: AdminTheme.cyan,
                     ),
                     const _ShowcaseCard(
                       icon: Icons.insights_rounded,
-                      title: 'Vue d ensemble',
+                      title: 'Vue d’ensemble',
                       subtitle:
-                          'Des cartes KPI et une lecture rapide de l activite.',
+                          'Des cartes KPI et une lecture rapide de l’activité.',
                       accentColor: AdminTheme.warning,
                     ),
                   ];
@@ -346,7 +346,7 @@ class _LoginFormPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const AdminPill(
-            label: 'Connexion securisee',
+            label: 'Connexion sécurisée',
             icon: Icons.lock_outline_rounded,
             color: AdminTheme.cyan,
           ),
@@ -362,7 +362,7 @@ class _LoginFormPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Connecte-toi avec un compte admin autorise. Les droits sont toujours controles par les custom claims et le profil Firestore.',
+            'Connectez-vous avec un compte admin autorisé. Les droits sont toujours contrôlés par les custom claims et le profil Firestore.',
             style: TextStyle(
               color: AdminTheme.textSecondary,
               height: 1.6,
@@ -430,7 +430,7 @@ class _LoginFormPanel extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: onSubmit,
                     icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('Entrer dans le dashboard'),
+                    label: const Text('Ouvrir le tableau de bord'),
                   ),
                 ),
                 if (onOpenPreview != null) ...[
@@ -440,7 +440,7 @@ class _LoginFormPanel extends StatelessWidget {
                     child: OutlinedButton.icon(
                       onPressed: onOpenPreview,
                       icon: const Icon(Icons.visibility_outlined),
-                      label: const Text('Ouvrir un apercu local'),
+                      label: const Text('Ouvrir un aperçu local'),
                     ),
                   ),
                 ],
@@ -449,9 +449,9 @@ class _LoginFormPanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           const AdminInfoBanner(
-            title: 'Controle d acces',
+            title: 'Contrôle d’accès',
             message:
-                'La creation admin cote client reste desactivee. Le portail se concentre sur l exploitation, pas sur l elevation de privilege.',
+                'La création admin côté client reste désactivée. Le portail se concentre sur l’exploitation, pas sur l’élévation de privilège.',
             icon: Icons.verified_user_outlined,
             tone: AdminBannerTone.info,
           ),
@@ -460,7 +460,7 @@ class _LoginFormPanel extends StatelessWidget {
             const AdminInfoBanner(
               title: 'Mode debug',
               message:
-                  'Si Firebase ou Google Cloud est suspendu, l apercu local permet de verifier le design sans connexion reelle.',
+                  'Si Firebase ou Google Cloud est suspendu, l’aperçu local permet de vérifier le design sans connexion réelle.',
               icon: Icons.design_services_outlined,
               tone: AdminBannerTone.warning,
             ),
@@ -470,7 +470,7 @@ class _LoginFormPanel extends StatelessWidget {
             alignment: Alignment.center,
             child: TextButton(
               onPressed: () => Get.to(() => const AdminSignupScreen()),
-              child: const Text('Acces admin gere par la plateforme'),
+              child: const Text('Accès admin géré par la plateforme'),
             ),
           ),
         ],
@@ -540,4 +540,3 @@ class _ShowcaseCard extends StatelessWidget {
     );
   }
 }
-

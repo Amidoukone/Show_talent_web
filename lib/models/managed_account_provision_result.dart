@@ -33,8 +33,8 @@ class ManagedAccountProvisionResult {
   bool get requiresEmailVerification => emailVerificationLink != null;
 
   String get lifecycleLabel => existingUser
-      ? 'utilisateur existant mis a jour'
-      : 'nouveau compte gere cree';
+      ? 'utilisateur existant mis à jour'
+      : 'nouveau compte géré créé';
 
   List<String> buildRecommendedSteps({
     String appName = 'Adfoot',
@@ -42,28 +42,28 @@ class ManagedAccountProvisionResult {
     final steps = <String>[];
 
     if (hasPasswordSetupLink) {
-      steps.add('Ouvrir d abord le lien de definition du mot de passe.');
+      steps.add('Ouvrir d’abord le lien de définition du mot de passe.');
       steps.add('Choisir puis enregistrer le nouveau mot de passe.');
     } else {
       steps.add(
-        'Contacter l administration pour recuperer le lien de definition du mot de passe.',
+        'Contacter l’administration pour récupérer le lien de définition du mot de passe.',
       );
     }
 
     if (requiresEmailVerification) {
-      steps.add('Ouvrir ensuite le lien de validation d e-mail.');
-      steps.add('Confirmer l adresse e-mail avant la premiere connexion.');
+      steps.add('Ouvrir ensuite le lien de validation d’e-mail.');
+      steps.add('Confirmer l’adresse e-mail avant la première connexion.');
     } else {
       steps.add(
-          'L e-mail est deja verifie. La connexion peut se faire ensuite.');
+          'L’e-mail est déjà vérifié. La connexion peut se faire ensuite.');
     }
 
     if (email.isNotEmpty) {
       steps.add(
-        'Se connecter enfin dans $appName avec l adresse $email.',
+        'Se connecter enfin dans $appName avec l’adresse $email.',
       );
     } else {
-      steps.add('Se connecter enfin dans $appName avec l adresse transmise.');
+      steps.add('Se connecter enfin dans $appName avec l’adresse transmise.');
     }
 
     return steps;
@@ -87,11 +87,11 @@ class ManagedAccountProvisionResult {
     final lines = <String>[
       trimmedRecipient.isEmpty ? 'Bonjour,' : 'Bonjour $trimmedRecipient,',
       '',
-      'Votre compte $role $appName est pret.',
+      'Votre compte $role $appName est prêt.',
       '',
-      'A faire dans cet ordre :',
-      '1. Definir votre mot de passe :',
-      passwordSetupLink ?? 'Lien indisponible, contacter l administration.',
+      'À faire dans cet ordre :',
+      '1. Définir votre mot de passe :',
+      passwordSetupLink ?? 'Lien indisponible, contacter l’administration.',
     ];
 
     if (requiresEmailVerification) {
@@ -103,19 +103,19 @@ class ManagedAccountProvisionResult {
       lines
         ..add('')
         ..add('2. Vous connecter avec :')
-        ..add(email.isNotEmpty ? email : 'Adresse non renseignee');
+        ..add(email.isNotEmpty ? email : 'Adresse non renseignée');
       lines
         ..add('')
-        ..add('Votre e-mail est deja valide.');
+        ..add('Votre e-mail est déjà validé.');
       return lines.join('\n');
     }
 
     lines
       ..add('')
       ..add('3. Vous connecter avec :')
-      ..add(email.isNotEmpty ? email : 'Adresse non renseignee')
+      ..add(email.isNotEmpty ? email : 'Adresse non renseignée')
       ..add('')
-      ..add('Important : faites bien les etapes dans cet ordre.');
+      ..add('Important : faites bien les étapes dans cet ordre.');
 
     return lines.join('\n');
   }
@@ -124,7 +124,7 @@ class ManagedAccountProvisionResult {
     String appName = 'Adfoot',
   }) {
     return existingUser
-        ? 'Reactivation de votre compte $role $appName'
+        ? 'Réactivation de votre compte $role $appName'
         : 'Activation de votre compte $role $appName';
   }
 
@@ -137,47 +137,47 @@ class ManagedAccountProvisionResult {
       trimmedRecipient.isEmpty ? 'Bonjour,' : 'Bonjour $trimmedRecipient,',
       '',
       existingUser
-          ? 'Votre compte $role $appName a ete mis a jour.'
-          : 'Votre compte $role $appName a ete cree.',
+          ? 'Votre compte $role $appName a été mis à jour.'
+          : 'Votre compte $role $appName a été créé.',
       '',
-      'Merci de suivre ces etapes dans l ordre :',
+      'Merci de suivre ces étapes dans l’ordre :',
     ];
 
     lines
       ..add('')
-      ..add('1. Ouvrez le lien ci-dessous pour definir votre mot de passe :')
+      ..add('1. Ouvrez le lien ci-dessous pour définir votre mot de passe :')
       ..add(passwordSetupLink ??
-          'Lien indisponible, contacter l administration.');
+          'Lien indisponible, contacter l’administration.');
 
     if (requiresEmailVerification) {
       lines
         ..add('')
         ..add(
-          '2. Apres avoir defini votre mot de passe, ouvrez ce lien pour valider votre adresse e-mail :',
+          '2. Après avoir défini votre mot de passe, ouvrez ce lien pour valider votre adresse e-mail :',
         )
         ..add(emailVerificationLink!)
         ..add('')
         ..add(
-          '3. Une fois ces deux etapes terminees, connectez-vous a l application avec cette adresse :',
+          '3. Une fois ces deux étapes terminées, connectez-vous à l’application avec cette adresse :',
         )
-        ..add(email.isNotEmpty ? email : 'Adresse non renseignee')
+        ..add(email.isNotEmpty ? email : 'Adresse non renseignée')
         ..add('')
         ..add(
-          'Important : commencez bien par le mot de passe, puis la validation de l e-mail.',
+          'Important : commencez bien par le mot de passe, puis la validation de l’e-mail.',
         );
     } else {
       lines
         ..add('')
-        ..add('2. Ensuite, connectez-vous a l application avec cette adresse :')
-        ..add(email.isNotEmpty ? email : 'Adresse non renseignee')
+        ..add('2. Ensuite, connectez-vous à l’application avec cette adresse :')
+        ..add(email.isNotEmpty ? email : 'Adresse non renseignée')
         ..add('')
-        ..add('Aucune validation supplementaire de l e-mail n est necessaire.');
+        ..add('Aucune validation supplémentaire de l’e-mail n’est nécessaire.');
     }
 
     lines
       ..add('')
       ..add('Cordialement,')
-      ..add('L administration $appName');
+      ..add('L’administration $appName');
 
     return lines.join('\n');
   }

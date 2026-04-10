@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:show_talent/models/video.dart';
-import 'package:show_talent/models/offre.dart';
 import 'package:show_talent/models/event.dart';
+import 'package:show_talent/models/offre.dart';
+import 'package:show_talent/models/video.dart';
+import 'package:show_talent/utils/account_role_policy.dart';
 
 class AppUser {
   String uid;
@@ -10,15 +11,24 @@ class AppUser {
   String role;
   String photoProfil;
   bool estActif;
-  bool estBloque; // Nouveau champ
+  bool estBloque;
   bool authDisabled;
+  bool emailVerified;
   bool createdByAdmin;
   int followers;
   int followings;
   DateTime dateInscription;
   DateTime dernierLogin;
+  DateTime? emailVerifiedAt;
+  String? phone;
+  String? blockedReason;
+  DateTime? blockedUntil;
+  String? blockMode;
+  String? authDisabledReason;
+  String? country;
+  String? city;
+  String? region;
 
-  // Informations spécifiques à chaque rôle
   String? bio;
   String? position;
   String? clubActuel;
@@ -40,6 +50,11 @@ class AppUser {
   List<AppUser>? joueursSuivis;
   List<AppUser>? clubsSuivis;
   List<Video>? videosLikees;
+  List<String> followersList;
+  List<String> followingsList;
+  bool profilePublic;
+  bool allowMessages;
+  String? cvUrl;
 
   AppUser({
     required this.uid,
@@ -48,13 +63,23 @@ class AppUser {
     required this.role,
     required this.photoProfil,
     required this.estActif,
-    required this.estBloque, // Nouveau champ dans le constructeur
-    required this.authDisabled,
-    required this.createdByAdmin,
+    required this.estBloque,
+    this.authDisabled = false,
+    this.emailVerified = false,
+    this.createdByAdmin = false,
     required this.followers,
     required this.followings,
     required this.dateInscription,
     required this.dernierLogin,
+    this.emailVerifiedAt,
+    this.phone,
+    this.blockedReason,
+    this.blockedUntil,
+    this.blockMode,
+    this.authDisabledReason,
+    this.country,
+    this.city,
+    this.region,
     this.bio,
     this.position,
     this.clubActuel,
@@ -73,63 +98,148 @@ class AppUser {
     this.joueursSuivis,
     this.clubsSuivis,
     this.videosLikees,
+    this.followersList = const [],
+    this.followingsList = const [],
+    this.profilePublic = true,
+    this.allowMessages = true,
+    this.cvUrl,
   });
 
   factory AppUser.fromMap(Map<String, dynamic> map) {
+    DateTime parseDate(dynamic value) {
+      if (value is Timestamp) {
+        return value.toDate();
+      }
+      if (value is DateTime) {
+        return value;
+      }
+      if (value is int) {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      }
+      if (value is String) {
+        final parsed = DateTime.tryParse(value);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+
+      return DateTime.now();
+    }
+
+    DateTime? parseNullableDate(dynamic value) {
+      if (value == null) {
+        return null;
+      }
+
+      if (value is Timestamp) {
+        return value.toDate();
+      }
+      if (value is DateTime) {
+        return value;
+      }
+      if (value is int) {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      }
+      if (value is String) {
+        return DateTime.tryParse(value);
+      }
+
+      return null;
+    }
+
+    List<dynamic> safeList(dynamic value) {
+      if (value is List) {
+        return value;
+      }
+
+      return const [];
+    }
+
+    Map<String, dynamic>? safeMap(dynamic value) {
+      if (value is Map) {
+        return Map<String, dynamic>.from(value);
+      }
+
+      return null;
+    }
+
+    final normalizedRole = normalizeUserRole(map['role']?.toString());
+
     return AppUser(
-      uid: map['uid'] ?? '',
-      nom: map['nom'] ?? 'Nom inconnu',
-      email: map['email'] ?? 'Email inconnu',
-      role: map['role'] ?? 'Utilisateur',
-      photoProfil: map['photoProfil'] ?? '',
-      estActif: map['estActif'] ?? true,
-      estBloque: map['estBloque'] ?? false, // Initialiser le champ estBloque
+      uid: map['uid']?.toString() ?? '',
+      nom: map['nom']?.toString() ?? 'Nom inconnu',
+      email: map['email']?.toString() ?? 'Adresse e-mail inconnue',
+      role: normalizedRole.isEmpty ? 'utilisateur' : normalizedRole,
+      photoProfil: map['photoProfil']?.toString() ?? '',
+      estActif: map['estActif'] as bool? ?? true,
+      estBloque: map['estBloque'] as bool? ?? false,
       authDisabled: map['authDisabled'] == true,
+      emailVerified: map['emailVerified'] as bool? ?? false,
       createdByAdmin: map['createdByAdmin'] == true,
-      followers: map['followers'] is int ? map['followers'] : 0,
-      followings: map['followings'] is int ? map['followings'] : 0,
-      dateInscription:
-          (map['dateInscription'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      dernierLogin:
-          (map['dernierLogin'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      bio: map['bio'],
-      position: map['position'],
-      clubActuel: map['clubActuel'],
-      nombreDeMatchs: map['nombreDeMatchs'],
-      buts: map['buts'],
-      assistances: map['assistances'],
-      videosPubliees: map['videosPubliees'] != null
-          ? List<Video>.from(
-              map['videosPubliees'].map((video) => Video.fromMap(video)))
-          : [],
-      performances: map['performances'] != null
-          ? Map<String, double>.from(map['performances'])
-          : {},
-      nomClub: map['nomClub'],
-      ligue: map['ligue'],
-      offrePubliees: map['offrePubliees'] != null
-          ? List<Offre>.from(
-              map['offrePubliees'].map((offre) => Offre.fromMap(offre)))
-          : [],
-      eventPublies: map['eventPublies'] != null
-          ? List<Event>.from(
-              map['eventPublies'].map((event) => Event.fromMap(event)))
-          : [],
-      entreprise: map['entreprise'],
-      nombreDeRecrutements: map['nombreDeRecrutements'],
-      team: map['team'],
-      joueursSuivis: map['joueursSuivis'] != null
-          ? List<AppUser>.from(
-              map['joueursSuivis'].map((joueur) => AppUser.fromMap(joueur)))
-          : [],
-      clubsSuivis: map['clubsSuivis'] != null
-          ? List<AppUser>.from(
-              map['clubsSuivis'].map((club) => AppUser.fromMap(club)))
-          : [],
-      videosLikees: map['videosLikees'] != null
-          ? List<Video>.from(
-              map['videosLikees'].map((video) => Video.fromMap(video)))
-          : [],
+      followers: (map['followers'] as num?)?.toInt() ?? 0,
+      followings: (map['followings'] as num?)?.toInt() ?? 0,
+      dateInscription: parseDate(map['dateInscription']),
+      dernierLogin: parseDate(map['dernierLogin']),
+      emailVerifiedAt: parseNullableDate(map['emailVerifiedAt']),
+      phone: map['phone']?.toString(),
+      blockedReason: map['blockedReason']?.toString(),
+      blockedUntil: parseNullableDate(map['blockedUntil']),
+      blockMode: _normalizeBlockMode(map['blockMode']?.toString()),
+      authDisabledReason: map['authDisabledReason']?.toString(),
+      country: map['country']?.toString(),
+      city: map['city']?.toString(),
+      region: map['region']?.toString(),
+      bio: map['bio']?.toString(),
+      position: map['position']?.toString(),
+      clubActuel: map['clubActuel']?.toString(),
+      nombreDeMatchs: (map['nombreDeMatchs'] as num?)?.toInt(),
+      buts: (map['buts'] as num?)?.toInt(),
+      assistances: (map['assistances'] as num?)?.toInt(),
+      videosPubliees: safeList(map['videosPubliees'])
+          .whereType<Map>()
+          .map((video) => Video.fromMap(Map<String, dynamic>.from(video)))
+          .toList(),
+      performances: safeMap(map['performances'])?.map(
+            (key, value) => MapEntry(
+              key,
+              value is num ? value.toDouble() : 0,
+            ),
+          ) ??
+          {},
+      nomClub: map['nomClub']?.toString(),
+      ligue: map['ligue']?.toString(),
+      offrePubliees: safeList(map['offrePubliees'])
+          .whereType<Map>()
+          .map((offre) => Offre.fromMap(Map<String, dynamic>.from(offre)))
+          .toList(),
+      eventPublies: safeList(map['eventPublies'])
+          .whereType<Map>()
+          .map((event) => Event.fromMap(Map<String, dynamic>.from(event)))
+          .toList(),
+      entreprise: map['entreprise']?.toString(),
+      nombreDeRecrutements: (map['nombreDeRecrutements'] as num?)?.toInt(),
+      team: map['team']?.toString(),
+      joueursSuivis: safeList(map['joueursSuivis'])
+          .whereType<Map>()
+          .map((joueur) => AppUser.fromMap(Map<String, dynamic>.from(joueur)))
+          .toList(),
+      clubsSuivis: safeList(map['clubsSuivis'])
+          .whereType<Map>()
+          .map((club) => AppUser.fromMap(Map<String, dynamic>.from(club)))
+          .toList(),
+      videosLikees: safeList(map['videosLikees'])
+          .whereType<Map>()
+          .map((video) => Video.fromMap(Map<String, dynamic>.from(video)))
+          .toList(),
+      followersList: safeList(map['followersList'])
+          .map((entry) => entry.toString())
+          .toList(),
+      followingsList: safeList(map['followingsList'])
+          .map((entry) => entry.toString())
+          .toList(),
+      profilePublic: map['profilePublic'] as bool? ?? true,
+      allowMessages: map['allowMessages'] as bool? ?? true,
+      cvUrl: map['cvUrl']?.toString(),
     );
   }
 
@@ -138,16 +248,28 @@ class AppUser {
       'uid': uid,
       'nom': nom,
       'email': email,
-      'role': role,
+      'role': normalizeUserRole(role),
       'photoProfil': photoProfil,
       'estActif': estActif,
-      'estBloque': estBloque, // Ajouter le champ ici
+      'estBloque': estBloque,
       'authDisabled': authDisabled,
+      'emailVerified': emailVerified,
       'createdByAdmin': createdByAdmin,
       'followers': followers,
       'followings': followings,
-      'dateInscription': dateInscription,
-      'dernierLogin': dernierLogin,
+      'dateInscription': Timestamp.fromDate(dateInscription),
+      'dernierLogin': Timestamp.fromDate(dernierLogin),
+      'emailVerifiedAt':
+          emailVerifiedAt != null ? Timestamp.fromDate(emailVerifiedAt!) : null,
+      'phone': phone,
+      'blockedReason': blockedReason,
+      'blockedUntil':
+          blockedUntil != null ? Timestamp.fromDate(blockedUntil!) : null,
+      'blockMode': blockMode,
+      'authDisabledReason': authDisabledReason,
+      'country': country,
+      'city': city,
+      'region': region,
       'bio': bio,
       'position': position,
       'clubActuel': clubActuel,
@@ -178,6 +300,87 @@ class AppUser {
       'videosLikees': videosLikees != null
           ? videosLikees!.map((video) => video.toMap()).toList()
           : [],
+      'followersList': followersList,
+      'followingsList': followingsList,
+      'profilePublic': profilePublic,
+      'allowMessages': allowMessages,
+      'cvUrl': cvUrl,
     };
+  }
+
+  bool get hasTemporaryBlock => estBloque && blockMode == 'temporary';
+  bool get hasPermanentBlock => estBloque && !hasTemporaryBlock;
+
+  bool get hasActiveAppBlock {
+    if (!estBloque) {
+      return false;
+    }
+
+    if (!hasTemporaryBlock) {
+      return true;
+    }
+
+    final endsAt = blockedUntil;
+    if (endsAt == null) {
+      return true;
+    }
+
+    return endsAt.isAfter(DateTime.now());
+  }
+
+  bool get hasExpiredTemporaryBlock {
+    if (!hasTemporaryBlock) {
+      return false;
+    }
+
+    final endsAt = blockedUntil;
+    if (endsAt == null) {
+      return false;
+    }
+
+    return !endsAt.isAfter(DateTime.now());
+  }
+
+  bool get isEffectivelyActiveAccount =>
+      !hasActiveAppBlock && !authDisabled && emailVerified;
+
+  bool get isAdminPortalOnly => isAdminPortalOnlyRole(role);
+  bool get hasManagedAccountRole => isManagedAccountRole(role);
+  bool get canPublishOpportunities => isOpportunityPublisherRole(role);
+
+  String? get primaryLocation {
+    for (final value in [city, region, country]) {
+      final normalized = value?.trim();
+      if (normalized != null && normalized.isNotEmpty) {
+        return normalized;
+      }
+    }
+
+    return null;
+  }
+
+  bool matchesLocation(String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return true;
+    }
+
+    return [city, region, country].any((value) {
+      final normalizedValue = value?.trim().toLowerCase() ?? '';
+      return normalizedValue.contains(normalizedQuery);
+    });
+  }
+
+  static String? _normalizeBlockMode(String? value) {
+    final normalized = value?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+
+    if (normalized == 'temporary' || normalized == 'permanent') {
+      return normalized;
+    }
+
+    return null;
   }
 }

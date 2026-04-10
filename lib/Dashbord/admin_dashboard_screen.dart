@@ -41,42 +41,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   static const List<_DashboardItem> _dashboardItems = [
     _DashboardItem(
       title: 'Utilisateurs',
-      subtitle: 'Gestion complete des profils, roles et statuts.',
+      subtitle: 'Gestion complète des profils, rôles et statuts.',
       icon: Icons.groups_rounded,
     ),
     _DashboardItem(
-      title: 'Comptes geres',
-      subtitle: 'Provisionnement et suivi des comptes administres.',
+      title: 'Comptes gérés',
+      subtitle: 'Provisionnement et suivi des comptes administrés.',
       icon: Icons.manage_accounts_rounded,
     ),
     _DashboardItem(
-      title: 'Videos ajoutees',
-      subtitle: 'Lecture, tri et moderation du catalogue video.',
+      title: 'Vidéos ajoutées',
+      subtitle: 'Lecture, tri et modération du catalogue vidéo.',
       icon: Icons.play_circle_outline_rounded,
     ),
     _DashboardItem(
-      title: 'Videos signalees',
-      subtitle: 'Traitement prioritaire des contenus remontes.',
+      title: 'Vidéos signalées',
+      subtitle: 'Traitement prioritaire des contenus remontés.',
       icon: Icons.report_gmailerrorred_rounded,
     ),
     _DashboardItem(
       title: 'Offres',
-      subtitle: 'Moderation des offres via actions admin centralisees.',
+      subtitle: 'Modération des offres via actions admin centralisées.',
       icon: Icons.work_outline_rounded,
     ),
     _DashboardItem(
-      title: 'Events',
-      subtitle: 'Moderation des evenements depuis le portail admin.',
+      title: 'Événements',
+      subtitle: 'Modération des événements depuis le portail admin.',
       icon: Icons.event_note_rounded,
     ),
     _DashboardItem(
-      title: 'Utilisateurs bloques',
-      subtitle: 'Deblocage, statut Auth et revue des comptes restrints.',
+      title: 'Utilisateurs bloqués',
+      subtitle: 'Déblocage, statut Auth et revue des comptes restreints.',
       icon: Icons.block_rounded,
     ),
     _DashboardItem(
       title: 'Statistiques',
-      subtitle: 'Lecture visuelle de l activite et des ratios du portail.',
+      subtitle: 'Lecture visuelle de l’activité et des ratios du portail.',
       icon: Icons.insights_rounded,
     ),
   ];
@@ -142,7 +142,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     if (!accessResult.isAuthorized) {
-      Get.snackbar('Acces refuse', accessResult.message ?? 'Acces refuse.');
+      Get.snackbar('Accès refusé', accessResult.message ?? 'Accès refusé.');
       await widget.userController.signOut();
       return;
     }
@@ -218,7 +218,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Admin workspace',
+                              'Espace admin',
                               style: TextStyle(
                                 color: AdminTheme.textSecondary,
                                 fontSize: 12,
@@ -366,7 +366,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           AdminPill(
                             label:
-                                widget.previewMode ? 'Apercu local' : 'Session',
+                                widget.previewMode ? 'Aperçu local' : 'Session',
                             icon: widget.previewMode
                                 ? Icons.visibility_outlined
                                 : Icons.verified_user_outlined,
@@ -391,7 +391,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(height: 2),
                           Text(
                             widget.previewMode
-                                ? 'Sans verification distante'
+                                ? 'Sans vérification distante'
                                 : '$claimCount claim(s) valides',
                             style: const TextStyle(
                               color: AdminTheme.textSecondary,
@@ -424,7 +424,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           final stacked = headerConstraints.maxWidth < 840;
 
           final intro = AdminSectionHeader(
-            badge: 'Live workspace',
+            badge: 'Espace actif',
             title: currentItem.title,
             subtitle: currentItem.subtitle,
           );
@@ -435,19 +435,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const AdminPill(
-                label: 'Theme uniformise',
+                label: 'Thème harmonisé',
                 icon: Icons.palette_outlined,
                 color: AdminTheme.cyan,
               ),
               OutlinedButton.icon(
                 onPressed: () => Get.toNamed('/statistics'),
                 icon: const Icon(Icons.auto_graph_rounded),
-                label: const Text('Vue stats'),
+                label: const Text('Vue statistiques'),
               ),
               ElevatedButton.icon(
                 onPressed: () => widget.userController.signOut(),
                 icon: const Icon(Icons.logout_rounded),
-                label: const Text('Deconnexion'),
+                label: const Text('Déconnexion'),
               ),
             ],
           );
@@ -484,12 +484,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final events = widget.eventController.events;
       final managedCount = users
           .where(
-            (user) =>
-                user.createdByAdmin || managedAccountRoles.contains(user.role),
+            (user) => user.createdByAdmin || isManagedAccountRole(user.role),
           )
           .length;
       final reportedCount = widget.videoController.getReportedVideos().length;
-      final blockedCount = users.where((user) => user.estBloque).length;
+      final blockedCount = users.where((user) => user.hasActiveAppBlock).length;
       final openOffers = offers
           .where((offre) => Offre.normalizeStatus(offre.statut) == 'ouverte')
           .length;
@@ -511,17 +510,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           progress: totalUsers == 0 ? 0 : 1,
         ),
         AdminMetricCard(
-          title: 'Comptes geres',
+          title: 'Comptes gérés',
           value: '$managedCount',
-          subtitle: 'Provisionnes cote admin',
+          subtitle: 'Provisionnés côté admin',
           icon: Icons.badge_rounded,
           progress: totalUsers == 0 ? 0 : managedCount / totalUsers,
           accentColor: AdminTheme.cyan,
         ),
         AdminMetricCard(
-          title: 'Videos',
+          title: 'Vidéos',
           value: '$totalVideos',
-          subtitle: '$reportedCount remontees',
+          subtitle: '$reportedCount remontées',
           icon: Icons.ondemand_video_rounded,
           progress: totalVideos == 0 ? 0 : 1,
           accentColor: AdminTheme.accentSoft,
@@ -535,7 +534,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           accentColor: AdminTheme.cyan,
         ),
         AdminMetricCard(
-          title: 'Events',
+          title: 'Événements',
           value: '$totalEvents',
           subtitle: '$openEvents ouverts',
           icon: Icons.event_note_rounded,
@@ -545,7 +544,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         AdminMetricCard(
           title: 'Blocages',
           value: '$blockedCount',
-          subtitle: 'Comptes a surveiller',
+          subtitle: 'Comptes à surveiller',
           icon: Icons.warning_amber_rounded,
           progress: totalUsers == 0 ? 0 : blockedCount / totalUsers,
           accentColor: AdminTheme.warning,

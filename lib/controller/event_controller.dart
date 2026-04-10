@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
@@ -29,21 +30,33 @@ class EventController extends GetxController {
   final RxBool isLoading = true.obs;
   final RxString lastError = ''.obs;
 
+  StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _eventsSubscription;
 
   @override
   void onInit() {
     super.onInit();
-    _listenEvents();
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
+          _handleAuthStateChanged,
+        );
+    _handleAuthStateChanged(FirebaseAuth.instance.currentUser);
   }
 
   @override
   void onClose() {
+    _authSubscription?.cancel();
     _eventsSubscription?.cancel();
     super.onClose();
   }
 
   void _listenEvents() {
+    if (FirebaseAuth.instance.currentUser == null) {
+      events.clear();
+      lastError.value = '';
+      isLoading.value = false;
+      return;
+    }
+
     isLoading.value = true;
     _eventsSubscription?.cancel();
 
@@ -55,7 +68,7 @@ class EventController extends GetxController {
           try {
             parsed.add(Event.fromDoc(doc));
           } catch (error) {
-            debugPrint('Event ignore (parsing): ${doc.id} -> $error');
+            debugPrint('Événement ignoré (parsing) : ${doc.id} -> $error');
           }
         }
 
@@ -65,7 +78,7 @@ class EventController extends GetxController {
         isLoading.value = false;
       },
       onError: (Object error) {
-        debugPrint('Flux Firestore events indisponible: $error');
+        debugPrint('Flux Firestore events indisponible : $error');
         events.clear();
         lastError.value = 'events_stream_failed';
         isLoading.value = false;
@@ -73,7 +86,32 @@ class EventController extends GetxController {
     );
   }
 
+  Future<void> _handleAuthStateChanged(User? user) async {
+    if (user == null) {
+      await _stopEventsStream(clearData: true);
+      return;
+    }
+
+    _listenEvents();
+  }
+
+  Future<void> _stopEventsStream({bool clearData = false}) async {
+    await _eventsSubscription?.cancel();
+    _eventsSubscription = null;
+
+    if (clearData) {
+      events.clear();
+      lastError.value = '';
+      isLoading.value = false;
+    }
+  }
+
   void refreshEvents() {
+    if (FirebaseAuth.instance.currentUser == null) {
+      _stopEventsStream(clearData: true);
+      return;
+    }
+
     _listenEvents();
   }
 
@@ -85,7 +123,7 @@ class EventController extends GetxController {
     if (!moderationStatuses.contains(normalized)) {
       return AdminActionResponse.failure(
         code: 'invalid_status',
-        message: 'Statut evenement invalide.',
+        message: "Statut d'événement invalide.",
       );
     }
 

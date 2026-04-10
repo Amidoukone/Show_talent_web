@@ -75,16 +75,16 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AdminSectionHeader(
-            badge: 'Video catalog',
-            title: 'Gestion des videos',
+            badge: 'Catalogue vidéo',
+            title: 'Gestion des vidéos',
             subtitle:
-                'Parcours des contenus publies avec lecture rapide et suppression ciblee.',
+                'Parcours des contenus publiés avec lecture rapide et suppression ciblée.',
           ),
           SizedBox(height: spacing),
           const AdminInfoBanner(
-            title: 'Moderation visuelle',
+            title: 'Modération visuelle',
             message:
-                'Cette vue centralise les apercus, les auteurs et les actions de lecture ou suppression sans modifier le flux metier existant.',
+                'Cette vue centralise les aperçus, les auteurs et les actions de lecture ou suppression sans modifier le flux métier existant.',
             icon: Icons.video_collection_outlined,
             tone: AdminBannerTone.info,
           ),
@@ -113,7 +113,8 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
               0,
               filteredVideos.length,
             );
-            final displayedVideos = filteredVideos.sublist(startIndex, endIndex);
+            final displayedVideos =
+                filteredVideos.sublist(startIndex, endIndex);
 
             if (filteredVideos.isEmpty) {
               final hasSearch = searchQuery.trim().isNotEmpty;
@@ -121,7 +122,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
               return AdminEmptyState(
                 title: 'Aucune video disponible',
                 message:
-                    'Le catalogue ne contient encore aucun element correspondant a la recherche.',
+                    'Le catalogue ne contient encore aucun élément correspondant à la recherche.',
                 icon: Icons.slow_motion_video_rounded,
                 actionLabel: hasSearch
                     ? 'Effacer la recherche'
@@ -157,11 +158,11 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       value: '${filteredVideos.length}',
                       icon: Icons.video_collection_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Apres recherche',
+                      subtitle: 'Après recherche',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Total videos',
+                      label: 'Total vidéos',
                       value: '${allVideos.length}',
                       icon: Icons.ondemand_video_outlined,
                       accentColor: AdminTheme.accent,
@@ -169,7 +170,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Signalees',
+                      label: 'Signalées',
                       value: '$reportedCount',
                       icon: Icons.flag_outlined,
                       accentColor: AdminTheme.warning,
@@ -185,9 +186,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                     columnSpacing: tableColumnSpacing,
                     horizontalMargin: compact ? 10 : 12,
                     columns: const [
-                      DataColumn(label: Text('Apercu')),
+                      DataColumn(label: Text('Aperçu')),
                       DataColumn(label: Text('Titre')),
-                      DataColumn(label: Text('Ajoute par')),
+                      DataColumn(label: Text('Ajoutée par')),
                       DataColumn(label: Text('Actions')),
                     ],
                     rows: List<DataRow>.generate(
@@ -239,12 +240,13 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                     ),
                                   )
                                 : PopupMenuButton<String>(
-                                    tooltip: 'Actions video',
+                                    tooltip: 'Actions vidéo',
                                     onSelected: (value) {
                                       if (value == 'view_video') {
                                         Get.to(
                                           () => VideoPlayerScreen(
-                                            videoUrl: displayedVideos[index].videoUrl,
+                                            videoUrl:
+                                                displayedVideos[index].videoUrl,
                                             userId: displayedVideos[index].uid,
                                             videoId: displayedVideos[index].id,
                                           ),
@@ -261,9 +263,13 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                         value: 'view_video',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.play_circle_outline_rounded, size: 18, color: AdminTheme.cyan),
+                                            Icon(
+                                                Icons
+                                                    .play_circle_outline_rounded,
+                                                size: 18,
+                                                color: AdminTheme.cyan),
                                             SizedBox(width: 8),
-                                            Text('Regarder la video'),
+                                            Text('Regarder la vidéo'),
                                           ],
                                         ),
                                       ),
@@ -271,9 +277,11 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                         value: 'delete_video',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.delete_outline_rounded, size: 18, color: AdminTheme.danger),
+                                            Icon(Icons.delete_outline_rounded,
+                                                size: 18,
+                                                color: AdminTheme.danger),
                                             SizedBox(width: 8),
-                                            Text('Supprimer la video'),
+                                            Text('Supprimer la vidéo'),
                                           ],
                                         ),
                                       ),
@@ -329,7 +337,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
         return AlertDialog(
           title: const Text('Confirmation'),
           content:
-              const Text('Etes-vous sur de vouloir supprimer cette video ?'),
+              const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
           actions: [
             TextButton(
               onPressed: Get.back,
@@ -345,8 +353,8 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                 try {
                   await videoController.deleteVideo(videoId);
                   showAdminFeedback(
-                    title: 'Succes',
-                    message: 'Video supprimee avec succes.',
+                    title: 'Succès',
+                    message: 'Vidéo supprimée avec succès.',
                     tone: AdminBannerTone.success,
                     position: SnackPosition.BOTTOM,
                   );

@@ -31,12 +31,22 @@ class ManagedAccountService {
     required String role,
     String? phone,
   }) async {
+    final normalizedRole = normalizeUserRole(role);
+
+    if (!isManagedAccountRole(normalizedRole)) {
+      throw ArgumentError.value(
+        role,
+        'role',
+        'Le rôle doit être l’un de ${managedAccountRoles.join(', ')}.',
+      );
+    }
+
     final data = await _callable(
       'provisionManagedAccount',
       payload: <String, dynamic>{
         'email': email.trim(),
         'nom': nom.trim(),
-        'role': role,
+        'role': normalizedRole,
         if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
       },
     );
@@ -46,11 +56,16 @@ class ManagedAccountService {
 
   Future<void> blockManagedAccount({
     required String uid,
+    String? reason,
+    int? durationDays,
   }) async {
     await _callable(
       'blockManagedAccount',
       payload: <String, dynamic>{
         'uid': uid,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+        if (durationDays != null && durationDays > 0)
+          'durationDays': durationDays,
       },
     );
   }
@@ -81,11 +96,13 @@ class ManagedAccountService {
     required String uid,
     required String role,
   }) async {
-    if (!managedAccountRoles.contains(role)) {
+    final normalizedRole = normalizeUserRole(role);
+
+    if (!isManagedAccountRole(normalizedRole)) {
       throw ArgumentError.value(
         role,
         'role',
-        'Le role doit etre l un de ${managedAccountRoles.join(', ')}.',
+        'Le rôle doit être l’un de ${managedAccountRoles.join(', ')}.',
       );
     }
 
@@ -93,7 +110,7 @@ class ManagedAccountService {
       'changeManagedAccountRole',
       payload: <String, dynamic>{
         'uid': uid,
-        'role': role,
+        'role': normalizedRole,
       },
     );
   }
@@ -221,7 +238,7 @@ class ManagedAccountService {
     if (patchFromEnvelope != null) {
       if (patchFromEnvelope is! Map) {
         throw ArgumentError(
-          'Le champ patch doit etre un objet Map<String, dynamic>.',
+          'Le champ patch doit être un objet Map<String, dynamic>.',
         );
       }
 
@@ -232,7 +249,7 @@ class ManagedAccountService {
     if (dataFromEnvelope != null) {
       if (dataFromEnvelope is! Map) {
         throw ArgumentError(
-          'Le champ data doit etre un objet Map<String, dynamic>.',
+          'Le champ data doit être un objet Map<String, dynamic>.',
         );
       }
 

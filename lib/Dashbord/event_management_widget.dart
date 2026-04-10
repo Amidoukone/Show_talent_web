@@ -79,8 +79,9 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succes',
-        message: 'Statut evenement mis a jour: ${_statusLabel(nextStatus)}.',
+        title: 'Succès',
+        message:
+            'Statut de l’événement mis à jour : ${_statusLabel(nextStatus)}.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -106,7 +107,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Confirmation'),
-          content: Text('Supprimer l evenement "${event.titre}" ?'),
+          content: Text('Supprimer l’événement "${event.titre}" ?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -133,8 +134,8 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succes',
-        message: 'Evenement supprime.',
+        title: 'Succès',
+        message: 'Événement supprimé.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -166,16 +167,16 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AdminSectionHeader(
-            badge: 'Events moderation',
-            title: 'Gestion des evenements',
+            badge: 'Modération des événements',
+            title: 'Gestion des événements',
             subtitle:
-                'Supervision des evenements avec statuts admin et suppression via backend partage.',
+                'Supervision des événements avec statuts admin et suppression via backend partagé.',
           ),
           const SizedBox(height: 14),
           const AdminInfoBanner(
             title: 'Traitement centralise',
             message:
-                'Toutes les mutations de moderation passent par les callables admin verifies.',
+                'Toutes les mutations de modération passent par les callables admin vérifiés.',
             icon: Icons.event_note_rounded,
             tone: AdminBannerTone.info,
           ),
@@ -218,7 +219,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                   children: [
                     AdminSearchField(
                       controller: _searchController,
-                      hintText: 'Rechercher un evenement',
+                      hintText: 'Rechercher un événement',
                       onChanged: (value) {
                         setState(() {
                           _searchQuery = value.trim().toLowerCase();
@@ -238,7 +239,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                     flex: 3,
                     child: AdminSearchField(
                       controller: _searchController,
-                      hintText: 'Rechercher un evenement',
+                      hintText: 'Rechercher un événement',
                       onChanged: (value) {
                         setState(() {
                           _searchQuery = value.trim().toLowerCase();
@@ -289,9 +290,9 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
 
             if (filtered.isEmpty) {
               return AdminEmptyState(
-                title: 'Aucun evenement a moderer',
+                title: 'Aucun événement à modérer',
                 message:
-                    'Aucun evenement ne correspond aux filtres appliques pour le moment.',
+                    'Aucun événement ne correspond aux filtres appliqués pour le moment.',
                 icon: Icons.event_busy_rounded,
                 actionLabel: 'Recharger',
                 actionIcon: Icons.refresh_rounded,
@@ -316,15 +317,15 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                   runSpacing: 10,
                   children: [
                     AdminMiniStat(
-                      label: 'Events visibles',
+                      label: 'Événements visibles',
                       value: '${filtered.length}',
                       icon: Icons.filter_alt_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Apres filtres',
+                      subtitle: 'Après filtres',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Events ouverts',
+                      label: 'Événements ouverts',
                       value: '$openedCount',
                       icon: Icons.event_available_outlined,
                       accentColor: AdminTheme.success,
@@ -332,7 +333,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Events archives',
+                      label: 'Événements archivés',
                       value: '$archivedCount',
                       icon: Icons.archive_outlined,
                       accentColor: AdminTheme.warning,
@@ -439,7 +440,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                                       ),
                                     )
                                   : PopupMenuButton<String>(
-                                      tooltip: 'Actions evenement',
+                                      tooltip: 'Actions événement',
                                       onSelected: (value) {
                                         if (value.startsWith('status:')) {
                                           final status = value.split(':').last;
@@ -469,7 +470,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                                                   ),
                                                   const SizedBox(width: 8),
                                                   Text(
-                                                    'Statut: ${_statusLabel(status)}',
+                                                    'Statut : ${_statusLabel(status)}',
                                                   ),
                                                 ],
                                               ),

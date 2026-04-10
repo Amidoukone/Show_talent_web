@@ -48,7 +48,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       MediaQuery.sizeOf(context).width < 1120;
 
   bool _isManagedAccount(AppUser user) {
-    return user.createdByAdmin || managedAccountRoles.contains(user.role);
+    return user.createdByAdmin || isManagedAccountRole(user.role);
   }
 
   void _setActionInFlight(AppUser user, String label) {
@@ -114,7 +114,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succes',
+        title: 'Succès',
         message: successMessage,
         tone: AdminBannerTone.success,
       );
@@ -125,7 +125,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: error.message ?? 'Operation ${action.callableName} refusee.',
+        message: error.message ?? 'Opération ${action.callableName} refusée.',
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -135,7 +135,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: 'Operation ${action.callableName} impossible : $error',
+        message: 'Opération ${action.callableName} impossible : $error',
         tone: AdminBannerTone.danger,
       );
     } finally {
@@ -155,7 +155,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
           recipientName: recipientName,
           title: resendManagedAccountInviteAction.label,
           subtitle:
-              'Le message ci-dessous est deja ordonne pour le titulaire. Copie-le tel quel ou reutilise les liens individuellement.',
+              'Le message ci-dessous est déjà ordonné pour le titulaire. Copiez-le tel quel ou réutilisez les liens individuellement.',
         );
       },
     );
@@ -165,8 +165,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
     final confirmed = await _confirmAction(
       title: unblockManagedAccountAction.label,
       message:
-          'Cette action retire seulement le blocage applicatif du compte ${user.email}.',
-      confirmLabel: 'Debloquer',
+          'Cette action rétablit l’accès applicatif du compte ${user.email}. Si Firebase Auth reste désactivé, la connexion restera refusée.',
+      confirmLabel: 'Débloquer',
       confirmColor: Colors.green,
     );
     if (!confirmed) {
@@ -179,7 +179,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       request: () =>
           _managedAccountService.unblockManagedAccount(uid: user.uid),
       successMessage:
-          'Le blocage applicatif a ete retire pour ${user.email}. Firebase Auth n a pas ete modifie.',
+          'L’accès applicatif a été rétabli pour ${user.email}. Firebase Auth n’a pas été modifié.',
     );
   }
 
@@ -187,7 +187,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
     final confirmed = await _confirmAction(
       title: deleteManagedAccountAction.label,
       message:
-          'Cette suppression passe par le backend partage et peut supprimer l acces du compte ${user.email}.',
+          'Cette suppression passe par le backend partagé et peut supprimer l’accès du compte ${user.email}.',
       confirmLabel: 'Supprimer',
     );
     if (!confirmed) {
@@ -198,7 +198,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       user: user,
       action: deleteManagedAccountAction,
       request: () => _managedAccountService.deleteManagedAccount(uid: user.uid),
-      successMessage: 'La suppression admin a ete demandee pour ${user.email}.',
+      successMessage: 'La suppression admin a été demandée pour ${user.email}.',
     );
   }
 
@@ -206,8 +206,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
     final confirmed = await _confirmAction(
       title: disableManagedAccountAuthAction.label,
       message:
-          'Cette action desactive seulement Firebase Auth pour ${user.email}. Le blocage applicatif ne change pas.',
-      confirmLabel: 'Desactiver Auth',
+          'Cette action désactive Firebase Auth pour ${user.email}. Si le compte est déjà bloqué applicativement, la session mobile restera également fermée.',
+      confirmLabel: 'Désactiver Auth',
     );
     if (!confirmed) {
       return;
@@ -219,7 +219,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       request: () =>
           _managedAccountService.disableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'Firebase Auth a ete desactive pour ${user.email}. Le blocage applicatif n a pas ete modifie.',
+          'Firebase Auth a été désactivé pour ${user.email}. Le blocage applicatif n’a pas été modifié.',
     );
   }
 
@@ -230,7 +230,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       request: () =>
           _managedAccountService.enableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'Firebase Auth a ete reactive pour ${user.email}. Le blocage applicatif n a pas ete modifie.',
+          'Firebase Auth a été réactivé pour ${user.email}. Le blocage applicatif n’a pas été modifié.',
     );
   }
 
@@ -238,7 +238,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
     if (!_isManagedAccount(user)) {
       showAdminFeedback(
         title: 'Action indisponible',
-        message: 'Le changement de role n est propose que pour les comptes geres.',
+        message:
+            'Le changement de rôle n’est proposé que pour les comptes gérés.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -247,8 +248,9 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
     final selectedManagedRole = await showDialog<String>(
       context: context,
       builder: (BuildContext context) {
-        String nextRole = managedAccountRoles.contains(user.role)
-            ? user.role
+        final currentRole = normalizeUserRole(user.role);
+        String nextRole = isManagedAccountRole(currentRole)
+            ? currentRole
             : managedAccountRoles.first;
 
         return StatefulBuilder(
@@ -264,7 +266,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                   DropdownButtonFormField<String>(
                     value: nextRole,
                     decoration: const InputDecoration(
-                      labelText: 'Nouveau role',
+                      labelText: 'Nouveau rôle',
                       border: OutlineInputBorder(),
                     ),
                     items: managedAccountRoles
@@ -303,7 +305,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       },
     );
 
-    if (selectedManagedRole == null || selectedManagedRole == user.role) {
+    final currentRole = normalizeUserRole(user.role);
+    if (selectedManagedRole == null || selectedManagedRole == currentRole) {
       return;
     }
 
@@ -315,7 +318,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
         role: selectedManagedRole,
       ),
       successMessage:
-          'Le role de ${user.email} a ete change vers $selectedManagedRole.',
+          'Le rôle de ${user.email} a été changé vers $selectedManagedRole.',
     );
   }
 
@@ -324,7 +327,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'Le renvoi d invitation n est propose que pour les comptes geres.',
+            'Le renvoi d’invitation n’est proposé que pour les comptes gérés.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -341,8 +344,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succes',
-        message: 'Les liens d invitation ont ete regeneres pour ${user.email}.',
+        title: 'Succès',
+        message: 'Les liens d’invitation ont été régénérés pour ${user.email}.',
         tone: AdminBannerTone.success,
       );
       await _showInviteResultDialog(result, user.nom);
@@ -353,9 +356,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message:
-            error.message ??
-            'Impossible de renvoyer les liens d invitation pour ce compte.',
+        message: error.message ??
+            'Impossible de renvoyer les liens d’invitation pour ce compte.',
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -365,7 +367,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: 'Impossible de renvoyer les liens d invitation : $error',
+        message: 'Impossible de renvoyer les liens d’invitation : $error',
         tone: AdminBannerTone.danger,
       );
     } finally {
@@ -379,9 +381,10 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
         value: _actionUnblock,
         child: Row(
           children: [
-            Icon(Icons.check_circle_outline_rounded, size: 18, color: AdminTheme.success),
+            Icon(Icons.check_circle_outline_rounded,
+                size: 18, color: AdminTheme.success),
             SizedBox(width: 8),
-            Text('Debloquer'),
+            Text('Débloquer'),
           ],
         ),
       ),
@@ -394,10 +397,11 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                   ? Icons.lock_open_rounded
                   : Icons.lock_outline_rounded,
               size: 18,
-              color: user.authDisabled ? AdminTheme.success : AdminTheme.warning,
+              color:
+                  user.authDisabled ? AdminTheme.success : AdminTheme.warning,
             ),
             const SizedBox(width: 8),
-            Text(user.authDisabled ? 'Reactiver Auth' : 'Desactiver Auth'),
+            Text(user.authDisabled ? 'Réactiver Auth' : 'Désactiver Auth'),
           ],
         ),
       ),
@@ -410,9 +414,10 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
           value: _actionChangeRole,
           child: Row(
             children: const [
-              Icon(Icons.manage_accounts_outlined, size: 18, color: AdminTheme.cyan),
+              Icon(Icons.manage_accounts_outlined,
+                  size: 18, color: AdminTheme.cyan),
               SizedBox(width: 8),
-              Text('Changer le role'),
+              Text('Changer le rôle'),
             ],
           ),
         ),
@@ -420,9 +425,10 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
           value: _actionResendInvite,
           child: Row(
             children: const [
-              Icon(Icons.mark_email_read_outlined, size: 18, color: AdminTheme.accent),
+              Icon(Icons.mark_email_read_outlined,
+                  size: 18, color: AdminTheme.accent),
               SizedBox(width: 8),
-              Text('Renvoyer l invitation'),
+              Text('Renvoyer l’invitation'),
             ],
           ),
         ),
@@ -435,7 +441,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
         value: _actionDelete,
         child: Row(
           children: [
-            Icon(Icons.delete_outline_rounded, size: 18, color: AdminTheme.danger),
+            Icon(Icons.delete_outline_rounded,
+                size: 18, color: AdminTheme.danger),
             SizedBox(width: 8),
             Text('Supprimer'),
           ],
@@ -485,22 +492,23 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AdminSectionHeader(
-            badge: 'Blocked accounts',
-            title: 'Utilisateurs bloques',
+            badge: 'Comptes bloqués',
+            title: 'Utilisateurs bloqués',
             subtitle:
-                'Controle du blocage applicatif, des statuts Auth et des actions correctives.',
+                'Contrôle du blocage applicatif, des statuts Auth et des actions correctives.',
           ),
           SizedBox(height: spacing),
           const AdminInfoBanner(
-            title: 'Regles de deblocage',
+            title: 'Règles de déblocage',
             message:
-                'Debloquer retire seulement le blocage applicatif. Les actions Auth restent separees. Le changement de role et le renvoi d invitation sont limites aux comptes geres.',
+                'Débloquer retire seulement le blocage applicatif. Les actions Auth restent séparées. Le changement de rôle et le renvoi d’invitation sont limités aux comptes gérés.',
             icon: Icons.gpp_maybe_outlined,
             tone: AdminBannerTone.warning,
           ),
           Obx(() {
-            final blockedUsers =
-                userController.userList.where((user) => user.estBloque).toList();
+            final blockedUsers = userController.userList
+                .where((user) => user.hasActiveAppBlock)
+                .toList();
             final totalPages = (blockedUsers.length / rowsPerPage).ceil();
             final startIndex = currentPage * rowsPerPage;
             final endIndex = (startIndex + rowsPerPage).clamp(
@@ -511,9 +519,9 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
 
             if (blockedUsers.isEmpty) {
               return AdminEmptyState(
-                title: 'Aucun utilisateur bloque',
+                title: 'Aucun utilisateur bloqué',
                 message:
-                    'Aucun compte n est actuellement signale comme bloque dans le portail.',
+                    'Aucun compte n’est actuellement signalé comme bloqué dans le portail.',
                 icon: Icons.shield_outlined,
                 actionLabel: 'Recharger la liste',
                 onAction: () => userController.fetchUsers(),
@@ -532,7 +540,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                   runSpacing: compact ? 10 : 12,
                   children: [
                     AdminMiniStat(
-                      label: 'Comptes bloques',
+                      label: 'Comptes bloqués',
                       value: '${blockedUsers.length}',
                       icon: Icons.block_rounded,
                       accentColor: AdminTheme.danger,
@@ -540,19 +548,19 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Comptes geres',
+                      label: 'Comptes gérés',
                       value: '$managedUsers',
                       icon: Icons.manage_accounts_outlined,
                       accentColor: AdminTheme.accent,
-                      subtitle: 'Parmi les bloques',
+                      subtitle: 'Parmi les bloqués',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Auth desactivee',
+                      label: 'Auth désactivée',
                       value: '$authDisabledUsers',
                       icon: Icons.lock_person_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'Couches cumulees',
+                      subtitle: 'Couches cumulées',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
@@ -578,7 +586,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                       ),
                       DataColumn(
                         label: Text(
-                          'Role',
+                          'Rôle',
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -620,7 +628,7 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                                 Text(displayedUsers[index].role),
                                 if (displayedUsers[index].createdByAdmin)
                                   const Text(
-                                    'cree par admin',
+                                    'créé par admin',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AdminTheme.accent,
@@ -630,7 +638,8 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                             ),
                           ),
                           DataCell(
-                            AdminAccountStatusChips(user: displayedUsers[index]),
+                            AdminAccountStatusChips(
+                                user: displayedUsers[index]),
                           ),
                           DataCell(
                             _actionInFlightUid == displayedUsers[index].uid
@@ -644,17 +653,20 @@ class _BlockedUsersWidgetState extends State<BlockedUsersWidget> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Text(_actionInFlightLabel ?? 'Traitement...'),
+                                      Text(_actionInFlightLabel ??
+                                          'Traitement...'),
                                     ],
                                   )
                                 : PopupMenuButton<String>(
                                     tooltip: 'Actions utilisateur',
-                                    onSelected: (value) => _handleActionSelection(
+                                    onSelected: (value) =>
+                                        _handleActionSelection(
                                       value,
                                       displayedUsers[index],
                                     ),
                                     itemBuilder: (context) =>
-                                        _buildActionMenuItems(displayedUsers[index]),
+                                        _buildActionMenuItems(
+                                            displayedUsers[index]),
                                   ),
                           ),
                         ],

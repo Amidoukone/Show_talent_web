@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 
 import '../models/admin_access_result.dart';
 import '../models/user.dart';
+import '../utils/admin_access_messages.dart';
 import '../utils/account_role_policy.dart';
 
 class UserController extends GetxController {
@@ -20,35 +21,83 @@ class UserController extends GetxController {
   List<String> get grantedAdminClaims => _grantedAdminClaims;
   bool get hasRequiredAdminClaims => _grantedAdminClaims.isNotEmpty;
 
+  StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSubscription;
 
   @override
   void onInit() {
     super.onInit();
-    fetchUsers();
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
+          _handleAuthStateChanged,
+        );
+    _handleAuthStateChanged(FirebaseAuth.instance.currentUser);
   }
 
   void fetchUsers() {
+    if (FirebaseAuth.instance.currentUser == null) {
+      return;
+    }
+
     if (_usersSubscription != null) {
       return;
     }
 
-    _usersSubscription = FirebaseFirestore.instance
-        .collection('users')
-        .snapshots()
-        .listen((snapshot) {
-      _userList.value = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return AppUser.fromMap(data);
-      }).toList();
-    }, onError: (Object error) {
-      debugPrint('Flux Firestore users indisponible: $error');
+    _usersSubscription =
+        FirebaseFirestore.instance.collection('users').snapshots().listen(
+      (snapshot) {
+        final parsedUsers = <AppUser>[];
+
+        for (final doc in snapshot.docs) {
+          try {
+            parsedUsers.add(
+              _parseUserData(
+                doc.data(),
+                fallbackUid: doc.id,
+              ),
+            );
+          } catch (error, stackTrace) {
+            debugPrint(
+              'Document utilisateur ignoré (${doc.id}) car invalide : $error',
+            );
+            debugPrintStack(stackTrace: stackTrace);
+          }
+        }
+
+        _userList.assignAll(parsedUsers);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Flux Firestore users indisponible : $error');
+        debugPrintStack(stackTrace: stackTrace);
+        _userList.clear();
+        _usersSubscription = null;
+      },
+      onDone: () {
+        _usersSubscription = null;
+      },
+    );
+  }
+
+  Future<void> _handleAuthStateChanged(User? user) async {
+    if (user == null) {
+      await _stopUsersStream(clearUsers: true);
+      clearSessionState();
+      return;
+    }
+
+    fetchUsers();
+  }
+
+  Future<void> _stopUsersStream({bool clearUsers = false}) async {
+    await _usersSubscription?.cancel();
+    _usersSubscription = null;
+
+    if (clearUsers) {
       _userList.clear();
-    });
+    }
   }
 
   void setUserFromFirestore(Map<String, dynamic> userData) {
-    _user.value = AppUser.fromMap(userData);
+    _user.value = _parseUserData(userData);
   }
 
   void clearSessionState() {
@@ -80,7 +129,7 @@ class UserController extends GetxController {
     final user = firebaseUser ?? FirebaseAuth.instance.currentUser;
     if (user == null) {
       clearSessionState();
-      return const AdminAccessResult.denied('Session expiree.');
+      return const AdminAccessResult.denied(AdminAccessMessages.sessionExpired);
     }
 
     try {
@@ -92,14 +141,14 @@ class UserController extends GetxController {
       if (!userDoc.exists) {
         clearSessionState();
         return const AdminAccessResult.denied(
-          'Utilisateur introuvable dans /users.',
+          AdminAccessMessages.userNotFound,
         );
       }
 
-      final userData = Map<String, dynamic>.from(
+      final appUser = _parseUserData(
         userDoc.data() as Map<String, dynamic>,
+        fallbackUid: userDoc.id,
       );
-      final appUser = AppUser.fromMap(userData);
 
       final grantedClaims = await refreshAdminClaims(
         firebaseUser: user,
@@ -109,26 +158,30 @@ class UserController extends GetxController {
       if (grantedClaims.isEmpty) {
         clearSessionState();
         return const AdminAccessResult.denied(
-          'Les custom claims admin sont requis pour acceder au dashboard.',
+          AdminAccessMessages.missingClaims,
         );
       }
 
-      if (appUser.role != 'admin') {
+      if (!isAdminPortalOnlyRole(appUser.role)) {
         clearSessionState();
         return const AdminAccessResult.denied(
-          'Votre compte n est pas autorise sur le portail admin.',
+          AdminAccessMessages.roleDenied,
         );
       }
 
-      if (appUser.estBloque) {
+      if (appUser.hasActiveAppBlock) {
         clearSessionState();
-        return const AdminAccessResult.denied('Votre compte est bloque.');
+        return AdminAccessResult.denied(
+          appUser.hasTemporaryBlock
+              ? AdminAccessMessages.temporaryBlocked
+              : AdminAccessMessages.blocked,
+        );
       }
 
       if (appUser.authDisabled) {
         clearSessionState();
         return const AdminAccessResult.denied(
-          'Firebase Auth est desactive pour ce compte.',
+          AdminAccessMessages.authDisabled,
         );
       }
 
@@ -137,7 +190,7 @@ class UserController extends GetxController {
     } catch (error) {
       clearSessionState();
       return AdminAccessResult.denied(
-        'Impossible de verifier la session admin : $error',
+        'Impossible de vérifier la session admin : $error',
       );
     }
   }
@@ -148,8 +201,22 @@ class UserController extends GetxController {
     Get.offAllNamed('/admin-login');
   }
 
+  AppUser _parseUserData(
+    Map<String, dynamic> userData, {
+    String? fallbackUid,
+  }) {
+    final normalized = Map<String, dynamic>.from(userData);
+    final existingUid = normalized['uid']?.toString().trim() ?? '';
+    if (existingUid.isEmpty && fallbackUid != null && fallbackUid.isNotEmpty) {
+      normalized['uid'] = fallbackUid;
+    }
+
+    return AppUser.fromMap(normalized);
+  }
+
   @override
   void onClose() {
+    _authSubscription?.cancel();
     _usersSubscription?.cancel();
     super.onClose();
   }

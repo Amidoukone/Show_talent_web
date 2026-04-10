@@ -685,7 +685,7 @@ class AdminPaginationBar extends StatelessWidget {
     required this.totalPages,
     required this.onPrevious,
     required this.onNext,
-    this.previousLabel = 'Precedent',
+    this.previousLabel = 'Précédent',
     this.nextLabel = 'Suivant',
     super.key,
   });

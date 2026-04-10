@@ -1,44 +1,54 @@
-import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:get/get.dart';
 import 'package:show_talent/models/offre.dart';
 import 'package:show_talent/models/user.dart';
+import 'package:show_talent/utils/account_role_policy.dart';
 
-class CustomSearchController extends GetxController {  // Renommage ici
-  final Rx<List<AppUser>> _searchedUsers = Rx<List<AppUser>>([]);
-  List<AppUser> get searchedUsers => _searchedUsers.value;
+class CustomSearchController extends GetxController {
+  final RxList<AppUser> _searchedUsers = <AppUser>[].obs;
+  List<AppUser> get searchedUsers => _searchedUsers;
 
-  final Rx<List<Offre>> _searchedOffres = Rx<List<Offre>>([]);
-  List<Offre> get searchedOffres => _searchedOffres.value;
+  final RxList<Offre> _searchedOffres = <Offre>[].obs;
+  List<Offre> get searchedOffres => _searchedOffres;
 
-  // Méthode pour rechercher les utilisateurs par nom, rôle et localisation
-  void search(String query, {String? role, String? location}) async {
-    Query userQuery = FirebaseFirestore.instance.collection('users');
+  Future<void> search(
+    String query, {
+    String? role,
+    String? location,
+  }) async {
+    Query<Map<String, dynamic>> userQuery =
+        FirebaseFirestore.instance.collection('users');
 
-    // Filtrer les utilisateurs par rôle
-    if (role != null && role.isNotEmpty) {
-      userQuery = userQuery.where('role', isEqualTo: role);
-    }
+    final normalizedQuery = query.trim();
+    final normalizedRole = normalizeUserRole(role);
+    final normalizedLocation = location?.trim() ?? '';
 
-    // Filtrer les utilisateurs par localisation (si applicable)
-    if (location != null && location.isNotEmpty) {
-      userQuery = userQuery.where('location', isEqualTo: location);
-    }
-
-    // Rechercher par nom si une query est fournie
-    if (query.isNotEmpty) {
+    if (normalizedQuery.isNotEmpty) {
       userQuery = userQuery
-          .where('name', isGreaterThanOrEqualTo: query)
-          .where('name', isLessThanOrEqualTo: '$query\uf8ff');
+          .where('nom', isGreaterThanOrEqualTo: normalizedQuery)
+          .where('nom', isLessThanOrEqualTo: '$normalizedQuery\uf8ff');
     }
 
-    QuerySnapshot userSnapshot = await userQuery.get();
-    _searchedUsers.value = userSnapshot.docs
-        .map((doc) => AppUser.fromMap(doc.data() as Map<String, dynamic>))
-        .toList();
+    final userSnapshot = await userQuery.get();
+    final users = userSnapshot.docs
+        .map((doc) => AppUser.fromMap(doc.data()))
+        .where((user) {
+      final matchesRole = normalizedRole.isEmpty ||
+          normalizeUserRole(user.role) == normalizedRole;
+      final matchesLocation = normalizedLocation.isEmpty ||
+          user.matchesLocation(normalizedLocation);
+      return matchesRole && matchesLocation;
+    }).toList();
+
+    _searchedUsers.assignAll(users);
   }
 
-  // Méthode pour rechercher des offres avec des filtres (catégorie, dates)
-  void searchOffres(String query, {String? category, DateTime? startDate, DateTime? endDate}) async {
+  Future<void> searchOffres(
+    String query, {
+    String? category,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     Query offreQuery = FirebaseFirestore.instance.collection('offres');
 
     if (category != null && category.isNotEmpty) {
@@ -57,9 +67,11 @@ class CustomSearchController extends GetxController {  // Renommage ici
           .where('titre', isLessThanOrEqualTo: '$query\uf8ff');
     }
 
-    QuerySnapshot offreSnapshot = await offreQuery.get();
-    _searchedOffres.value = offreSnapshot.docs
-        .map((doc) => Offre.fromMap(doc.data() as Map<String, dynamic>))
-        .toList();
+    final offreSnapshot = await offreQuery.get();
+    _searchedOffres.assignAll(
+      offreSnapshot.docs
+          .map((doc) => Offre.fromMap(doc.data() as Map<String, dynamic>))
+          .toList(),
+    );
   }
 }

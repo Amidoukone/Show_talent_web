@@ -25,15 +25,15 @@ class AdminContentService {
 
     switch (error.code) {
       case 'unauthenticated':
-        return 'Session admin expiree. Reconnectez-vous.';
+        return 'Session admin expirée. Reconnectez-vous.';
       case 'permission-denied':
-        return 'Action reservee a l administration.';
+        return "Action réservée à l'administration.";
       case 'not-found':
-        return 'Element introuvable ou deja supprime.';
+        return 'Élément introuvable ou déjà supprimé.';
       case 'unavailable':
-        return '$fallbackMessage Reessayez dans un instant.';
+        return '$fallbackMessage Réessayez dans un instant.';
       case 'internal':
-        return '$fallbackMessage Verifiez aussi le deploiement Functions partage.';
+        return '$fallbackMessage Vérifiez aussi le déploiement Functions partagé.';
       default:
         return fallbackMessage;
     }
@@ -81,7 +81,8 @@ class AdminContentService {
         'offerId': offerId.trim(),
         'status': status.trim(),
       },
-      fallbackMessage: 'Mise a jour du statut offre impossible pour le moment.',
+      fallbackMessage:
+          "Mise à jour du statut de l'offre impossible pour le moment.",
     );
   }
 
@@ -93,7 +94,7 @@ class AdminContentService {
       payload: <String, dynamic>{
         'offerId': offerId.trim(),
       },
-      fallbackMessage: 'Suppression offre impossible pour le moment.',
+      fallbackMessage: "Suppression de l'offre impossible pour le moment.",
     );
   }
 
@@ -108,7 +109,7 @@ class AdminContentService {
         'status': status.trim(),
       },
       fallbackMessage:
-          'Mise a jour du statut evenement impossible pour le moment.',
+          "Mise à jour du statut de l'événement impossible pour le moment.",
     );
   }
 
@@ -120,7 +121,7 @@ class AdminContentService {
       payload: <String, dynamic>{
         'eventId': eventId.trim(),
       },
-      fallbackMessage: 'Suppression evenement impossible pour le moment.',
+      fallbackMessage: "Suppression de l'événement impossible pour le moment.",
     );
   }
 }

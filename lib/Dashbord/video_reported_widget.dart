@@ -75,16 +75,16 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AdminSectionHeader(
-            badge: 'Moderation queue',
-            title: 'Videos signalees',
+            badge: 'File de modération',
+            title: 'Vidéos signalées',
             subtitle:
-                'Traitement prioritaire des contenus remontes par les utilisateurs.',
+                'Traitement prioritaire des contenus remontés par les utilisateurs.',
           ),
           SizedBox(height: spacing),
           const AdminInfoBanner(
-            title: 'Priorisation moderation',
+            title: 'Priorisation de la modération',
             message:
-                'Cette vue met en avant les contenus remontes ainsi que le volume de signalements deja recu pour chaque video.',
+                'Cette vue met en avant les contenus remontés ainsi que le volume de signalements déjà reçus pour chaque vidéo.',
             icon: Icons.report_gmailerrorred_outlined,
             tone: AdminBannerTone.warning,
           ),
@@ -92,7 +92,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
             child: AdminSearchField(
               controller: _searchController,
-              hintText: 'Rechercher une video signalee',
+              hintText: 'Rechercher une vidéo signalée',
               onChanged: (value) {
                 setState(() {
                   searchQuery = value.toLowerCase();
@@ -113,15 +113,16 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
               0,
               filteredVideos.length,
             );
-            final displayedVideos = filteredVideos.sublist(startIndex, endIndex);
+            final displayedVideos =
+                filteredVideos.sublist(startIndex, endIndex);
 
             if (filteredVideos.isEmpty) {
               final hasSearch = searchQuery.trim().isNotEmpty;
 
               return AdminEmptyState(
-                title: 'Aucune video signalee',
+                title: 'Aucune vidéo signalée',
                 message:
-                    'Aucune alerte de moderation ne correspond actuellement a la recherche.',
+                    'Aucune alerte de modération ne correspond actuellement à la recherche.',
                 icon: Icons.mark_email_read_outlined,
                 actionLabel: hasSearch
                     ? 'Effacer la recherche'
@@ -155,19 +156,19 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                   runSpacing: compact ? 10 : 12,
                   children: [
                     AdminMiniStat(
-                      label: 'Videos signalees',
+                      label: 'Vidéos signalées',
                       value: '${reportedVideos.length}',
                       icon: Icons.report_gmailerrorred_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'File de moderation',
+                      subtitle: 'File de modération',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Apres filtre',
+                      label: 'Après filtre',
                       value: '${filteredVideos.length}',
                       icon: Icons.filter_alt_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Resultats courants',
+                      subtitle: 'Résultats courants',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -187,9 +188,9 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                     columnSpacing: tableColumnSpacing,
                     horizontalMargin: compact ? 10 : 12,
                     columns: const [
-                      DataColumn(label: Text('Apercu')),
+                      DataColumn(label: Text('Aperçu')),
                       DataColumn(label: Text('Titre')),
-                      DataColumn(label: Text('Ajoute par')),
+                      DataColumn(label: Text('Ajoutée par')),
                       DataColumn(label: Text('Signalements')),
                       DataColumn(label: Text('Actions')),
                     ],
@@ -250,12 +251,13 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                                     ),
                                   )
                                 : PopupMenuButton<String>(
-                                    tooltip: 'Actions video',
+                                    tooltip: 'Actions vidéo',
                                     onSelected: (value) {
                                       if (value == 'view_video') {
                                         Get.to(
                                           () => VideoPlayerScreen(
-                                            videoUrl: displayedVideos[index].videoUrl,
+                                            videoUrl:
+                                                displayedVideos[index].videoUrl,
                                             userId: displayedVideos[index].uid,
                                             videoId: displayedVideos[index].id,
                                           ),
@@ -272,9 +274,13 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                                         value: 'view_video',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.play_circle_outline_rounded, size: 18, color: AdminTheme.cyan),
+                                            Icon(
+                                                Icons
+                                                    .play_circle_outline_rounded,
+                                                size: 18,
+                                                color: AdminTheme.cyan),
                                             SizedBox(width: 8),
-                                            Text('Regarder la video'),
+                                            Text('Regarder la vidéo'),
                                           ],
                                         ),
                                       ),
@@ -282,9 +288,11 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                                         value: 'delete_video',
                                         child: Row(
                                           children: [
-                                            Icon(Icons.delete_outline_rounded, size: 18, color: AdminTheme.danger),
+                                            Icon(Icons.delete_outline_rounded,
+                                                size: 18,
+                                                color: AdminTheme.danger),
                                             SizedBox(width: 8),
-                                            Text('Supprimer la video'),
+                                            Text('Supprimer la vidéo'),
                                           ],
                                         ),
                                       ),
@@ -340,7 +348,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
         return AlertDialog(
           title: const Text('Confirmation'),
           content:
-              const Text('Etes-vous sur de vouloir supprimer cette video ?'),
+              const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
           actions: [
             TextButton(
               onPressed: Get.back,
@@ -356,8 +364,8 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                 try {
                   await videoController.deleteVideo(videoId);
                   showAdminFeedback(
-                    title: 'Succes',
-                    message: 'Video supprimee avec succes.',
+                    title: 'Succès',
+                    message: 'Vidéo supprimée avec succès.',
                     tone: AdminBannerTone.success,
                     position: SnackPosition.BOTTOM,
                   );

@@ -71,8 +71,8 @@ class ManagedAccountInviteSummary extends StatelessWidget {
   Future<void> _copyValue(String label, String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     showAdminFeedback(
-      title: 'Copie terminee',
-      message: '$label copie dans le presse-papiers.',
+      title: 'Copie terminée',
+      message: '$label copié dans le presse-papiers.',
       tone: AdminBannerTone.info,
       position: copyPosition,
     );
@@ -118,19 +118,19 @@ class ManagedAccountInviteSummary extends StatelessWidget {
           ),
         if (result.role.isNotEmpty)
           Text(
-            'Role : ${result.role}',
+            'Rôle : ${result.role}',
             style: const TextStyle(color: AdminTheme.textPrimary),
           ),
         Text(
-          'Etat : ${result.lifecycleLabel}',
+          'État : ${result.lifecycleLabel}',
           style: const TextStyle(color: AdminTheme.textSecondary),
         ),
         const SizedBox(height: 16),
         AdminInfoBanner(
-          title: 'Ordre conseille',
+          title: 'Ordre conseillé',
           message: result.requiresEmailVerification
-              ? 'Le titulaire doit d abord definir son mot de passe, puis valider son e-mail, puis se connecter.'
-              : 'Le titulaire doit d abord definir son mot de passe, puis se connecter. Aucune validation e-mail supplementaire n est requise.',
+              ? 'Le titulaire doit d’abord définir son mot de passe, puis valider son e-mail, puis se connecter.'
+              : 'Le titulaire doit d’abord définir son mot de passe, puis se connecter. Aucune validation e-mail supplémentaire n’est requise.',
           icon: Icons.rule_rounded,
           tone: AdminBannerTone.info,
         ),
@@ -140,7 +140,7 @@ class ManagedAccountInviteSummary extends StatelessWidget {
         _MessageCard(
           title: 'Version WhatsApp',
           description:
-              'Format court, adapte a WhatsApp ou SMS. Le texte est deja ordonne pour le titulaire.',
+              'Format court, adapté à WhatsApp ou SMS. Le texte est déjà ordonné pour le titulaire.',
           copyLabel: 'Copier version WhatsApp',
           message: whatsappMessage,
           onCopy: () => _copyValue('Version WhatsApp', whatsappMessage),
@@ -149,7 +149,7 @@ class ManagedAccountInviteSummary extends StatelessWidget {
         _MessageCard(
           title: 'Version e-mail',
           description:
-              'Format plus formel, avec objet et message complet, adapte a un envoi par e-mail.',
+              'Format plus formel, avec objet et message complet, adapté à un envoi par e-mail.',
           copyLabel: 'Copier version e-mail',
           message: emailMessage,
           onCopy: () => _copyValue('Version e-mail', emailMessage),
@@ -172,7 +172,7 @@ class ManagedAccountInviteSummary extends StatelessWidget {
             child: const AdminInfoBanner(
               title: 'Verification deja validee',
               message:
-                  'Aucun lien de validation e-mail n a ete retourne. Le titulaire peut passer directement a la connexion apres le mot de passe.',
+                  'Aucun lien de validation e-mail n’a été retourné. Le titulaire peut passer directement à la connexion après le mot de passe.',
               icon: Icons.verified_rounded,
               tone: AdminBannerTone.success,
             ),
@@ -201,7 +201,7 @@ class _ChecklistCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Parcours utilisateur recommande',
+            'Parcours utilisateur recommandé',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: AdminTheme.textPrimary,
@@ -362,7 +362,7 @@ class _LinkTile extends StatelessWidget {
           const SizedBox(height: 8),
           if (value == null)
             const Text(
-              'Aucun lien retourne.',
+              'Aucun lien retourné.',
               style: TextStyle(color: AdminTheme.textMuted),
             )
           else ...[

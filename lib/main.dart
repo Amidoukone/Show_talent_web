@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:show_talent/Dashbord/admin_dashboard_screen.dart';
@@ -36,6 +37,16 @@ class MyApp extends StatelessWidget {
       title: 'Adfoot Admin',
       debugShowCheckedModeBanner: false,
       theme: AdminTheme.buildTheme(),
+      locale: const Locale('fr'),
+      supportedLocales: const [
+        Locale('fr'),
+        Locale('en'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
       initialRoute: '/admin-login',
       getPages: [
         GetPage(name: '/admin-login', page: () => const AdminLoginScreen()),

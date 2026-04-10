@@ -45,7 +45,7 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const AdminPill(
-                                  label: 'Provisionnement securise',
+                                  label: 'Provisionnement sécurisé',
                                   icon: Icons.rule_rounded,
                                   color: AdminTheme.warning,
                                 ),
@@ -72,7 +72,7 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                                 ),
                                 const SizedBox(height: 22),
                                 const Text(
-                                  'Creation admin cote client desactivee',
+                                  'Création admin côté client désactivée',
                                   style: TextStyle(
                                     fontSize: 30,
                                     fontWeight: FontWeight.w800,
@@ -82,7 +82,7 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 const Text(
-                                  'Le portail admin ne cree plus de compte sensible localement. La gouvernance reste centralisee par les claims et les outils backend.',
+                                  'Le portail admin ne crée plus de compte sensible localement. La gouvernance reste centralisée par les claims et les outils backend.',
                                   style: TextStyle(
                                     color: AdminTheme.textSecondary,
                                     height: 1.6,
@@ -95,17 +95,17 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const AdminInfoBanner(
-                                  title: 'Attribution des roles',
+                                  title: 'Attribution des rôles',
                                   message:
-                                      'Les comptes admin et leurs custom claims doivent etre attribues cote serveur. La creation locale avec createUserWithEmailAndPassword est retiree.',
+                                      'Les comptes admin et leurs custom claims doivent être attribués côté serveur. La création locale avec createUserWithEmailAndPassword est retirée.',
                                   icon: Icons.security_rounded,
                                   tone: AdminBannerTone.warning,
                                 ),
                                 const SizedBox(height: 16),
                                 const AdminInfoBanner(
-                                  title: 'Provisionnement metier',
+                                  title: 'Provisionnement métier',
                                   message:
-                                      'Les comptes club, recruteur et agent se provisionnent depuis le dashboard avec la Cloud Function partagee provisionManagedAccount.',
+                                      'Les comptes club, recruteur et agent se provisionnent depuis le dashboard avec la Cloud Function partagée provisionManagedAccount.',
                                   icon: Icons.hub_outlined,
                                   tone: AdminBannerTone.info,
                                 ),
@@ -122,7 +122,7 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                                         Icons.arrow_back_rounded,
                                       ),
                                       label: const Text(
-                                        'Retour a la connexion',
+                                        'Retour à la connexion',
                                       ),
                                     ),
                                     ElevatedButton.icon(

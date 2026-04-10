@@ -23,7 +23,7 @@ class VideoController extends GetxController {
               try {
                 return Video.fromMap(doc.data());
               } catch (e) {
-                debugPrint('Erreur lors de la recuperation de la video: $e');
+                debugPrint('Erreur lors de la récupération de la vidéo : $e');
                 return null;
               }
             })
@@ -31,7 +31,7 @@ class VideoController extends GetxController {
             .toList(),
       );
     }, onError: (Object error) {
-      debugPrint('Flux Firestore videos indisponible: $error');
+      debugPrint('Flux Firestore vidéos indisponible : $error');
       videoList.clear();
     });
   }
@@ -65,9 +65,9 @@ class VideoController extends GetxController {
         },
       );
 
-      Get.snackbar('Succes', 'Action effectuee avec succes.');
+      Get.snackbar('Succès', 'Action effectuée avec succès.');
     } catch (e) {
-      Get.snackbar('Erreur', 'Impossible de liker la video.');
+      Get.snackbar('Erreur', 'Impossible de liker la vidéo.');
     }
   }
 
@@ -88,9 +88,9 @@ class VideoController extends GetxController {
         },
       );
 
-      Get.snackbar('Succes', 'Video partagee avec succes.');
+      Get.snackbar('Succès', 'Vidéo partagée avec succès.');
     } catch (e) {
-      Get.snackbar('Erreur', 'Erreur lors du partage de la video.');
+      Get.snackbar('Erreur', 'Erreur lors du partage de la vidéo.');
     }
   }
 
@@ -117,12 +117,12 @@ class VideoController extends GetxController {
           'reportCount': reportCount,
         });
 
-        Get.snackbar('Succes', 'Video signalee avec succes.');
+        Get.snackbar('Succès', 'Vidéo signalée avec succès.');
       } else {
-        Get.snackbar('Erreur', 'Vous avez deja signale cette video.');
+        Get.snackbar('Erreur', 'Vous avez déjà signalé cette vidéo.');
       }
     } catch (e) {
-      Get.snackbar('Erreur', 'Erreur lors du signalement de la video.');
+      Get.snackbar('Erreur', 'Erreur lors du signalement de la vidéo.');
     }
   }
 
@@ -135,9 +135,9 @@ class VideoController extends GetxController {
 
       videoList.removeWhere((video) => video.id == videoId);
 
-      Get.snackbar('Succes', 'Video supprimee avec succes.');
+      Get.snackbar('Succès', 'Vidéo supprimée avec succès.');
     } catch (e) {
-      Get.snackbar('Erreur', 'Echec de la suppression de la video : $e');
+      Get.snackbar('Erreur', 'Échec de la suppression de la vidéo : $e');
     }
   }
 
@@ -150,9 +150,9 @@ class VideoController extends GetxController {
           .collection('videos')
           .doc(videoId)
           .update(newVideoData);
-      Get.snackbar('Succes', 'Video mise a jour avec succes.');
+      Get.snackbar('Succès', 'Vidéo mise à jour avec succès.');
     } catch (e) {
-      Get.snackbar('Erreur', 'Erreur lors de la mise a jour de la video.');
+      Get.snackbar('Erreur', 'Erreur lors de la mise à jour de la vidéo.');
     }
   }
 
@@ -166,16 +166,16 @@ class VideoController extends GetxController {
         return Video.fromMap(doc.data() as Map<String, dynamic>);
       }
     } catch (e) {
-      Get.snackbar('Erreur', 'Impossible de recuperer la video.');
+      Get.snackbar('Erreur', 'Impossible de récupérer la vidéo.');
     }
     return null;
   }
 
   Future<void> blockUser(String userId) async {
-    Get.snackbar('Succes', 'Utilisateur bloque avec succes.');
+    Get.snackbar('Succès', 'Utilisateur bloqué avec succès.');
   }
 
   Future<void> unblockUser(String userId) async {
-    Get.snackbar('Succes', 'Utilisateur debloque avec succes.');
+    Get.snackbar('Succès', 'Utilisateur débloqué avec succès.');
   }
 }

@@ -19,7 +19,7 @@ class UploadVideoController extends GetxController {
     if (songName.isEmpty || caption.isEmpty) {
       Get.snackbar(
         'Erreur',
-        'Le nom de la chanson et la legende ne peuvent pas etre vides',
+        'Le nom de la chanson et la légende ne peuvent pas être vides.',
       );
       return;
     }
@@ -39,7 +39,7 @@ class UploadVideoController extends GetxController {
 
       final snapshot = await uploadTask;
       final videoUrl = await snapshot.ref.getDownloadURL();
-      debugPrint('URL video telechargee: $videoUrl');
+      debugPrint('URL vidéo téléchargée : $videoUrl');
 
       final videoId = FirebaseFirestore.instance.collection('videos').doc().id;
 
@@ -55,11 +55,11 @@ class UploadVideoController extends GetxController {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      Get.snackbar('Succes', 'Video telechargee avec succes.');
+      Get.snackbar('Succès', 'Vidéo téléversée avec succès.');
     } catch (e) {
       Get.snackbar(
         'Erreur',
-        'Une erreur est survenue pendant le telechargement : $e',
+        'Une erreur est survenue pendant le téléversement : $e',
       );
     } finally {
       isUploading(false);

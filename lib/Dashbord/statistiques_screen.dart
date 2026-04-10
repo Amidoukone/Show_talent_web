@@ -54,15 +54,14 @@ class StatisticsOverviewPanel extends StatelessWidget {
       final users = userController.userList;
       final videos = videoController.videoList;
       final reportedVideos = videoController.getReportedVideos();
-      final blockedUsers = users.where((user) => user.estBloque).length;
+      final blockedUsers = users.where((user) => user.hasActiveAppBlock).length;
       final managedUsers = users
           .where(
-            (user) =>
-                user.createdByAdmin || managedAccountRoles.contains(user.role),
+            (user) => user.createdByAdmin || isManagedAccountRole(user.role),
           )
           .length;
       final activeUsers =
-          users.where((user) => user.estActif && !user.estBloque).length;
+          users.where((user) => user.isEffectivelyActiveAccount).length;
 
       final totalUsers = users.length;
       final totalVideos = videos.length;
@@ -81,10 +80,10 @@ class StatisticsOverviewPanel extends StatelessWidget {
               highlight: true,
               accentColor: AdminTheme.accent,
               child: const AdminSectionHeader(
-                badge: 'Analytics',
+                badge: 'Pilotage',
                 title: 'Tableau de statistiques',
                 subtitle:
-                    'Vue consolidee sur les utilisateurs, la moderation et les comptes geres.',
+                    'Vue consolidée sur les utilisateurs, la modération et les comptes gérés.',
               ),
             ),
             const SizedBox(height: 20),
@@ -106,7 +105,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
               SizedBox(
                 width: 280,
                 child: AdminMetricCard(
-                  title: 'Comptes geres',
+                  title: 'Comptes gérés',
                   value: '$managedUsers',
                   subtitle: 'Club, recruteur et agent',
                   icon: Icons.manage_accounts_rounded,
@@ -117,9 +116,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
               SizedBox(
                 width: 280,
                 child: AdminMetricCard(
-                  title: 'Videos publiees',
+                  title: 'Vidéos publiées',
                   value: '$totalVideos',
-                  subtitle: '${reportedVideos.length} videos signalees',
+                  subtitle: '${reportedVideos.length} vidéos signalées',
                   icon: Icons.play_circle_outline_rounded,
                   progress: 1,
                   accentColor: AdminTheme.accentSoft,
@@ -151,9 +150,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const AdminSectionHeader(
-                      title: 'Activite globale',
+                      title: 'Activité globale',
                       subtitle:
-                          'Lecture rapide des volumes admin actuellement exposes dans le portail.',
+                          'Lecture rapide des volumes admin actuellement exposés dans le portail.',
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
@@ -209,11 +208,11 @@ class StatisticsOverviewPanel extends StatelessWidget {
                                 showTitles: true,
                                 getTitlesWidget: (value, meta) {
                                   const labels = [
-                                    'Users',
-                                    'Managed',
-                                    'Videos',
-                                    'Reports',
-                                    'Blocked',
+                                    'Utilisateurs',
+                                    'Gérés',
+                                    'Vidéos',
+                                    'Signalés',
+                                    'Bloqués',
                                   ];
 
                                   return Padding(
@@ -256,9 +255,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const AdminSectionHeader(
-                          title: 'Signaux clefs',
+                          title: 'Signaux clés',
                           subtitle:
-                              'Quelques ratios utiles pour lire l etat de la plateforme.',
+                              'Quelques ratios utiles pour lire l’état de la plateforme.',
                         ),
                         const SizedBox(height: 18),
                         _SignalRow(
@@ -269,21 +268,21 @@ class StatisticsOverviewPanel extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                         _SignalRow(
-                          label: 'Comptes geres',
+                          label: 'Comptes gérés',
                           value: '${(managedRate * 100).round()}%',
                           progress: managedRate,
                           color: AdminTheme.cyan,
                         ),
                         const SizedBox(height: 14),
                         _SignalRow(
-                          label: 'Videos signalees',
+                          label: 'Vidéos signalées',
                           value: '${(reportRate * 100).round()}%',
                           progress: reportRate,
                           color: AdminTheme.warning,
                         ),
                         const SizedBox(height: 14),
                         _SignalRow(
-                          label: 'Utilisateurs bloques',
+                          label: 'Utilisateurs bloqués',
                           value: '${(blockedRate * 100).round()}%',
                           progress: blockedRate,
                           color: AdminTheme.danger,
@@ -295,7 +294,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   const AdminInfoBanner(
                     title: 'Lecture admin',
                     message:
-                        'Cette vue reste purement front et n impacte aucune logique metier. Elle reformule uniquement les donnees deja presentes dans les controllers.',
+                        'Cette vue reste purement front et n’impacte aucune logique métier. Elle reformule uniquement les données déjà présentes dans les controllers.',
                     icon: Icons.auto_graph_rounded,
                     tone: AdminBannerTone.neutral,
                   ),

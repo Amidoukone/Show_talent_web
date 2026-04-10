@@ -79,8 +79,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succes',
-        message: 'Statut offre mis a jour: ${_statusLabel(nextStatus)}.',
+        title: 'Succès',
+        message: 'Statut de l’offre mis à jour : ${_statusLabel(nextStatus)}.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -107,7 +107,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
         return AlertDialog(
           title: const Text('Confirmation'),
           content: Text(
-            'Supprimer l offre "${offre.titre}" ?',
+            'Supprimer l’offre "${offre.titre}" ?',
           ),
           actions: [
             TextButton(
@@ -135,8 +135,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succes',
-        message: 'Offre supprimee.',
+        title: 'Succès',
+        message: 'Offre supprimée.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -168,14 +168,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AdminSectionHeader(
-            badge: 'Offer moderation',
+            badge: 'Modération des offres',
             title: 'Gestion des offres',
             subtitle:
-                'Supervision des offres avec statuts admin et suppression via backend partage.',
+                'Supervision des offres avec statuts admin et suppression via backend partagé.',
           ),
           const SizedBox(height: 14),
           const AdminInfoBanner(
-            title: 'Mutation protegee',
+            title: 'Mutation protégée',
             message:
                 'Les changements de statut et suppressions passent uniquement par les callables admin.',
             icon: Icons.gavel_rounded,
@@ -292,7 +292,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
               return AdminEmptyState(
                 title: 'Aucune offre a moderer',
                 message:
-                    'Aucune offre ne correspond aux filtres appliques pour le moment.',
+                    'Aucune offre ne correspond aux filtres appliqués pour le moment.',
                 icon: Icons.work_outline_rounded,
                 actionLabel: 'Recharger',
                 actionIcon: Icons.refresh_rounded,
@@ -323,7 +323,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                       value: '${filtered.length}',
                       icon: Icons.filter_alt_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Apres filtres',
+                      subtitle: 'Après filtres',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -335,7 +335,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Offres archivees',
+                      label: 'Offres archivées',
                       value: '$archivedCount',
                       icon: Icons.archive_outlined,
                       accentColor: AdminTheme.warning,
@@ -460,7 +460,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                                                   ),
                                                   const SizedBox(width: 8),
                                                   Text(
-                                                    'Statut: ${_statusLabel(status)}',
+                                                    'Statut : ${_statusLabel(status)}',
                                                   ),
                                                 ],
                                               ),

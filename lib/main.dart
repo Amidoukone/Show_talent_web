@@ -1,31 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:show_talent/Dashbord/admin_dashboard_screen.dart';
-import 'package:show_talent/Dashbord/admin_login.dart';
-import 'package:show_talent/Dashbord/admin_signup.dart';
-import 'package:show_talent/Dashbord/statistiques_screen.dart';
 import 'package:show_talent/theme/admin_theme.dart';
-import 'firebase_options.dart';
-import 'controller/event_controller.dart';
-import 'controller/offre_controller.dart';
-import 'controller/user_controller.dart';
-import 'controller/video_controller.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+import 'config/app_bootstrap.dart';
+import 'config/app_routes.dart';
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  Get.put(UserController());
-  Get.put(VideoController());
-  Get.put(OffreController());
-  Get.put(EventController());
-
-  runApp(const MyApp());
+Future<void> main() async {
+  runZonedGuarded(() async {
+    await AppBootstrap.initialize();
+    runApp(const MyApp());
+  }, AppBootstrap.reportZoneError);
 }
 
 class MyApp extends StatelessWidget {
@@ -47,13 +34,8 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
-      initialRoute: '/admin-login',
-      getPages: [
-        GetPage(name: '/admin-login', page: () => const AdminLoginScreen()),
-        GetPage(name: '/admin-dashboard', page: () => AdminDashboardScreen()),
-        GetPage(name: '/admin-signup', page: () => const AdminSignupScreen()),
-        GetPage(name: '/statistics', page: () => StatisticsScreen()),
-      ],
+      initialRoute: AppRoutes.adminLogin,
+      getPages: AppRoutes.pages,
     );
   }
 }

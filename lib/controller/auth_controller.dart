@@ -1,124 +1,76 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 
-import '../Dashbord/admin_dashboard_screen.dart';
-import '../Dashbord/admin_login.dart';
-import '../models/user.dart';
-import '../utils/admin_access_messages.dart';
-import '../utils/account_role_policy.dart';
+import '../models/admin_access_result.dart';
+import 'user_controller.dart';
 
 class AuthController extends GetxController {
-  static AuthController instance = Get.find();
+  AuthController({
+    FirebaseAuth? firebaseAuth,
+    UserController? userController,
+  })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+        _userController = userController ?? Get.find<UserController>();
 
-  late Rx<User?> _firebaseUser;
-  final Rx<AppUser?> _user = Rx<AppUser?>(null);
+  final FirebaseAuth _firebaseAuth;
+  final UserController _userController;
+  final Rx<User?> _firebaseUser = Rx<User?>(null);
 
-  AppUser? get user => _user.value;
+  User? get firebaseUser => _firebaseUser.value;
+  bool get hasAuthenticatedUser => firebaseUser != null;
 
   @override
   void onReady() {
     super.onReady();
-    _firebaseUser = Rx<User?>(FirebaseAuth.instance.currentUser);
-    _firebaseUser.bindStream(FirebaseAuth.instance.authStateChanges());
-    ever(_firebaseUser, _setInitialScreen);
+    _firebaseUser.bindStream(_firebaseAuth.authStateChanges());
+    ever<User?>(_firebaseUser, _handleAuthStateChanged);
+    _handleAuthStateChanged(_firebaseAuth.currentUser);
   }
 
-  Future<void> _setInitialScreen(User? firebaseUser) async {
+  void _handleAuthStateChanged(User? firebaseUser) {
     if (firebaseUser == null) {
-      _user.value = null;
-      Get.offAll(() => const AdminLoginScreen());
+      _userController.clearSessionState();
       return;
     }
 
-    final appUser = await getAppUserFromFirestore(firebaseUser.uid);
-    final grantedClaims = await _extractAdminClaims(firebaseUser);
+    _userController.refreshAdminClaims(firebaseUser: firebaseUser);
+  }
 
-    if (appUser != null &&
-        isAdminPortalOnlyRole(appUser.role) &&
-        !appUser.hasActiveAppBlock &&
-        appUser.authDisabled != true &&
-        grantedClaims.isNotEmpty) {
-      _user.value = appUser;
-      Get.offAll(() => AdminDashboardScreen());
-      return;
-    }
-
-    Get.snackbar(
-      'Accès refusé',
-      AdminAccessMessages.deniedForUser(
-        appUser,
-        hasClaims: grantedClaims.isNotEmpty,
-      ),
+  Future<AdminAccessResult> validateCurrentSession({
+    User? firebaseUser,
+    bool forceRefresh = false,
+    bool signOutOnFailure = false,
+  }) async {
+    final user = firebaseUser ?? _firebaseAuth.currentUser;
+    final result = await _userController.evaluateAdminAccess(
+      firebaseUser: user,
+      forceRefresh: forceRefresh,
     );
-    await FirebaseAuth.instance.signOut();
-    _user.value = null;
-    Get.offAll(() => const AdminLoginScreen());
-  }
 
-  Future<AppUser?> getAppUserFromFirestore(String uid) async {
-    try {
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (doc.exists) {
-        return AppUser.fromMap(doc.data() as Map<String, dynamic>);
-      }
-    } catch (error) {
-      Get.snackbar(
-        'Erreur',
-        'Impossible de récupérer les informations utilisateur : $error',
-      );
+    if (!result.isAuthorized && signOutOnFailure && user != null) {
+      await signOut();
     }
 
-    return null;
+    return result;
   }
 
-  Future<List<String>> _extractAdminClaims(User firebaseUser) async {
-    final tokenResult = await firebaseUser.getIdTokenResult(true);
-    final claims = Map<String, dynamic>.from(tokenResult.claims ?? const {});
-    return extractGrantedAdminClaims(claims);
-  }
+  Future<AdminAccessResult> loginAdmin({
+    required String email,
+    required String password,
+  }) async {
+    final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
 
-  Future<void> loginAdmin(String email, String password) async {
-    try {
-      if (email.isEmpty || password.isEmpty) {
-        Get.snackbar('Erreur', 'Veuillez remplir tous les champs requis.');
-        return;
-      }
-
-      final userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-
-      final appUser = await getAppUserFromFirestore(userCredential.user!.uid);
-      final grantedClaims = await _extractAdminClaims(userCredential.user!);
-
-      if (appUser != null &&
-          isAdminPortalOnlyRole(appUser.role) &&
-          !appUser.hasActiveAppBlock &&
-          appUser.authDisabled != true &&
-          grantedClaims.isNotEmpty) {
-        _user.value = appUser;
-        Get.offAll(() => AdminDashboardScreen());
-        return;
-      }
-
-      Get.snackbar(
-        'Accès refusé',
-        AdminAccessMessages.deniedForUser(
-          appUser,
-          hasClaims: grantedClaims.isNotEmpty,
-        ),
-      );
-      await FirebaseAuth.instance.signOut();
-      _user.value = null;
-    } catch (error) {
-      Get.snackbar('Erreur de connexion', 'Connexion impossible : $error');
-    }
+    return validateCurrentSession(
+      firebaseUser: userCredential.user,
+      forceRefresh: true,
+      signOutOnFailure: true,
+    );
   }
 
   Future<void> signOut() async {
-    await FirebaseAuth.instance.signOut();
-    _user.value = null;
-    Get.offAll(() => const AdminLoginScreen());
+    await _firebaseAuth.signOut();
+    _userController.clearSessionState();
   }
 }

@@ -3,11 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../controller/user_controller.dart';
+import '../config/app_routes.dart';
+import '../controller/auth_controller.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_ui.dart';
-import 'admin_dashboard_screen.dart';
-import 'admin_signup.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -19,7 +18,7 @@ class AdminLoginScreen extends StatefulWidget {
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final UserController userController = Get.find<UserController>();
+  final AuthController _authController = Get.find<AuthController>();
 
   bool _obscurePassword = true;
 
@@ -55,22 +54,17 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     }
 
     try {
-      final userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-
-      final accessResult = await userController.evaluateAdminAccess(
-        firebaseUser: userCredential.user!,
-        forceRefresh: true,
+      final accessResult = await _authController.loginAdmin(
+        email: email,
+        password: password,
       );
 
       if (!accessResult.isAuthorized) {
         Get.snackbar('Accès refusé', accessResult.message ?? 'Accès refusé.');
-        await FirebaseAuth.instance.signOut();
-        userController.clearSessionState();
         return;
       }
 
-      Get.offAll(() => AdminDashboardScreen());
+      Get.offAllNamed(AppRoutes.adminDashboard);
     } on FirebaseAuthException catch (error) {
       Get.snackbar(
         'Connexion impossible',
@@ -118,10 +112,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             },
                             onSubmit: _loginAdmin,
                             onOpenPreview: kDebugMode
-                                ? () => Get.offAll(
-                                      () => AdminDashboardScreen(
-                                        previewMode: true,
-                                      ),
+                                ? () => Get.offAllNamed(
+                                      AppRoutes.adminDashboard,
+                                      arguments: const {'previewMode': true},
                                     )
                                 : null,
                           );
@@ -469,7 +462,7 @@ class _LoginFormPanel extends StatelessWidget {
           Align(
             alignment: Alignment.center,
             child: TextButton(
-              onPressed: () => Get.to(() => const AdminSignupScreen()),
+              onPressed: () => Get.toNamed(AppRoutes.adminSignup),
               child: const Text('Accès admin géré par la plateforme'),
             ),
           ),

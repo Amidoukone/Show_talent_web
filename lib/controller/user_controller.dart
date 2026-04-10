@@ -195,12 +195,6 @@ class UserController extends GetxController {
     }
   }
 
-  Future<void> signOut() async {
-    await FirebaseAuth.instance.signOut();
-    clearSessionState();
-    Get.offAllNamed('/admin-login');
-  }
-
   AppUser _parseUserData(
     Map<String, dynamic> userData, {
     String? fallbackUid,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../config/app_routes.dart';
+import '../controller/auth_controller.dart';
 import '../controller/event_controller.dart';
 import '../controller/offre_controller.dart';
 import '../controller/user_controller.dart';
@@ -24,6 +26,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
   final bool previewMode;
 
+  final AuthController authController = Get.find<AuthController>();
   final UserController userController = Get.find<UserController>();
   final VideoController videoController = Get.find<VideoController>();
   final OffreController offreController = Get.find<OffreController>();
@@ -133,8 +136,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       return;
     }
 
-    final accessResult = await widget.userController.evaluateAdminAccess(
+    final accessResult = await widget.authController.validateCurrentSession(
       forceRefresh: true,
+      signOutOnFailure: true,
     );
 
     if (!mounted) {
@@ -143,7 +147,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     if (!accessResult.isAuthorized) {
       Get.snackbar('Accès refusé', accessResult.message ?? 'Accès refusé.');
-      await widget.userController.signOut();
+      Get.offAllNamed(AppRoutes.adminLogin);
       return;
     }
 
@@ -440,12 +444,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 color: AdminTheme.cyan,
               ),
               OutlinedButton.icon(
-                onPressed: () => Get.toNamed('/statistics'),
+                onPressed: () => Get.toNamed(AppRoutes.statistics),
                 icon: const Icon(Icons.auto_graph_rounded),
                 label: const Text('Vue statistiques'),
               ),
               ElevatedButton.icon(
-                onPressed: () => widget.userController.signOut(),
+                onPressed: () async {
+                  await widget.authController.signOut();
+                  Get.offAllNamed(AppRoutes.adminLogin);
+                },
                 icon: const Icon(Icons.logout_rounded),
                 label: const Text('Déconnexion'),
               ),

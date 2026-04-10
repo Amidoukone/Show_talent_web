@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../config/app_routes.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_ui.dart';
-import 'admin_login.dart';
 
 class AdminSignupScreen extends StatefulWidget {
   const AdminSignupScreen({super.key});
@@ -115,9 +115,8 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                                   runSpacing: 12,
                                   children: [
                                     OutlinedButton.icon(
-                                      onPressed: () => Get.offAll(
-                                        () => const AdminLoginScreen(),
-                                      ),
+                                      onPressed: () =>
+                                          Get.offAllNamed(AppRoutes.adminLogin),
                                       icon: const Icon(
                                         Icons.arrow_back_rounded,
                                       ),
@@ -126,9 +125,8 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                                       ),
                                     ),
                                     ElevatedButton.icon(
-                                      onPressed: () => Get.offAll(
-                                        () => const AdminLoginScreen(),
-                                      ),
+                                      onPressed: () =>
+                                          Get.offAllNamed(AppRoutes.adminLogin),
                                       icon: const Icon(Icons.login_rounded),
                                       label: const Text('Ouvrir le portail'),
                                     ),

@@ -124,4 +124,20 @@ class AdminContentService {
       fallbackMessage: "Suppression de l'événement impossible pour le moment.",
     );
   }
+
+  Future<AdminActionResponse> setContactIntakeFollowUp({
+    required String contactIntakeId,
+    required String status,
+    String note = '',
+  }) {
+    return _callable(
+      'adminSetContactIntakeFollowUp',
+      payload: <String, dynamic>{
+        'contactIntakeId': contactIntakeId.trim(),
+        'status': status.trim(),
+        'note': note.trim(),
+      },
+      fallbackMessage: 'Mise a jour du suivi agence impossible pour le moment.',
+    );
+  }
 }

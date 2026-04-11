@@ -54,33 +54,6 @@ class ManagedAccountService {
     return ManagedAccountProvisionResult.fromMap(data);
   }
 
-  Future<void> blockManagedAccount({
-    required String uid,
-    String? reason,
-    int? durationDays,
-  }) async {
-    await _callable(
-      'blockManagedAccount',
-      payload: <String, dynamic>{
-        'uid': uid,
-        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
-        if (durationDays != null && durationDays > 0)
-          'durationDays': durationDays,
-      },
-    );
-  }
-
-  Future<void> unblockManagedAccount({
-    required String uid,
-  }) async {
-    await _callable(
-      'unblockManagedAccount',
-      payload: <String, dynamic>{
-        'uid': uid,
-      },
-    );
-  }
-
   Future<void> deleteManagedAccount({
     required String uid,
   }) async {

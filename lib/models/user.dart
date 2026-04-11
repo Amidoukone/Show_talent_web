@@ -341,8 +341,7 @@ class AppUser {
     return !endsAt.isAfter(DateTime.now());
   }
 
-  bool get isEffectivelyActiveAccount =>
-      !hasActiveAppBlock && !authDisabled && emailVerified;
+  bool get isEffectivelyActiveAccount => !authDisabled && emailVerified;
 
   bool get isAdminPortalOnly => isAdminPortalOnlyRole(role);
   bool get hasManagedAccountRole => isManagedAccountRole(role);

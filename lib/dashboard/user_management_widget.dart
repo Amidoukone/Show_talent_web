@@ -17,34 +17,18 @@ import '../widgets/managed_account_invite_result_dialog.dart';
 class UserManagementWidget extends StatefulWidget {
   const UserManagementWidget({
     required this.selectedRole,
-    this.showBlockedUsers = false,
     super.key,
   });
 
   final String selectedRole;
-  final bool showBlockedUsers;
 
   @override
   State<UserManagementWidget> createState() => _UserManagementWidgetState();
 }
 
-class _BlockRequestDraft {
-  const _BlockRequestDraft({
-    required this.isTemporary,
-    required this.durationDays,
-    required this.reason,
-  });
-
-  final bool isTemporary;
-  final int? durationDays;
-  final String? reason;
-}
-
 class _UserManagementWidgetState extends State<UserManagementWidget> {
   static const int rowsPerPage = 4;
 
-  static const String _actionBlock = 'block';
-  static const String _actionUnblock = 'unblock';
   static const String _actionDelete = 'delete';
   static const String _actionDisableAuth = 'disable_auth';
   static const String _actionEnableAuth = 'enable_auth';
@@ -60,8 +44,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   int currentPage = 0;
   String? _actionInFlightUid;
   String? _actionInFlightLabel;
-
-  bool get _showBlockedUsers => widget.showBlockedUsers;
 
   @override
   void initState() {
@@ -92,41 +74,30 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     return user.createdByAdmin || isManagedAccountRole(user.role);
   }
 
-  Color get _panelAccentColor =>
-      _showBlockedUsers ? AdminTheme.warning : AdminTheme.accent;
+  Color get _panelAccentColor => AdminTheme.accent;
 
-  IconData get _rowLeadingIcon =>
-      _showBlockedUsers ? Icons.block_rounded : Icons.person_rounded;
+  IconData get _rowLeadingIcon => Icons.person_rounded;
 
-  Color get _rowLeadingColor =>
-      _showBlockedUsers ? AdminTheme.danger : AdminTheme.cyan;
+  Color get _rowLeadingColor => AdminTheme.cyan;
 
-  String get _headerBadge =>
-      _showBlockedUsers ? 'Comptes bloqués' : 'Opérations utilisateurs';
+  String get _headerBadge => 'Opérations utilisateurs';
 
-  String get _headerTitle =>
-      _showBlockedUsers ? 'Utilisateurs bloqués' : 'Gestion des utilisateurs';
+  String get _headerTitle => 'Gestion des utilisateurs';
 
-  String get _headerSubtitle => _showBlockedUsers
-      ? 'Contrôle du blocage applicatif, des statuts Auth et des actions correctives.'
-      : 'Recherche, rôles, statuts et actions admin centralisées.';
+  String get _headerSubtitle =>
+      'Recherche, rôles, statuts Auth et actions admin centralisées.';
 
-  String get _bannerTitle =>
-      _showBlockedUsers ? 'Règles de déblocage' : 'Règles de mutation';
+  String get _bannerTitle => 'Règles de modération';
 
-  String get _bannerMessage => _showBlockedUsers
-      ? 'Débloquer retire seulement le blocage applicatif. Les actions Auth restent séparées. Le changement de rôle et le renvoi d’invitation sont limités aux comptes gérés.'
-      : 'Toutes les mutations cross-user passent désormais par les callables du backend partagé. Blocage applicatif, Auth et activité restent distingués. Le changement de rôle et le renvoi d’invitation sont limités aux comptes gérés.';
+  String get _bannerMessage =>
+      'La modération passe désormais par la désactivation d’accès Auth ou par la suppression définitive du compte. Le changement de rôle et le renvoi d’invitation restent limités aux comptes gérés.';
 
-  String get _searchHint =>
-      _showBlockedUsers ? 'Rechercher un compte bloqué' : 'Rechercher un utilisateur';
+  String get _searchHint => 'Rechercher un utilisateur';
 
-  String get _emptyTitle =>
-      _showBlockedUsers ? 'Aucun utilisateur bloqué' : 'Aucun utilisateur trouvé';
+  String get _emptyTitle => 'Aucun utilisateur trouvé';
 
-  String get _emptyMessage => _showBlockedUsers
-      ? 'Aucun compte n’est actuellement signalé comme bloqué dans le portail.'
-      : 'Ajustez le filtre ou la recherche pour afficher des comptes.';
+  String get _emptyMessage =>
+      'Ajustez le filtre ou la recherche pour afficher des comptes.';
 
   void _setActionInFlight(AppUser user, String label) {
     setState(() {
@@ -238,136 +209,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
-  Future<_BlockRequestDraft?> _promptBlockReason(AppUser user) async {
-    final reasonController = TextEditingController();
-    final draft = await showDialog<_BlockRequestDraft>(
-      context: context,
-      builder: (BuildContext context) {
-        bool isTemporary = true;
-
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(blockManagedAccountAction.label),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Le compte ${user.email} sera retiré de la session mobile en cours. Choisissez une suspension temporaire ou un blocage permanent.',
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: isTemporary ? 'temporary_15' : 'permanent',
-                      decoration: const InputDecoration(
-                        labelText: 'Type de sanction',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'temporary_15',
-                          child: Text('Suspendre 15 jours'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'permanent',
-                          child: Text('Bloquer définitivement'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setDialogState(() {
-                          isTemporary = value != 'permanent';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: reasonController,
-                      maxLines: 3,
-                      textInputAction: TextInputAction.done,
-                      decoration: InputDecoration(
-                        labelText:
-                            'Motif visible par l’utilisateur (optionnel)',
-                        hintText: isTemporary
-                            ? 'Exemple : vidéo non adaptée, suspension de 15 jours'
-                            : 'Exemple : récidive grave, compte bloqué définitivement',
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Annuler'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(
-                    _BlockRequestDraft(
-                      isTemporary: isTemporary,
-                      durationDays: isTemporary ? 15 : null,
-                      reason: reasonController.text,
-                    ),
-                  ),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                  child: Text(isTemporary ? 'Suspendre' : 'Bloquer'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    reasonController.dispose();
-    return draft;
-  }
-
-  Future<void> _blockManagedAccount(AppUser user) async {
-    final draft = await _promptBlockReason(user);
-    if (draft == null) {
-      return;
-    }
-
-    final normalizedReason = draft.reason?.trim() ?? '';
-    await _runVoidAction(
-      user: user,
-      action: blockManagedAccountAction,
-      request: () => _managedAccountService.blockManagedAccount(
-        uid: user.uid,
-        reason: normalizedReason.isEmpty ? null : normalizedReason,
-        durationDays: draft.durationDays,
-      ),
-      successMessage: draft.isTemporary
-          ? 'Le compte ${user.email} est suspendu pendant ${draft.durationDays} jours. L’accès mobile est coupé immédiatement${normalizedReason.isEmpty ? '.' : ' et le motif sera affiché à l’utilisateur.'}'
-          : 'Le compte ${user.email} est bloqué définitivement. L’accès mobile est coupé immédiatement${normalizedReason.isEmpty ? '.' : ' et le motif sera affiché à l’utilisateur.'}',
-    );
-  }
-
-  Future<void> _unblockManagedAccount(AppUser user) async {
-    final confirmed = await _confirmAction(
-      title: unblockManagedAccountAction.label,
-      message:
-          'Cette action retablit l acces applicatif du compte ${user.email}. Si Firebase Auth reste desactive, la connexion restera refusee.',
-      confirmLabel: 'Debloquer',
-      confirmColor: Colors.green,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    await _runVoidAction(
-      user: user,
-      action: unblockManagedAccountAction,
-      request: () =>
-          _managedAccountService.unblockManagedAccount(uid: user.uid),
-      successMessage:
-          'L acces applicatif a ete retabli pour ${user.email}. Firebase Auth n a pas ete modifie.',
-    );
-  }
-
   Future<void> _deleteManagedAccount(AppUser user) async {
     final confirmed = await _confirmAction(
       title: deleteManagedAccountAction.label,
@@ -391,7 +232,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: disableManagedAccountAuthAction.label,
       message:
-          'Cette action désactive Firebase Auth pour ${user.email}. Si le compte est déjà bloqué applicativement, la session mobile restera également fermée.',
+          'Cette action désactive immédiatement l’accès Firebase Auth pour ${user.email}. La session mobile sera fermée et les prochaines connexions seront refusées avec un message cohérent.',
       confirmLabel: 'Désactiver Auth',
     );
     if (!confirmed) {
@@ -404,7 +245,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       request: () =>
           _managedAccountService.disableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'Firebase Auth a été désactivé pour ${user.email}. Le blocage applicatif n’a pas été modifié.',
+          'L’accès Auth a été désactivé pour ${user.email}. Le compte ne pourra plus se reconnecter tant qu’il ne sera pas réactivé.',
     );
   }
 
@@ -414,8 +255,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       action: enableManagedAccountAuthAction,
       request: () =>
           _managedAccountService.enableManagedAccountAuth(uid: user.uid),
-      successMessage:
-          'Firebase Auth a été réactivé pour ${user.email}. Le blocage applicatif n’a pas été modifié.',
+      successMessage: 'L’accès Auth a été réactivé pour ${user.email}.',
     );
   }
 
@@ -563,23 +403,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   List<PopupMenuEntry<String>> _buildActionMenuItems(AppUser user) {
     final items = <PopupMenuEntry<String>>[
       PopupMenuItem(
-        value: _showBlockedUsers ? _actionUnblock : _actionBlock,
-        child: Row(
-          children: [
-            Icon(
-              _showBlockedUsers
-                  ? Icons.check_circle_outline_rounded
-                  : Icons.block_rounded,
-              size: 18,
-              color:
-                  _showBlockedUsers ? AdminTheme.success : AdminTheme.danger,
-            ),
-            const SizedBox(width: 8),
-            Text(_showBlockedUsers ? 'Debloquer' : 'Bloquer'),
-          ],
-        ),
-      ),
-      PopupMenuItem(
         value: user.authDisabled ? _actionEnableAuth : _actionDisableAuth,
         child: Row(
           children: [
@@ -646,12 +469,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   Future<void> _handleActionSelection(String value, AppUser user) async {
     switch (value) {
-      case _actionBlock:
-        await _blockManagedAccount(user);
-        break;
-      case _actionUnblock:
-        await _unblockManagedAccount(user);
-        break;
       case _actionDelete:
         await _deleteManagedAccount(user);
         break;
@@ -723,9 +540,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           AdminInfoBanner(
             title: _bannerTitle,
             message: _bannerMessage,
-            icon: _showBlockedUsers
-                ? Icons.gpp_maybe_outlined
-                : Icons.rule_folder_outlined,
+            icon: Icons.rule_folder_outlined,
             tone: AdminBannerTone.warning,
           ),
           Padding(
@@ -743,7 +558,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           ),
           Obx(() {
             final filteredUsers = userController.userList.where((user) {
-              final isBlocked = user.hasActiveAppBlock;
               final matchesRole =
                   selectedRole == 'Tous' || user.role == selectedRole;
               final normalizedQuery = searchQuery.toLowerCase();
@@ -751,9 +565,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   user.nom.toLowerCase().contains(normalizedQuery) ||
                       user.email.toLowerCase().contains(normalizedQuery);
 
-              return matchesRole &&
-                  matchesSearch &&
-                  (_showBlockedUsers ? isBlocked : !isBlocked);
+              return matchesRole && matchesSearch;
             }).toList();
 
             final totalPages = (filteredUsers.length / rowsPerPage).ceil();
@@ -771,9 +583,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               return AdminEmptyState(
                 title: _emptyTitle,
                 message: _emptyMessage,
-                icon: _showBlockedUsers
-                    ? Icons.shield_outlined
-                    : Icons.person_search_rounded,
+                icon: Icons.person_search_rounded,
                 actionLabel: hasFilters
                     ? 'Réinitialiser les filtres'
                     : 'Recharger la liste',
@@ -798,37 +608,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 Wrap(
                   spacing: compact ? 10 : 12,
                   runSpacing: compact ? 10 : 12,
-                  children: _showBlockedUsers
-                      ? [
-                          AdminMiniStat(
-                            label: 'Comptes bloques',
-                            value: '${filteredUsers.length}',
-                            icon: Icons.block_rounded,
-                            accentColor: AdminTheme.danger,
-                            subtitle: 'File active',
-                            minWidth: compact ? 180 : 220,
-                          ),
-                          AdminMiniStat(
-                            label: 'Comptes geres',
-                            value: '$managedUsers',
-                            icon: Icons.manage_accounts_outlined,
-                            accentColor: AdminTheme.accent,
-                            subtitle: 'Parmi les bloques',
-                            minWidth: compact ? 180 : 220,
-                          ),
-                          AdminMiniStat(
-                            label: 'Auth desactivee',
-                            value:
-                                '${filteredUsers.where((user) => user.authDisabled).length}',
-                            icon: Icons.lock_person_outlined,
-                            accentColor: AdminTheme.warning,
-                            subtitle: 'Couches cumulees',
-                            minWidth: compact ? 180 : 220,
-                          ),
-                        ]
-                      : [
+                  children: [
                     AdminMiniStat(
-                      label: 'Resultats',
+                      label: 'Résultats',
                       value: '${filteredUsers.length}',
                       icon: Icons.groups_2_rounded,
                       accentColor: AdminTheme.cyan,
@@ -840,7 +622,16 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       value: '$managedUsers',
                       icon: Icons.manage_accounts_outlined,
                       accentColor: AdminTheme.accent,
-                      subtitle: 'Dans la selection',
+                      subtitle: 'Dans la sélection',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Auth désactivée',
+                      value:
+                          '${filteredUsers.where((user) => user.authDisabled).length}',
+                      icon: Icons.lock_person_outlined,
+                      accentColor: AdminTheme.warning,
+                      subtitle: 'Accès suspendus',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(

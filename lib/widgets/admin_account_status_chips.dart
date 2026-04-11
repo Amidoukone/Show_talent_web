@@ -15,28 +15,6 @@ class AdminAccountStatusChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final statuses = <_StatusItem>[];
 
-    if (user.hasTemporaryBlock) {
-      statuses.add(
-        _StatusItem(
-          label: user.hasExpiredTemporaryBlock
-              ? 'suspension expirée'
-              : 'suspendu ${_formatBlockedUntil(user.blockedUntil)}',
-          backgroundColor: user.hasExpiredTemporaryBlock
-              ? const Color(0x334A655C)
-              : const Color(0x33FF7E8A),
-          textColor: user.hasExpiredTemporaryBlock
-              ? AdminTheme.textMuted
-              : AdminTheme.danger,
-        ),
-      );
-    } else if (user.hasPermanentBlock) {
-      statuses.add(const _StatusItem(
-        label: 'bloqué',
-        backgroundColor: Color(0x33FF7E8A),
-        textColor: AdminTheme.danger,
-      ));
-    }
-
     if (user.authDisabled) {
       statuses.add(const _StatusItem(
         label: 'auth désactivée',
@@ -85,18 +63,6 @@ class AdminAccountStatusChips extends StatelessWidget {
         );
       }).toList(),
     );
-  }
-
-  String _formatBlockedUntil(DateTime? value) {
-    if (value == null) {
-      return 'temporairement';
-    }
-
-    final normalized = value.toLocal();
-    final day = normalized.day.toString().padLeft(2, '0');
-    final month = normalized.month.toString().padLeft(2, '0');
-    final year = normalized.year.toString();
-    return 'jusqu’au $day/$month/$year';
   }
 }
 

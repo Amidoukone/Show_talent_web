@@ -29,29 +29,6 @@ const AdminCallableActionDescriptor provisionManagedAccountAction =
   isConnectedInUi: true,
 );
 
-const AdminCallableActionDescriptor blockManagedAccountAction =
-    AdminCallableActionDescriptor(
-  id: 'block_managed_account',
-  label: 'Suspendre ou bloquer un compte',
-  callableName: 'blockManagedAccount',
-  summary:
-      'Suspend temporairement ou bloque durablement un compte sans écriture Firestore cross-user côté client.',
-  uiSurfaces: ['Gestion des utilisateurs'],
-  isAvailableInBackend: true,
-  isConnectedInUi: true,
-);
-
-const AdminCallableActionDescriptor unblockManagedAccountAction =
-    AdminCallableActionDescriptor(
-  id: 'unblock_managed_account',
-  label: 'Débloquer un compte',
-  callableName: 'unblockManagedAccount',
-  summary: 'Retire seulement le blocage applicatif d’un compte géré.',
-  uiSurfaces: ['Utilisateurs bloqués'],
-  isAvailableInBackend: true,
-  isConnectedInUi: true,
-);
-
 const AdminCallableActionDescriptor deleteManagedAccountAction =
     AdminCallableActionDescriptor(
   id: 'delete_managed_account',
@@ -59,7 +36,7 @@ const AdminCallableActionDescriptor deleteManagedAccountAction =
   callableName: 'deleteManagedAccount',
   summary:
       'Suppression admin effectuée via backend partagé, sans mutation client de /users.',
-  uiSurfaces: ['Gestion des utilisateurs', 'Utilisateurs bloqués'],
+  uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -71,7 +48,7 @@ const AdminCallableActionDescriptor changeManagedAccountRoleAction =
   callableName: 'changeManagedAccountRole',
   summary:
       'Change le rôle d’un compte géré via backend, sans modification client directe de /users.',
-  uiSurfaces: ['Gestion des utilisateurs', 'Utilisateurs bloqués'],
+  uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -82,7 +59,7 @@ const AdminCallableActionDescriptor resendManagedAccountInviteAction =
   label: 'Renvoyer l’invitation',
   callableName: 'resendManagedAccountInvite',
   summary: 'Régénérer ou renvoyer les liens d’onboarding d’un compte géré.',
-  uiSurfaces: ['Gestion des utilisateurs', 'Utilisateurs bloqués'],
+  uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -93,8 +70,8 @@ const AdminCallableActionDescriptor disableManagedAccountAuthAction =
   label: 'Désactiver Auth',
   callableName: 'disableManagedAccountAuth',
   summary:
-      'Désactive seulement Firebase Auth sans changer le blocage applicatif.',
-  uiSurfaces: ['Gestion des utilisateurs', 'Utilisateurs bloqués'],
+      'Désactive immédiatement Firebase Auth pour fermer la session et refuser les prochaines connexions.',
+  uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -104,9 +81,8 @@ const AdminCallableActionDescriptor enableManagedAccountAuthAction =
   id: 'enable_managed_account_auth',
   label: 'Réactiver Auth',
   callableName: 'enableManagedAccountAuth',
-  summary:
-      'Réactive seulement Firebase Auth sans modifier le blocage applicatif.',
-  uiSurfaces: ['Gestion des utilisateurs', 'Utilisateurs bloqués'],
+  summary: 'Réactive Firebase Auth pour rétablir les connexions du compte.',
+  uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -125,8 +101,6 @@ const AdminCallableActionDescriptor updateManagedAccountProfileAction =
 
 const List<AdminCallableActionDescriptor> adminCallableActions = [
   provisionManagedAccountAction,
-  blockManagedAccountAction,
-  unblockManagedAccountAction,
   deleteManagedAccountAction,
   changeManagedAccountRoleAction,
   resendManagedAccountInviteAction,

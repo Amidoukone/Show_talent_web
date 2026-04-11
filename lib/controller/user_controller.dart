@@ -169,15 +169,6 @@ class UserController extends GetxController {
         );
       }
 
-      if (appUser.hasActiveAppBlock) {
-        clearSessionState();
-        return AdminAccessResult.denied(
-          appUser.hasTemporaryBlock
-              ? AdminAccessMessages.temporaryBlocked
-              : AdminAccessMessages.blocked,
-        );
-      }
-
       if (appUser.authDisabled) {
         clearSessionState();
         return const AdminAccessResult.denied(

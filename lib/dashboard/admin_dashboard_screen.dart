@@ -3,16 +3,18 @@ import 'package:get/get.dart';
 
 import '../config/app_routes.dart';
 import '../controller/auth_controller.dart';
+import '../controller/contact_intake_controller.dart';
 import '../controller/event_controller.dart';
 import '../controller/offre_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
+import '../models/contact_intake.dart';
 import '../models/event.dart';
 import '../models/offre.dart';
 import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
 import '../widgets/admin_ui.dart';
-import 'blocked_users_widget.dart';
+import 'contact_intake_management_widget.dart';
 import 'event_management_widget.dart';
 import 'managed_accounts_widget.dart';
 import 'offer_management_widget.dart';
@@ -31,6 +33,8 @@ class AdminDashboardScreen extends StatefulWidget {
   final VideoController videoController = Get.find<VideoController>();
   final OffreController offreController = Get.find<OffreController>();
   final EventController eventController = Get.find<EventController>();
+  final ContactIntakeController contactIntakeController =
+      Get.find<ContactIntakeController>();
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -73,9 +77,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       icon: Icons.event_note_rounded,
     ),
     _DashboardItem(
-      title: 'Utilisateurs bloqués',
-      subtitle: 'Déblocage, statut Auth et revue des comptes restreints.',
-      icon: Icons.block_rounded,
+      title: 'Mise en relation',
+      subtitle: 'Suivi agence des premiers contacts qualifies.',
+      icon: Icons.support_agent_rounded,
     ),
     _DashboardItem(
       title: 'Statistiques',
@@ -98,7 +102,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       const VideoReportedWidget(),
       const OfferManagementWidget(),
       const EventManagementWidget(),
-      const BlockedUsersWidget(),
+      const ContactIntakeManagementWidget(),
       StatisticsOverviewPanel(
         userController: widget.userController,
         videoController: widget.videoController,
@@ -489,24 +493,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final videos = widget.videoController.videoList;
       final offers = widget.offreController.offres;
       final events = widget.eventController.events;
+      final contactIntakes = widget.contactIntakeController.contactIntakes;
       final managedCount = users
           .where(
             (user) => user.createdByAdmin || isManagedAccountRole(user.role),
           )
           .length;
       final reportedCount = widget.videoController.getReportedVideos().length;
-      final blockedCount = users.where((user) => user.hasActiveAppBlock).length;
+      final authDisabledCount = users.where((user) => user.authDisabled).length;
       final openOffers = offers
           .where((offre) => Offre.normalizeStatus(offre.statut) == 'ouverte')
           .length;
       final openEvents = events
           .where((event) => Event.normalizeStatus(event.statut) == 'ouvert')
           .length;
+      final newLeadCount = contactIntakes
+          .where(
+            (intake) =>
+                AgencyFollowUpStatus.normalize(intake.agencyFollowUpStatus) ==
+                AgencyFollowUpStatus.newLead,
+          )
+          .length;
 
       final totalUsers = users.length;
       final totalVideos = videos.length;
       final totalOffers = offers.length;
       final totalEvents = events.length;
+      final totalContactIntakes = contactIntakes.length;
 
       final cards = [
         AdminMetricCard(
@@ -549,12 +562,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           accentColor: AdminTheme.success,
         ),
         AdminMetricCard(
-          title: 'Blocages',
-          value: '$blockedCount',
-          subtitle: 'Comptes à surveiller',
-          icon: Icons.warning_amber_rounded,
-          progress: totalUsers == 0 ? 0 : blockedCount / totalUsers,
+          title: 'Auth désactivée',
+          value: '$authDisabledCount',
+          subtitle: 'Accès actuellement suspendus',
+          icon: Icons.lock_person_rounded,
+          progress: totalUsers == 0 ? 0 : authDisabledCount / totalUsers,
           accentColor: AdminTheme.warning,
+        ),
+        AdminMetricCard(
+          title: 'Mises en relation',
+          value: '$totalContactIntakes',
+          subtitle: '$newLeadCount nouveau(x) lead(s)',
+          icon: Icons.support_agent_rounded,
+          progress:
+              totalContactIntakes == 0 ? 0 : newLeadCount / totalContactIntakes,
+          accentColor: AdminTheme.accentSoft,
         ),
       ];
 

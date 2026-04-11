@@ -6,9 +6,6 @@ class AdminAccessMessages {
   static const String userNotFound = 'Utilisateur introuvable dans /users.';
   static const String roleDenied =
       "Votre compte n'est pas autorisé sur le portail admin.";
-  static const String temporaryBlocked =
-      'Votre compte est suspendu temporairement.';
-  static const String blocked = 'Votre compte est bloqué.';
   static const String authDisabled =
       'Firebase Auth est désactivé pour ce compte.';
   static const String missingClaims =
@@ -23,12 +20,6 @@ class AdminAccessMessages {
     }
     if (!isAdminPortalOnlyRole(appUser.role)) {
       return roleDenied;
-    }
-    if (appUser.hasTemporaryBlock) {
-      return temporaryBlocked;
-    }
-    if (appUser.hasActiveAppBlock) {
-      return blocked;
     }
     if (appUser.authDisabled) {
       return authDisabled;

@@ -170,12 +170,4 @@ class VideoController extends GetxController {
     }
     return null;
   }
-
-  Future<void> blockUser(String userId) async {
-    Get.snackbar('Succès', 'Utilisateur bloqué avec succès.');
-  }
-
-  Future<void> unblockUser(String userId) async {
-    Get.snackbar('Succès', 'Utilisateur débloqué avec succès.');
-  }
 }

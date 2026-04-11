@@ -54,7 +54,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
       final users = userController.userList;
       final videos = videoController.videoList;
       final reportedVideos = videoController.getReportedVideos();
-      final blockedUsers = users.where((user) => user.hasActiveAppBlock).length;
+      final authDisabledUsers = users.where((user) => user.authDisabled).length;
       final managedUsers = users
           .where(
             (user) => user.createdByAdmin || isManagedAccountRole(user.role),
@@ -69,7 +69,8 @@ class StatisticsOverviewPanel extends StatelessWidget {
           totalVideos == 0 ? 0.0 : reportedVideos.length / totalVideos;
       final managedRate = totalUsers == 0 ? 0.0 : managedUsers / totalUsers;
       final activeRate = totalUsers == 0 ? 0.0 : activeUsers / totalUsers;
-      final blockedRate = totalUsers == 0 ? 0.0 : blockedUsers / totalUsers;
+      final disabledRate =
+          totalUsers == 0 ? 0.0 : authDisabledUsers / totalUsers;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,10 +129,10 @@ class StatisticsOverviewPanel extends StatelessWidget {
                 width: 280,
                 child: AdminMetricCard(
                   title: 'Alertes moderation',
-                  value: '$blockedUsers',
-                  subtitle: 'Utilisateurs bloques',
-                  icon: Icons.report_gmailerrorred_rounded,
-                  progress: blockedRate,
+                  value: '$authDisabledUsers',
+                  subtitle: 'Accès Auth désactivés',
+                  icon: Icons.lock_person_rounded,
+                  progress: disabledRate,
                   accentColor: AdminTheme.warning,
                 ),
               ),
@@ -165,7 +166,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                             managedUsers.toDouble(),
                             totalVideos.toDouble(),
                             reportedVideos.length.toDouble(),
-                            blockedUsers.toDouble(),
+                            authDisabledUsers.toDouble(),
                           ].fold<double>(10, (current, value) {
                             return value > current ? value + 2 : current;
                           }),
@@ -212,7 +213,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                                     'Gérés',
                                     'Vidéos',
                                     'Signalés',
-                                    'Bloqués',
+                                    'Auth off',
                                   ];
 
                                   return Padding(
@@ -236,7 +237,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                             _barGroup(2, totalVideos, AdminTheme.accentSoft),
                             _barGroup(
                                 3, reportedVideos.length, AdminTheme.warning),
-                            _barGroup(4, blockedUsers, AdminTheme.danger),
+                            _barGroup(4, authDisabledUsers, AdminTheme.danger),
                           ],
                         ),
                       ),
@@ -282,9 +283,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                         _SignalRow(
-                          label: 'Utilisateurs bloqués',
-                          value: '${(blockedRate * 100).round()}%',
-                          progress: blockedRate,
+                          label: 'Auth désactivée',
+                          value: '${(disabledRate * 100).round()}%',
+                          progress: disabledRate,
                           color: AdminTheme.danger,
                         ),
                       ],

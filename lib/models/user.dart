@@ -11,7 +11,6 @@ class AppUser {
   String role;
   String photoProfil;
   bool estActif;
-  bool estBloque;
   bool authDisabled;
   bool emailVerified;
   bool createdByAdmin;
@@ -21,9 +20,6 @@ class AppUser {
   DateTime dernierLogin;
   DateTime? emailVerifiedAt;
   String? phone;
-  String? blockedReason;
-  DateTime? blockedUntil;
-  String? blockMode;
   String? authDisabledReason;
   String? country;
   String? city;
@@ -63,7 +59,6 @@ class AppUser {
     required this.role,
     required this.photoProfil,
     required this.estActif,
-    required this.estBloque,
     this.authDisabled = false,
     this.emailVerified = false,
     this.createdByAdmin = false,
@@ -73,9 +68,6 @@ class AppUser {
     required this.dernierLogin,
     this.emailVerifiedAt,
     this.phone,
-    this.blockedReason,
-    this.blockedUntil,
-    this.blockMode,
     this.authDisabledReason,
     this.country,
     this.city,
@@ -172,7 +164,6 @@ class AppUser {
       role: normalizedRole.isEmpty ? 'utilisateur' : normalizedRole,
       photoProfil: map['photoProfil']?.toString() ?? '',
       estActif: map['estActif'] as bool? ?? true,
-      estBloque: map['estBloque'] as bool? ?? false,
       authDisabled: map['authDisabled'] == true,
       emailVerified: map['emailVerified'] as bool? ?? false,
       createdByAdmin: map['createdByAdmin'] == true,
@@ -182,9 +173,6 @@ class AppUser {
       dernierLogin: parseDate(map['dernierLogin']),
       emailVerifiedAt: parseNullableDate(map['emailVerifiedAt']),
       phone: map['phone']?.toString(),
-      blockedReason: map['blockedReason']?.toString(),
-      blockedUntil: parseNullableDate(map['blockedUntil']),
-      blockMode: _normalizeBlockMode(map['blockMode']?.toString()),
       authDisabledReason: map['authDisabledReason']?.toString(),
       country: map['country']?.toString(),
       city: map['city']?.toString(),
@@ -251,7 +239,6 @@ class AppUser {
       'role': normalizeUserRole(role),
       'photoProfil': photoProfil,
       'estActif': estActif,
-      'estBloque': estBloque,
       'authDisabled': authDisabled,
       'emailVerified': emailVerified,
       'createdByAdmin': createdByAdmin,
@@ -262,10 +249,6 @@ class AppUser {
       'emailVerifiedAt':
           emailVerifiedAt != null ? Timestamp.fromDate(emailVerifiedAt!) : null,
       'phone': phone,
-      'blockedReason': blockedReason,
-      'blockedUntil':
-          blockedUntil != null ? Timestamp.fromDate(blockedUntil!) : null,
-      'blockMode': blockMode,
       'authDisabledReason': authDisabledReason,
       'country': country,
       'city': city,
@@ -308,39 +291,6 @@ class AppUser {
     };
   }
 
-  bool get hasTemporaryBlock => estBloque && blockMode == 'temporary';
-  bool get hasPermanentBlock => estBloque && !hasTemporaryBlock;
-
-  bool get hasActiveAppBlock {
-    if (!estBloque) {
-      return false;
-    }
-
-    if (!hasTemporaryBlock) {
-      return true;
-    }
-
-    final endsAt = blockedUntil;
-    if (endsAt == null) {
-      return true;
-    }
-
-    return endsAt.isAfter(DateTime.now());
-  }
-
-  bool get hasExpiredTemporaryBlock {
-    if (!hasTemporaryBlock) {
-      return false;
-    }
-
-    final endsAt = blockedUntil;
-    if (endsAt == null) {
-      return false;
-    }
-
-    return !endsAt.isAfter(DateTime.now());
-  }
-
   bool get isEffectivelyActiveAccount => !authDisabled && emailVerified;
 
   bool get isAdminPortalOnly => isAdminPortalOnlyRole(role);
@@ -368,18 +318,5 @@ class AppUser {
       final normalizedValue = value?.trim().toLowerCase() ?? '';
       return normalizedValue.contains(normalizedQuery);
     });
-  }
-
-  static String? _normalizeBlockMode(String? value) {
-    final normalized = value?.trim().toLowerCase();
-    if (normalized == null || normalized.isEmpty) {
-      return null;
-    }
-
-    if (normalized == 'temporary' || normalized == 'permanent') {
-      return normalized;
-    }
-
-    return null;
   }
 }

@@ -96,7 +96,6 @@ L application mobile publique :
 - autorise l inscription uniquement pour `joueur` et `fan`
 - refuse la creation client-side de `club`, `recruteur`, `agent`
 - refuse la connexion si `/users/{uid}` est absent
-- refuse la connexion si `estBloque == true`
 - refuse la connexion si `authDisabled == true`
 - refuse les comptes reserves au portail admin
 
@@ -108,7 +107,6 @@ Le portail admin :
 - exige un document `/users/{uid}`
 - exige `role == 'admin'`
 - exige au moins un claim `admin|platformAdmin|superAdmin`
-- refuse `estBloque == true`
 - refuse `authDisabled == true`
 - ne cree plus d admins cote client
 - ne cree plus directement `club`, `recruteur`, `agent` cote client
@@ -118,8 +116,6 @@ Le portail admin :
 Toutes les operations sensibles passent par les callables backend partagees :
 
 - `provisionManagedAccount`
-- `blockManagedAccount`
-- `unblockManagedAccount`
 - `deleteManagedAccount`
 - `changeManagedAccountRole`
 - `resendManagedAccountInvite`
@@ -147,7 +143,6 @@ Le bootstrap doit :
 Le document Firestore admin attendu :
 
 - `role: 'admin'`
-- `estBloque: false`
 - `authDisabled: false`
 - `createdByAdmin: false`
 
@@ -204,9 +199,9 @@ The script will:
 
 Important details:
 
-- The dashboard only accepts the account if `/users/{uid}` exists, `estBloque`
-  is `false`, `authDisabled` is `false`, `role` is `admin`, and one of the
-  custom claims `admin`, `platformAdmin`, or `superAdmin` is present.
+- The dashboard only accepts the account if `/users/{uid}` exists,
+  `authDisabled` is `false`, `role` is `admin`, and one of the custom claims
+  `admin`, `platformAdmin`, or `superAdmin` is present.
 - Re-running the script is safe: it updates the Auth user, normalizes the admin
   claims, and upserts the Firestore profile.
 - Keep the Firestore role as `admin` unless you intentionally need another

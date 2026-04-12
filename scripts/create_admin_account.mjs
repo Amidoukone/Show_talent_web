@@ -221,7 +221,6 @@ async function upsertFirestoreProfile(firestore, userRecord, config) {
     role: config.role,
     photoProfil: existingData?.photoProfil ?? '',
     estActif: derivedEstActif,
-    estBloque: false,
     authDisabled: false,
     createdByAdmin: existingData?.createdByAdmin ?? false,
     followers: existingData?.followers ?? 0,
@@ -288,7 +287,7 @@ async function main() {
   console.log(`Custom claim active : ${config.claim}`);
   console.log('');
   console.log(
-    'Le dashboard admin acceptera la connexion si /users/{uid} existe, si role == admin, si estBloque == false, si authDisabled == false et si le custom claim est present.',
+    'Le dashboard admin acceptera la connexion si /users/{uid} existe, si role == admin, si authDisabled == false et si le custom claim est present.',
   );
 }
 

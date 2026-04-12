@@ -48,7 +48,6 @@ Le mobile doit refuser :
 
 - tout signup autre que `joueur|fan`
 - tout compte Auth sans `/users/{uid}`
-- tout compte avec `estBloque == true`
 - tout compte avec `authDisabled == true`
 - tout compte reserve au portail admin
 
@@ -60,7 +59,6 @@ Le portail admin doit refuser l acces si une seule condition echoue :
 - `/users/{uid}` absent
 - `role != 'admin'`
 - absence de claim `admin|platformAdmin|superAdmin`
-- `estBloque == true`
 - `authDisabled == true`
 
 ## Bootstrap d un operateur admin
@@ -89,7 +87,6 @@ Resultat attendu :
 Document coherent attendu :
 
 - `role: 'admin'`
-- `estBloque: false`
 - `authDisabled: false`
 - `createdByAdmin: false`
 
@@ -126,8 +123,6 @@ Regle :
 
 Uniquement via backend partage :
 
-- blocage : `blockManagedAccount`
-- deblocage : `unblockManagedAccount`
 - desactivation Auth : `disableManagedAccountAuth`
 - reactivation Auth : `enableManagedAccountAuth`
 - renvoi invitation : `resendManagedAccountInvite`
@@ -150,7 +145,6 @@ Voir la sequence detaillee :
 - login admin reussi avec un operateur valide
 - refus d acces sans claim admin
 - refus d acces avec `role != 'admin'`
-- refus d acces avec `estBloque == true`
 - refus d acces avec `authDisabled == true`
 - succes de `provisionManagedAccount`
 - presence du compte dans Auth
@@ -159,8 +153,6 @@ Voir la sequence detaillee :
 - bon fonctionnement des liens mot de passe et verification e-mail
 - connexion mobile possible pour `club|recruteur|agent` apres verification e-mail
 - redirection mobile vers verification e-mail tant que `emailVerified == false`
-- succes de `blockManagedAccount`
-- succes de `unblockManagedAccount`
 - succes de `disableManagedAccountAuth`
 - succes de `enableManagedAccountAuth`
 - succes de `resendManagedAccountInvite`

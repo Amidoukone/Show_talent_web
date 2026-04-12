@@ -47,7 +47,6 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             role: '',
             photoProfil: '',
             estActif: true,
-            estBloque: false,
             authDisabled: false,
             createdByAdmin: false,
             followers: 0,

@@ -36,9 +36,6 @@ void main() {
           'followings': 0,
         },
       ],
-      'blockedReason': 'contenu non conforme',
-      'blockMode': 'temporary',
-      'blockedUntil': '2026-04-22T10:00:00.000Z',
       'authDisabledReason': 'fraude detectee',
     });
 
@@ -49,43 +46,44 @@ void main() {
     expect(user.followersList, ['u1', '2', 'true']);
     expect(user.videosPubliees, hasLength(1));
     expect(user.joueursSuivis, hasLength(1));
-    expect(user.blockedReason, 'contenu non conforme');
-    expect(user.blockMode, 'temporary');
-    expect(user.blockedUntil, isNotNull);
-    expect(user.hasTemporaryBlock, isFalse);
     expect(user.authDisabledReason, 'fraude detectee');
   });
 
-  test('temporary suspensions are effective only before their end date', () {
+  test('isEffectivelyActiveAccount depends on authDisabled and emailVerified',
+      () {
     final active = AppUser.fromMap({
       'uid': 'user-1',
-      'nom': 'Active suspension',
+      'nom': 'Active account',
       'email': 'active@adfoot.org',
       'role': 'joueur',
       'followers': 0,
       'followings': 0,
-      'estBloque': true,
-      'blockMode': 'temporary',
-      'blockedUntil':
-          DateTime.now().add(const Duration(days: 3)).toIso8601String(),
+      'emailVerified': true,
+      'authDisabled': false,
     });
-    final expired = AppUser.fromMap({
+    final disabled = AppUser.fromMap({
       'uid': 'user-2',
-      'nom': 'Expired suspension',
-      'email': 'expired@adfoot.org',
+      'nom': 'Disabled account',
+      'email': 'disabled@adfoot.org',
       'role': 'joueur',
       'followers': 0,
       'followings': 0,
-      'estBloque': true,
-      'blockMode': 'temporary',
-      'blockedUntil':
-          DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+      'emailVerified': true,
+      'authDisabled': true,
+    });
+    final unverified = AppUser.fromMap({
+      'uid': 'user-3',
+      'nom': 'Unverified account',
+      'email': 'unverified@adfoot.org',
+      'role': 'joueur',
+      'followers': 0,
+      'followings': 0,
+      'emailVerified': false,
+      'authDisabled': false,
     });
 
-    expect(active.hasTemporaryBlock, isTrue);
-    expect(active.hasActiveAppBlock, isTrue);
-    expect(expired.hasTemporaryBlock, isTrue);
-    expect(expired.hasExpiredTemporaryBlock, isTrue);
-    expect(expired.hasActiveAppBlock, isFalse);
+    expect(active.isEffectivelyActiveAccount, isTrue);
+    expect(disabled.isEffectivelyActiveAccount, isFalse);
+    expect(unverified.isEffectivelyActiveAccount, isFalse);
   });
 }

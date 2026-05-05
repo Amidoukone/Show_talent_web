@@ -21,10 +21,11 @@ class AdminCallableActionDescriptor {
 const AdminCallableActionDescriptor provisionManagedAccountAction =
     AdminCallableActionDescriptor(
   id: 'provision_managed_account',
-  label: 'Provisionner un compte géré',
+  label: 'Provisionner un compte',
   callableName: 'provisionManagedAccount',
-  summary: 'Création ou mise à jour d’un compte club/recruteur/agent.',
-  uiSurfaces: ['Comptes gérés'],
+  summary:
+      'Creation ou mise a jour d un compte joueur, fan, club, recruteur ou agent.',
+  uiSurfaces: ['Provisionnement des comptes'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -44,10 +45,10 @@ const AdminCallableActionDescriptor deleteManagedAccountAction =
 const AdminCallableActionDescriptor changeManagedAccountRoleAction =
     AdminCallableActionDescriptor(
   id: 'change_managed_account_role',
-  label: 'Changer le rôle',
+  label: 'Changer le role',
   callableName: 'changeManagedAccountRole',
   summary:
-      'Change le rôle d’un compte géré via backend, sans modification client directe de /users.',
+      'Change le role d un compte cree par l administration via backend, sans modification client directe de /users.',
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -56,9 +57,9 @@ const AdminCallableActionDescriptor changeManagedAccountRoleAction =
 const AdminCallableActionDescriptor resendManagedAccountInviteAction =
     AdminCallableActionDescriptor(
   id: 'resend_managed_account_invite',
-  label: 'Renvoyer l’invitation',
+  label: 'Renvoyer l invitation',
   callableName: 'resendManagedAccountInvite',
-  summary: 'Régénérer ou renvoyer les liens d’onboarding d’un compte géré.',
+  summary: 'Regenerer ou renvoyer les liens d onboarding d un compte.',
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,

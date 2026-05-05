@@ -20,11 +20,11 @@ samples, guidance on mobile development, and a full API reference.
 Le projet mobile public et le projet admin utilisent le meme backend Firebase
 partage :
 
-- projectId : `show-talent-5987d`
+- projectId : determine par `APP_ENV` et `FIREBASE_PROJECT_ID`
 - Firebase Auth
 - Firestore
 - Cloud Functions
-- Storage : `show-talent-5987d.appspot.com`
+- Storage : aligne sur le projet Firebase actif
 
 Documents de reference associes :
 
@@ -65,13 +65,14 @@ dans Firebase/Google Cloud et purgez l historique du depot avant de pousser.
 
 ## Roles
 
-Roles publics autorises en self-signup :
+Creation publique :
+
+- aucune creation publique metier cote mobile
+
+Roles metier provisionnes par l administration :
 
 - `joueur`
 - `fan`
-
-Roles geres uniquement par l administration :
-
 - `club`
 - `recruteur`
 - `agent`
@@ -93,8 +94,7 @@ champ Firestore `role`.
 
 L application mobile publique :
 
-- autorise l inscription uniquement pour `joueur` et `fan`
-- refuse la creation client-side de `club`, `recruteur`, `agent`
+- n ouvre plus aucun parcours de creation publique pour les comptes metier
 - refuse la connexion si `/users/{uid}` est absent
 - refuse la connexion si `authDisabled == true`
 - refuse les comptes reserves au portail admin
@@ -109,7 +109,7 @@ Le portail admin :
 - exige au moins un claim `admin|platformAdmin|superAdmin`
 - refuse `authDisabled == true`
 - ne cree plus d admins cote client
-- ne cree plus directement `club`, `recruteur`, `agent` cote client
+- provisionne tous les comptes metier via `provisionManagedAccount`
 
 ## Cloud Functions admin
 
@@ -125,7 +125,16 @@ Toutes les operations sensibles passent par les callables backend partagees :
 
 Le portail admin doit appeler ces fonctions via :
 
-- `FirebaseFunctions.instanceFor(region: 'europe-west1')`
+- `FirebaseFunctions.instanceFor(region: AppEnvironmentConfig.functionsRegion)`
+
+## Multi-environnement
+
+Le portail admin est maintenant multi-environnement :
+
+- `lib/config/app_environment.dart` centralise `projectId`, `functionsRegion` et les `FirebaseOptions`
+- `lib/config/firebase_bootstrap.dart` initialise Firebase avec cet environnement
+- l ecran de provisionnement affiche clairement l environnement actif, le `projectId` cible et la region Functions
+- utiliser `APP_ENV`, `FIREBASE_PROJECT_ID` et `FIREBASE_FUNCTIONS_REGION` via `--dart-define` pour viser le bon projet
 
 ## Bootstrap admin
 
@@ -146,10 +155,10 @@ Le document Firestore admin attendu :
 - `authDisabled: false`
 - `createdByAdmin: false`
 
-## Comptes geres
+## Comptes provisionnes
 
-Les comptes `club`, `recruteur`, `agent` sont provisionnes uniquement via
-`provisionManagedAccount`.
+Les comptes `joueur`, `fan`, `club`, `recruteur` et `agent` sont provisionnes
+uniquement via `provisionManagedAccount`.
 
 Le portail admin recupere :
 
@@ -167,7 +176,7 @@ Le backend Firebase partage est la source d autorite unique pour :
 - Auth
 - custom claims
 - Firestore `/users`
-- cycle de vie des comptes geres
+- cycle de vie des comptes crees par l administration
 
 ## Admin account script
 

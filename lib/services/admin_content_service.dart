@@ -1,14 +1,16 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../config/app_environment.dart';
 import '../models/admin_action_response.dart';
 
 class AdminContentService {
   AdminContentService({FirebaseFunctions? functions})
       : _functions = functions ??
-            FirebaseFunctions.instanceFor(region: _functionsRegion);
+            FirebaseFunctions.instanceFor(
+              region: AppEnvironmentConfig.functionsRegion,
+            );
 
   final FirebaseFunctions _functions;
-  static const String _functionsRegion = 'europe-west1';
 
   String _buildFailureMessage(
     FirebaseFunctionsException error, {

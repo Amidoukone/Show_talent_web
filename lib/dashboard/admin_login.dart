@@ -242,9 +242,9 @@ class _LoginShowcasePanel extends StatelessWidget {
                   final cards = [
                     const _ShowcaseCard(
                       icon: Icons.people_alt_rounded,
-                      title: 'Comptes gérés',
+                      title: 'Comptes administres',
                       subtitle:
-                          'Provisionnement, claims et activation centralisés.',
+                          'Provisionnement, claims et activation centralises.',
                       accentColor: AdminTheme.accent,
                     ),
                     const _ShowcaseCard(
@@ -463,7 +463,7 @@ class _LoginFormPanel extends StatelessWidget {
             alignment: Alignment.center,
             child: TextButton(
               onPressed: () => Get.toNamed(AppRoutes.adminSignup),
-              child: const Text('Accès admin géré par la plateforme'),
+              child: const Text('Acces admin gere par la plateforme'),
             ),
           ),
         ],

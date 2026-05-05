@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../config/app_environment.dart';
 import '../controller/user_controller.dart';
-import '../firebase_options.dart';
 import '../models/managed_account_provision_result.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
@@ -15,21 +15,28 @@ import '../widgets/admin_ui.dart';
 import '../widgets/managed_account_invite_result_dialog.dart';
 
 class ManagedAccountsWidget extends StatefulWidget {
-  const ManagedAccountsWidget({super.key});
+  const ManagedAccountsWidget({
+    this.userController,
+    this.managedAccountService,
+    super.key,
+  });
+
+  final UserController? userController;
+  final ManagedAccountService? managedAccountService;
 
   @override
   State<ManagedAccountsWidget> createState() => _ManagedAccountsWidgetState();
 }
 
 class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
-  final UserController _userController = Get.find<UserController>();
-  final ManagedAccountService _managedAccountService = ManagedAccountService();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
-  String _selectedRole = managedAccountRoles.first;
+  late final UserController _userController;
+  late final ManagedAccountService _managedAccountService;
+  String _selectedRole = adminProvisionedRoles.first;
   bool _isSubmitting = false;
   String? _errorMessage;
   ManagedAccountProvisionResult? _lastResult;
@@ -38,6 +45,9 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   @override
   void initState() {
     super.initState();
+    _userController = widget.userController ?? Get.find<UserController>();
+    _managedAccountService =
+        widget.managedAccountService ?? ManagedAccountService();
     _userController.refreshAdminClaims(forceRefresh: true);
   }
 
@@ -61,7 +71,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     if (firebaseUser == null) {
       showAdminFeedback(
         title: 'Session expirée',
-        message: 'Reconnectez-vous avant de provisionner un compte géré.',
+        message: 'Reconnectez-vous avant de provisionner un compte.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -109,8 +119,8 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       showAdminFeedback(
         title: 'Provisionnement terminé',
         message: result.existingUser
-            ? 'Le compte géré existant a été mis à jour.'
-            : 'Le compte géré a été créé.',
+            ? 'Le compte existant a été mis à jour.'
+            : 'Le compte a été créé.',
         tone: AdminBannerTone.success,
       );
 
@@ -283,15 +293,15 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
         children: [
           const AdminSectionHeader(
             badge: 'Provisionnement',
-            title: 'Provisionnement des comptes gérés',
+            title: 'Provisionnement des comptes',
             subtitle:
                 "Création, mise à jour et restitution des liens d'activation via le backend partagé.",
           ),
           SizedBox(height: compact ? 10 : 12),
           Text(
-            'Projet Firebase partagé : '
-            '${DefaultFirebaseOptions.currentPlatform.projectId}. '
-            'Seuls les rôles club, recruteur et agent passent ici.',
+            'Environnement actif : ${AppEnvironmentConfig.environmentName}. '
+            'Projet Firebase : ${AppEnvironmentConfig.firebaseProjectId}. '
+            'Région Functions : ${AppEnvironmentConfig.functionsRegion}.',
             style: const TextStyle(color: AdminTheme.textSecondary),
           ),
           SizedBox(height: spacing),
@@ -308,6 +318,14 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                   subtitle: _userController.hasRequiredAdminClaims
                       ? 'Session valide'
                       : 'À vérifier',
+                  minWidth: compact ? 180 : 220,
+                ),
+                AdminMiniStat(
+                  label: 'Environnement',
+                  value: AppEnvironmentConfig.environmentName,
+                  icon: Icons.public_outlined,
+                  accentColor: AdminTheme.success,
+                  subtitle: AppEnvironmentConfig.firebaseProjectId,
                   minWidth: compact ? 180 : 220,
                 ),
                 AdminMiniStat(
@@ -346,7 +364,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
               icon: Icons.warning_amber_rounded,
               title: 'Claims admin manquants',
               message: 'Cette UI vérifie admin/platformAdmin/superAdmin avant '
-                  'd appeler provisionManagedAccount.',
+                  'd’appeler provisionManagedAccount.',
             );
           }),
           SizedBox(height: spacing),
@@ -354,7 +372,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
             backgroundColor: const Color(0xFFEAF4FF),
             icon: Icons.security,
             title: 'Contrat backend',
-            message: 'La création des comptes gérés ne passe plus par Auth '
+            message: 'La création des comptes ne passe plus par Auth '
                 'ou Firestore directement depuis le client admin.',
           ),
           SizedBox(height: spacing),
@@ -439,10 +457,10 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                           DropdownButtonFormField<String>(
                             value: _selectedRole,
                             decoration: const InputDecoration(
-                              labelText: 'Rôle géré',
+                              labelText: 'Rôle du compte',
                               prefixIcon: Icon(Icons.badge_outlined),
                             ),
-                            items: managedAccountRoles
+                            items: adminProvisionedRoles
                                 .map(
                                   (role) => DropdownMenuItem<String>(
                                     value: role,
@@ -476,7 +494,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                             label: Text(
                               _isSubmitting
                                   ? 'Provisionnement en cours...'
-                                  : 'Provisionner le compte géré',
+                                  : 'Provisionner le compte',
                             ),
                           ),
                         ],

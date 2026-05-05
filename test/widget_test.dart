@@ -1,16 +1,29 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:show_talent/utils/account_role_policy.dart';
 
 void main() {
-  test('public self-signup roles stay limited to joueur and fan', () {
-    expect(publicSelfSignupRoles, equals(const ['joueur', 'fan']));
+  test('public self signup roles are disabled', () {
+    expect(publicSelfSignupRoles, isEmpty);
+    expect(isPublicSelfSignupRole('joueur'), isFalse);
+    expect(isPublicSelfSignupRole('fan'), isFalse);
   });
 
-  test('managed account roles stay admin-provisioned', () {
+  test('admin provisioned roles cover all business accounts', () {
+    expect(
+      adminProvisionedRoles,
+      equals(const ['joueur', 'fan', 'club', 'recruteur', 'agent']),
+    );
+    expect(isAdminProvisionedRole('joueur'), isTrue);
+    expect(isAdminProvisionedRole('fan'), isTrue);
+  });
+
+  test('managed account roles stay limited to publisher roles', () {
     expect(
       managedAccountRoles,
       equals(const ['club', 'recruteur', 'agent']),
     );
+    expect(isManagedAccountRole('joueur'), isFalse);
+    expect(isManagedAccountRole('fan'), isFalse);
   });
 
   test('extractGrantedAdminClaims keeps only enabled admin claims', () {

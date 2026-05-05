@@ -1,11 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../firebase_options.dart';
 import 'app_bindings.dart';
+import 'firebase_bootstrap.dart';
 
 class AppBootstrap {
   AppBootstrap._();
@@ -14,9 +13,7 @@ class AppBootstrap {
     WidgetsFlutterBinding.ensureInitialized();
     _configureSystemUi();
 
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await FirebaseBootstrap.initialize();
     await FirebaseAuth.instance.setLanguageCode('fr');
 
     AppBindings.registerPermanentDependencies();

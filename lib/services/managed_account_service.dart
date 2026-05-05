@@ -1,15 +1,29 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../config/app_environment.dart';
 import '../models/managed_account_provision_result.dart';
 import '../utils/account_role_policy.dart';
 
-class ManagedAccountService {
-  ManagedAccountService({FirebaseFunctions? functions})
-      : _functions = functions ??
-            FirebaseFunctions.instanceFor(region: _functionsRegion);
+typedef ManagedAccountCallableExecutor = Future<Map<String, dynamic>> Function(
+  String callableName,
+  Map<String, dynamic> payload,
+);
 
-  final FirebaseFunctions _functions;
-  static const String _functionsRegion = 'europe-west1';
+class ManagedAccountService {
+  ManagedAccountService({
+    FirebaseFunctions? functions,
+    ManagedAccountCallableExecutor? callableExecutor,
+  })  : _functions = functions ??
+            (callableExecutor == null
+                ? FirebaseFunctions.instanceFor(
+                    region: AppEnvironmentConfig.functionsRegion,
+                  )
+                : null),
+        _callableExecutor = callableExecutor;
+
+  final FirebaseFunctions? _functions;
+  final ManagedAccountCallableExecutor? _callableExecutor;
+
   static const Set<String> _managedProfileTransportKeys = {
     'uid',
     'patch',
@@ -20,7 +34,16 @@ class ManagedAccountService {
     String callableName, {
     required Map<String, dynamic> payload,
   }) async {
-    final callable = _functions.httpsCallable(callableName);
+    if (_callableExecutor != null) {
+      return _callableExecutor(callableName, payload);
+    }
+
+    final functions = _functions;
+    if (functions == null) {
+      throw StateError('FirebaseFunctions n’est pas configuré.');
+    }
+
+    final callable = functions.httpsCallable(callableName);
     final response = await callable.call(payload);
     return Map<String, dynamic>.from(response.data as Map);
   }
@@ -33,11 +56,11 @@ class ManagedAccountService {
   }) async {
     final normalizedRole = normalizeUserRole(role);
 
-    if (!isManagedAccountRole(normalizedRole)) {
+    if (!isAdminProvisionedRole(normalizedRole)) {
       throw ArgumentError.value(
         role,
         'role',
-        'Le rôle doit être l’un de ${managedAccountRoles.join(', ')}.',
+        'Le rôle doit être l’un de ${adminProvisionedRoles.join(', ')}.',
       );
     }
 
@@ -71,11 +94,11 @@ class ManagedAccountService {
   }) async {
     final normalizedRole = normalizeUserRole(role);
 
-    if (!isManagedAccountRole(normalizedRole)) {
+    if (!isAdminProvisionedRole(normalizedRole)) {
       throw ArgumentError.value(
         role,
         'role',
-        'Le rôle doit être l’un de ${managedAccountRoles.join(', ')}.',
+        'Le rôle doit être l’un de ${adminProvisionedRoles.join(', ')}.',
       );
     }
 

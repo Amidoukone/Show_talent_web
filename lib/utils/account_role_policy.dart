@@ -1,4 +1,11 @@
-const List<String> publicSelfSignupRoles = ['joueur', 'fan'];
+const List<String> publicSelfSignupRoles = [];
+const List<String> adminProvisionedRoles = [
+  'joueur',
+  'fan',
+  'club',
+  'recruteur',
+  'agent',
+];
 const List<String> managedAccountRoles = ['club', 'recruteur', 'agent'];
 const List<String> opportunityPublisherRoles = ['club', 'recruteur', 'agent'];
 const List<String> adminPortalOnlyRoles = ['admin'];
@@ -13,6 +20,10 @@ bool isPublicSelfSignupRole(String? role) {
 
 bool isManagedAccountRole(String? role) {
   return managedAccountRoles.contains(normalizeUserRole(role));
+}
+
+bool isAdminProvisionedRole(String? role) {
+  return adminProvisionedRoles.contains(normalizeUserRole(role));
 }
 
 bool isOpportunityPublisherRole(String? role) {

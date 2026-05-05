@@ -44,7 +44,7 @@ void main() {
       expect(result.emailVerificationLink, isNull);
     });
 
-    test('buildRecommendedSteps orders password before email validation', () {
+    test('buildRecommendedSteps orders email validation before password', () {
       final result = ManagedAccountProvisionResult.fromMap(<String, dynamic>{
         'uid': 'uid-789',
         'email': 'recruteur@example.com',
@@ -56,14 +56,8 @@ void main() {
 
       final steps = result.buildRecommendedSteps();
 
-      expect(
-        steps,
-        contains('Ouvrir d’abord le lien de définition du mot de passe.'),
-      );
-      expect(
-        steps,
-        contains('Ouvrir ensuite le lien de validation d’e-mail.'),
-      );
+      expect(steps[0], 'Ouvrir d’abord le lien de validation d’e-mail.');
+      expect(steps[2], 'Ouvrir ensuite le lien de définition du mot de passe.');
       expect(steps.last, contains('recruteur@example.com'));
     });
 
@@ -87,9 +81,27 @@ void main() {
       expect(message, isNot(contains('Valider votre e-mail')));
     });
 
-    test('buildEmailMessage includes formal instructions and subject', () {
+    test('buildWhatsappMessage puts email validation before password', () {
       final result = ManagedAccountProvisionResult.fromMap(<String, dynamic>{
         'uid': 'uid-1000',
+        'email': 'agent@example.com',
+        'role': 'agent',
+        'existingUser': false,
+        'passwordSetupLink': 'https://reset-link',
+        'emailVerificationLink': 'https://verify-link',
+      });
+
+      final message = result.buildWhatsappMessage(recipientName: 'Agent Test');
+
+      expect(message, contains('1. Valider votre e-mail :'));
+      expect(message, contains('2. Définir votre mot de passe :'));
+      expect(message.indexOf('https://verify-link'),
+          lessThan(message.indexOf('https://reset-link')));
+    });
+
+    test('buildEmailMessage includes formal instructions and subject', () {
+      final result = ManagedAccountProvisionResult.fromMap(<String, dynamic>{
+        'uid': 'uid-1001',
         'email': 'agent@example.com',
         'role': 'agent',
         'existingUser': false,
@@ -106,22 +118,22 @@ void main() {
       expect(
         message,
         contains(
-          '1. Ouvrez le lien ci-dessous pour définir votre mot de passe :',
+          '1. Ouvrez le lien ci-dessous pour valider votre adresse e-mail :',
         ),
       );
       expect(
         message,
-        contains(
-          '2. Après avoir défini votre mot de passe, ouvrez ce lien pour valider votre adresse e-mail :',
-        ),
+        contains('2. Ouvrez ensuite ce lien pour définir votre mot de passe :'),
       );
+      expect(message.indexOf('https://verify-link'),
+          lessThan(message.indexOf('https://reset-link')));
       expect(message, contains('3. Une fois ces deux étapes terminées'));
       expect(message, contains('L’administration Adfoot'));
     });
 
     test('buildInviteMessage stays aligned with email format', () {
       final result = ManagedAccountProvisionResult.fromMap(<String, dynamic>{
-        'uid': 'uid-1001',
+        'uid': 'uid-1002',
         'email': 'club@example.com',
         'role': 'club',
         'existingUser': true,

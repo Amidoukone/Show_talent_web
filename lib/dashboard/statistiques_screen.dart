@@ -84,7 +84,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                 badge: 'Pilotage',
                 title: 'Tableau de statistiques',
                 subtitle:
-                    'Vue consolidée sur les utilisateurs, la modération et les comptes gérés.',
+                    'Vue consolidee sur les utilisateurs, la moderation et les comptes crees par l administration.',
               ),
             ),
             const SizedBox(height: 20),
@@ -106,9 +106,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
               SizedBox(
                 width: 280,
                 child: AdminMetricCard(
-                  title: 'Comptes gérés',
+                  title: 'Comptes crees par l administration',
                   value: '$managedUsers',
-                  subtitle: 'Club, recruteur et agent',
+                  subtitle: 'Comptes administres',
                   icon: Icons.manage_accounts_rounded,
                   progress: managedRate,
                   accentColor: AdminTheme.cyan,
@@ -210,7 +210,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                                 getTitlesWidget: (value, meta) {
                                   const labels = [
                                     'Utilisateurs',
-                                    'Gérés',
+                                    'Admin',
                                     'Vidéos',
                                     'Signalés',
                                     'Auth off',
@@ -269,7 +269,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                         _SignalRow(
-                          label: 'Comptes gérés',
+                          label: 'Comptes administres',
                           value: '${(managedRate * 100).round()}%',
                           progress: managedRate,
                           color: AdminTheme.cyan,

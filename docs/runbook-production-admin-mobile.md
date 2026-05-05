@@ -9,28 +9,27 @@ entre :
 
 - l application mobile publique
 - le portail admin
-- le backend Firebase `show-talent-5987d`
+- le backend Firebase cible par l environnement actif
 
 ## Invariants de production
 
 Les points suivants ne doivent jamais diverger :
 
-- projectId : `show-talent-5987d`
+- projectId cible expose dans l UI admin et pilote par `APP_ENV` / `FIREBASE_PROJECT_ID`
 - Firebase Auth commun
 - Firestore commun
 - Cloud Functions communes
-- Storage commun : `show-talent-5987d.appspot.com`
-- region Functions admin : `europe-west1`
+- Storage commun aligne sur le projet actif
+- region Functions admin pilotee par `FIREBASE_FUNCTIONS_REGION`
 
 ## Matrice des comptes
 
-Comptes publics :
+Aucune creation publique metier cote mobile.
+
+Comptes provisionnes par l administration :
 
 - `joueur`
 - `fan`
-
-Comptes geres :
-
 - `club`
 - `recruteur`
 - `agent`
@@ -46,7 +45,7 @@ Operateurs admin :
 
 Le mobile doit refuser :
 
-- tout signup autre que `joueur|fan`
+- toute creation publique de compte metier
 - tout compte Auth sans `/users/{uid}`
 - tout compte avec `authDisabled == true`
 - tout compte reserve au portail admin
@@ -67,7 +66,7 @@ Le bootstrap se fait uniquement via Admin SDK.
 
 Pre-requis :
 
-- service account JSON valide du projet `show-talent-5987d`
+- service account JSON valide du projet Firebase cible
 - fichier stocke localement hors Git
 - `.credentials/` ignore par Git
 
@@ -90,16 +89,17 @@ Document coherent attendu :
 - `authDisabled: false`
 - `createdByAdmin: false`
 
-## Provisionnement d un compte gere
+## Provisionnement d un compte
 
-Les comptes `club`, `recruteur`, `agent` sont crees uniquement via :
+Les comptes `joueur`, `fan`, `club`, `recruteur` et `agent` sont crees
+uniquement via :
 
 - `provisionManagedAccount`
 
 Procedure :
 
 1. connexion au portail admin avec operateur valide
-2. ouverture de Comptes geres
+2. ouverture de Provisionnement des comptes
 3. saisie du profil
 4. appel du callable
 5. recuperation du payload
@@ -149,9 +149,9 @@ Voir la sequence detaillee :
 - succes de `provisionManagedAccount`
 - presence du compte dans Auth
 - presence de `/users/{uid}`
-- absence de claim admin sur compte gere
+- absence de claim admin sur compte provisionne
 - bon fonctionnement des liens mot de passe et verification e-mail
-- connexion mobile possible pour `club|recruteur|agent` apres verification e-mail
+- connexion mobile possible pour `joueur|fan|club|recruteur|agent` apres verification e-mail
 - redirection mobile vers verification e-mail tant que `emailVerified == false`
 - succes de `disableManagedAccountAuth`
 - succes de `enableManagedAccountAuth`
@@ -162,14 +162,14 @@ Voir la sequence detaillee :
 - succes de `adminDeleteOffer`
 - succes de `adminSetEventStatus`
 - succes de `adminDeleteEvent`
-- refus maintenu cote mobile pour creation publique de `club|recruteur|agent`
+- refus maintenu cote mobile pour toute creation publique de compte metier
 
 ## Garde-fous production
 
 A maintenir imperativement :
 
 - aucune creation d admin cote client
-- aucune creation directe client-side de `club|recruteur|agent`
+- aucune creation directe client-side de compte metier
 - aucune cle service account commitee
 - rotation immediate de toute cle exposee
 - protection contre l auto-blocage, l auto-desactivation ou l auto-suppression
@@ -180,7 +180,7 @@ A maintenir imperativement :
 
 En cas d echec de provisioning :
 
-- verifier region `europe-west1`
+- verifier la region Functions active affichee dans le portail admin
 - verifier claim admin de l operateur
 - verifier presence de `/users/{uid}`
 - verifier IAM du service account si bootstrap Admin SDK
@@ -188,9 +188,8 @@ En cas d echec de provisioning :
 
 En cas de derive inter-depots :
 
-- verifier `projectId`
-- verifier configuration FlutterFire
-- verifier region Functions
+- verifier l environnement actif, le `projectId` cible et la region Functions
+- verifier la configuration `app_environment.dart` / `firebase_bootstrap.dart`
 - verifier contrat de roles
 - verifier regles Firestore et garde d acces admin/mobile
 
@@ -200,6 +199,6 @@ La plateforme est exploitable si :
 
 - le backend partage reste l unique source d autorite
 - le bootstrap admin est strictement serveur/Admin SDK
-- les comptes geres passent uniquement par les callables
-- le mobile public reste limite a `joueur|fan`
+- tous les comptes metier passent uniquement par les callables admin
+- le mobile public n ouvre aucun parcours de creation metier
 - le portail admin reste la seule surface legitime pour l administration

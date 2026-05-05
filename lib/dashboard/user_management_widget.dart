@@ -17,10 +17,14 @@ import '../widgets/managed_account_invite_result_dialog.dart';
 class UserManagementWidget extends StatefulWidget {
   const UserManagementWidget({
     required this.selectedRole,
+    this.userController,
+    this.managedAccountService,
     super.key,
   });
 
   final String selectedRole;
+  final UserController? userController;
+  final ManagedAccountService? managedAccountService;
 
   @override
   State<UserManagementWidget> createState() => _UserManagementWidgetState();
@@ -35,10 +39,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   static const String _actionChangeRole = 'change_role';
   static const String _actionResendInvite = 'resend_invite';
 
-  final UserController userController = Get.find<UserController>();
-  final ManagedAccountService _managedAccountService = ManagedAccountService();
   final TextEditingController _searchController = TextEditingController();
 
+  late final UserController _userController;
+  late final ManagedAccountService _managedAccountService;
   String searchQuery = '';
   String? selectedRole;
   int currentPage = 0;
@@ -48,8 +52,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   @override
   void initState() {
     super.initState();
+    _userController = widget.userController ?? Get.find<UserController>();
+    _managedAccountService =
+        widget.managedAccountService ?? ManagedAccountService();
     selectedRole = widget.selectedRole;
-    userController.fetchUsers();
+    _userController.fetchUsers();
   }
 
   @override
@@ -70,7 +77,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     });
   }
 
-  bool _isManagedAccount(AppUser user) {
+  bool _isAdminManagedAccount(AppUser user) {
     return user.createdByAdmin || isManagedAccountRole(user.role);
   }
 
@@ -90,7 +97,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   String get _bannerTitle => 'Règles de modération';
 
   String get _bannerMessage =>
-      'La modération passe désormais par la désactivation d’accès Auth ou par la suppression définitive du compte. Le changement de rôle et le renvoi d’invitation restent limités aux comptes gérés.';
+      'La moderation passe desormais par la desactivation d acces Auth ou par la suppression definitive du compte. Le changement de role et le renvoi d invitation restent limites aux comptes crees par l administration.';
 
   String get _searchHint => 'Rechercher un utilisateur';
 
@@ -260,11 +267,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   Future<void> _changeManagedAccountRole(AppUser user) async {
-    if (!_isManagedAccount(user)) {
+    if (!_isAdminManagedAccount(user)) {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'Le changement de rôle n’est proposé que pour les comptes gérés.',
+            'Le changement de rôle n’est proposé que pour les comptes créés par l’administration.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -274,9 +281,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       context: context,
       builder: (BuildContext context) {
         final currentRole = normalizeUserRole(user.role);
-        String nextRole = isManagedAccountRole(currentRole)
+        String nextRole = isAdminProvisionedRole(currentRole)
             ? currentRole
-            : managedAccountRoles.first;
+            : adminProvisionedRoles.first;
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -294,7 +301,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       labelText: 'Nouveau rôle',
                       border: OutlineInputBorder(),
                     ),
-                    items: managedAccountRoles
+                    items: adminProvisionedRoles
                         .map(
                           (role) => DropdownMenuItem<String>(
                             value: role,
@@ -348,11 +355,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   Future<void> _resendManagedAccountInvite(AppUser user) async {
-    if (!_isManagedAccount(user)) {
+    if (!_isAdminManagedAccount(user)) {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'Le renvoi d’invitation n’est proposé que pour les comptes gérés.',
+            'Le renvoi d’invitation n’est proposé que pour les comptes créés par l’administration.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -415,13 +422,18 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   user.authDisabled ? AdminTheme.success : AdminTheme.warning,
             ),
             const SizedBox(width: 8),
-            Text(user.authDisabled ? 'Réactiver Auth' : 'Désactiver Auth'),
+            Flexible(
+              child: Text(
+                user.authDisabled ? 'Réactiver Auth' : 'Désactiver Auth',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
     ];
 
-    if (_isManagedAccount(user)) {
+    if (_isAdminManagedAccount(user)) {
       items.add(const PopupMenuDivider());
       items.addAll([
         PopupMenuItem(
@@ -431,7 +443,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               Icon(Icons.manage_accounts_outlined,
                   size: 18, color: AdminTheme.cyan),
               SizedBox(width: 8),
-              Text('Changer le rôle'),
+              Flexible(
+                child: Text(
+                  'Changer le rôle',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -442,7 +459,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               Icon(Icons.mark_email_read_outlined,
                   size: 18, color: AdminTheme.accent),
               SizedBox(width: 8),
-              Text('Renvoyer l’invitation'),
+              Flexible(
+                child: Text(
+                  'Renvoyer l’invitation',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -458,7 +480,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             Icon(Icons.delete_outline_rounded,
                 size: 18, color: AdminTheme.danger),
             SizedBox(width: 8),
-            Text('Supprimer'),
+            Flexible(
+              child: Text(
+                'Supprimer',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),
@@ -516,11 +543,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 underline: const SizedBox.shrink(),
                 items: <String>[
                   'Tous',
-                  'joueur',
-                  'club',
-                  'recruteur',
-                  'agent',
-                  'fan',
+                  ...adminProvisionedRoles,
                 ].map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
@@ -557,7 +580,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             ),
           ),
           Obx(() {
-            final filteredUsers = userController.userList.where((user) {
+            final filteredUsers = _userController.userList.where((user) {
               final matchesRole =
                   selectedRole == 'Tous' || user.role == selectedRole;
               final normalizedQuery = searchQuery.toLowerCase();
@@ -594,14 +617,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   if (hasFilters) {
                     _clearFilters();
                   } else {
-                    userController.fetchUsers();
+                    _userController.fetchUsers();
                   }
                 },
               );
             }
 
-            final managedUsers =
-                filteredUsers.where((user) => _isManagedAccount(user)).length;
+            final managedUsers = filteredUsers
+                .where((user) => _isAdminManagedAccount(user))
+                .length;
 
             return Column(
               children: [
@@ -618,7 +642,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Comptes gérés',
+                      label: 'Comptes administres',
                       value: '$managedUsers',
                       icon: Icons.manage_accounts_outlined,
                       accentColor: AdminTheme.accent,

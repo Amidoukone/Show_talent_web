@@ -3,7 +3,6 @@ import process from 'node:process';
 
 import admin from 'firebase-admin';
 
-const DEFAULT_PROJECT_ID = 'show-talent-5987d';
 const DEFAULT_ADMIN_EMAIL = 'admin@adfoot.com';
 const DEFAULT_ADMIN_NAME = 'Admin Adfoot';
 const DEFAULT_ADMIN_ROLE = 'admin';
@@ -108,8 +107,7 @@ function resolveRuntimeConfig() {
   const projectId =
     args.projectId ??
     process.env.FIREBASE_PROJECT_ID ??
-    process.env.GCLOUD_PROJECT ??
-    DEFAULT_PROJECT_ID;
+    process.env.GCLOUD_PROJECT;
 
   const email = args.email ?? process.env.ADMIN_EMAIL ?? DEFAULT_ADMIN_EMAIL;
   const password = args.password ?? process.env.ADMIN_PASSWORD;
@@ -126,6 +124,12 @@ function resolveRuntimeConfig() {
   if (isBlank(email)) {
     throw new Error(
       'L e-mail admin est obligatoire. Passe --email ou ADMIN_EMAIL.',
+    );
+  }
+
+  if (isBlank(projectId)) {
+    throw new Error(
+      'Le projectId Firebase est obligatoire. Passe --projectId ou FIREBASE_PROJECT_ID.',
     );
   }
 

@@ -129,8 +129,8 @@ class ManagedAccountInviteSummary extends StatelessWidget {
         AdminInfoBanner(
           title: 'Ordre conseillé',
           message: result.requiresEmailVerification
-              ? 'Le titulaire doit d’abord définir son mot de passe, puis valider son e-mail, puis se connecter.'
-              : 'Le titulaire doit d’abord définir son mot de passe, puis se connecter. Aucune validation e-mail supplémentaire n’est requise.',
+              ? 'Le titulaire doit valider son e-mail, créer son mot de passe, puis se connecter.'
+              : 'Le titulaire doit créer son mot de passe, puis se connecter. Son e-mail est déjà validé.',
           icon: Icons.rule_rounded,
           tone: AdminBannerTone.info,
         ),
@@ -154,11 +154,6 @@ class ManagedAccountInviteSummary extends StatelessWidget {
           message: emailMessage,
           onCopy: () => _copyValue('Version e-mail', emailMessage),
         ),
-        _LinkTile(
-          label: 'Lien mot de passe',
-          value: result.passwordSetupLink,
-          onCopy: _copyValue,
-        ),
         if (result.emailVerificationLink != null)
           _LinkTile(
             label: 'Lien validation e-mail',
@@ -170,13 +165,18 @@ class ManagedAccountInviteSummary extends StatelessWidget {
             width: double.infinity,
             margin: const EdgeInsets.only(top: 12),
             child: const AdminInfoBanner(
-              title: 'Verification deja validee',
+              title: 'Vérification déjà validée',
               message:
-                  'Aucun lien de validation e-mail n’a été retourné. Le titulaire peut passer directement à la connexion après le mot de passe.',
+                  'Aucun lien de validation e-mail n’a été retourné. Le titulaire peut se connecter après avoir défini son mot de passe.',
               icon: Icons.verified_rounded,
               tone: AdminBannerTone.success,
             ),
           ),
+        _LinkTile(
+          label: 'Lien mot de passe',
+          value: result.passwordSetupLink,
+          onCopy: _copyValue,
+        ),
       ],
     );
   }

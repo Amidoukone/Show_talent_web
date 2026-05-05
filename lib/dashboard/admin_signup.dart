@@ -105,7 +105,7 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                                 const AdminInfoBanner(
                                   title: 'Provisionnement métier',
                                   message:
-                                      'Les comptes club, recruteur et agent se provisionnent depuis le dashboard avec la Cloud Function partagée provisionManagedAccount.',
+                                      'Tous les comptes metier sont maintenant provisionnes depuis le dashboard via la Cloud Function partagee provisionManagedAccount.',
                                   icon: Icons.hub_outlined,
                                   tone: AdminBannerTone.info,
                                 ),

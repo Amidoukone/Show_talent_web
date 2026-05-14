@@ -26,8 +26,20 @@ void main() {
 
       expect(controller, contains('setContactIntakeFollowUp'));
       expect(service, contains('adminSetContactIntakeFollowUp'));
-      expect(widget, contains('Mettre a jour le suivi agence'));
+      expect(widget, contains('Mettre à jour le suivi agence'));
       expect(widget, contains('AdminDataTableCard'));
+      expect(widget, contains('Pipeline d’opportunités'));
+      expect(widget, contains('Note requise'));
+      expect(widget, contains('DataColumn(label: Text(\'Priorité\'))'));
+      expect(
+        widget,
+        contains('DataColumn(label: Text(\'Signal utilisateurs\'))'),
+      );
+      expect(widget, contains('_buildParticipantSignalCell'));
+      expect(widget, contains('Signaux forts'));
+      expect(widget, contains('Alertes'));
+      expect(widget, contains('_nextStatus('));
+      expect(widget, contains('_PipelineStageCard'));
     });
   });
 }

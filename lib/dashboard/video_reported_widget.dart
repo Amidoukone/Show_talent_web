@@ -175,7 +175,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                       value: '$totalReports',
                       icon: Icons.flag_circle_outlined,
                       accentColor: AdminTheme.danger,
-                      subtitle: 'Sur la selection',
+                      subtitle: 'Sur la sélection',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],

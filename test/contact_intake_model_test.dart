@@ -14,11 +14,17 @@ void main() {
           'contextType': 'event',
           'contextTitle': 'Tournoi U19',
           'contactReason': 'trial',
-          'introMessage': 'Nous souhaitons organiser une evaluation.',
+          'introMessage': 'Nous souhaitons organiser une évaluation.',
           'agencyFollowUpStatus': 'reviewing',
-          'agencyFollowUpNote': 'A rappeler apres validation terrain.',
+          'agencyFollowUpNote': 'À rappeler après validation terrain.',
+          'latestParticipantFeedbackStatus': 'trial_scheduled',
+          'latestParticipantFeedbackNote': 'Essai prévu samedi matin.',
+          'latestParticipantFeedbackByRole': 'joueur',
+          'latestParticipantFeedbackAt':
+              Timestamp.fromDate(DateTime.utc(2026, 4, 11, 9)),
+          'suggestedAgencyFollowUpStatus': 'qualified',
           'requesterSnapshot': <String, dynamic>{
-            'displayName': 'Academie Horizon',
+            'displayName': 'Académie Horizon',
             'organisation': 'Horizon FC',
           },
           'targetSnapshot': <String, dynamic>{
@@ -31,11 +37,15 @@ void main() {
       );
 
       expect(intake.id, 'intake-1');
-      expect(intake.requesterDisplayName, 'Academie Horizon');
+      expect(intake.requesterDisplayName, 'Académie Horizon');
       expect(intake.targetDisplayName, 'Amadou Diallo');
       expect(intake.followUpLabel, 'En revue');
-      expect(intake.contextLabel, 'Evenement');
-      expect(intake.reasonLabel, 'Essai / Evaluation');
+      expect(intake.contextLabel, 'Événement');
+      expect(intake.reasonLabel, 'Essai / Évaluation');
+      expect(intake.hasParticipantFeedback, isTrue);
+      expect(intake.participantFeedbackLabel, 'Essai / rendez-vous prévu');
+      expect(intake.participantFeedbackActorLabel, 'Joueur');
+      expect(intake.suggestedAgencyFollowUpStatus, 'qualified');
     });
 
     test('normalizes agency follow-up labels', () {
@@ -46,6 +56,19 @@ void main() {
       expect(
         AgencyFollowUpStatus.label('unknown'),
         'Nouveau lead',
+      );
+    });
+
+    test('normalizes participant feedback labels', () {
+      expect(
+        ParticipantFeedbackStatus.label(
+          ParticipantFeedbackStatus.opportunitySerious,
+        ),
+        'Opportunité sérieuse',
+      );
+      expect(
+        ParticipantFeedbackStatus.label('unknown'),
+        'Pas encore de réponse',
       );
     });
   });

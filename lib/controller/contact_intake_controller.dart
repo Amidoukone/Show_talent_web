@@ -169,6 +169,17 @@ class ContactIntakeController extends GetxController {
             'contextTitle': current.contextTitle,
             'requesterSnapshot': current.requesterSnapshot,
             'targetSnapshot': current.targetSnapshot,
+            'latestParticipantFeedbackStatus':
+                current.latestParticipantFeedbackStatus,
+            'latestParticipantFeedbackNote':
+                current.latestParticipantFeedbackNote,
+            'latestParticipantFeedbackByUid':
+                current.latestParticipantFeedbackByUid,
+            'latestParticipantFeedbackByRole':
+                current.latestParticipantFeedbackByRole,
+            'latestParticipantFeedbackAt': current.latestParticipantFeedbackAt,
+            'suggestedAgencyFollowUpStatus':
+                current.suggestedAgencyFollowUpStatus,
             'createdAt': current.createdAt,
             'updatedAt': DateTime.now(),
           },

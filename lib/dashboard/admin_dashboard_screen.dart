@@ -79,7 +79,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ),
     _DashboardItem(
       title: 'Mise en relation',
-      subtitle: 'Suivi agence des premiers contacts qualifies.',
+      subtitle: 'Suivi agence des premiers contacts qualifiés.',
       icon: Icons.support_agent_rounded,
     ),
     _DashboardItem(

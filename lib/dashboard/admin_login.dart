@@ -28,7 +28,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         normalized.contains('web-internal-error') ||
         normalized.contains('identity toolkit') ||
         normalized.contains('api key')) {
-      return "Firebase Auth refuse la requête. Si le projet Google Cloud ou Firebase est suspendu, la connexion admin est bloquée même si l'interface fonctionne.";
+      return "Firebase Auth refuse la requête. Si le projet Google Cloud ou Firebase est suspendu, la connexion admin est bloquée même si l’interface fonctionne.";
     }
 
     return error.message ?? 'Erreur Firebase Auth : ${error.code}';
@@ -463,7 +463,7 @@ class _LoginFormPanel extends StatelessWidget {
             alignment: Alignment.center,
             child: TextButton(
               onPressed: () => Get.toNamed(AppRoutes.adminSignup),
-              child: const Text('Acces admin gere par la plateforme'),
+              child: const Text('Accès admin géré par la plateforme'),
             ),
           ),
         ],

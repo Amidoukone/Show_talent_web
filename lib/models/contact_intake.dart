@@ -32,11 +32,11 @@ class ContactContextType {
       case profile:
         return 'Profil';
       case event:
-        return 'Evenement';
+        return 'Événement';
       case participants:
         return 'Participants';
       case discovery:
-        return 'Decouverte';
+        return 'Découverte';
       case offer:
         return 'Offre';
       default:
@@ -72,11 +72,11 @@ class ContactReasonCode {
   static String label(String? value) {
     switch (normalize(value)) {
       case opportunity:
-        return 'Opportunite';
+        return 'Opportunité';
       case trial:
-        return 'Essai / Evaluation';
+        return 'Essai / Évaluation';
       case application:
-        return 'Candidature / Presentation';
+        return 'Candidature / Présentation';
       case followUp:
         return 'Suivi';
       default:
@@ -125,12 +125,59 @@ class AgencyFollowUpStatus {
       case inProgress:
         return 'En accompagnement';
       case qualified:
-        return 'Qualifie';
+        return 'Qualifié';
       case closed:
         return 'Clos';
       case newLead:
       default:
         return 'Nouveau lead';
+    }
+  }
+}
+
+class ParticipantFeedbackStatus {
+  ParticipantFeedbackStatus._();
+
+  static const String noResponse = 'no_response';
+  static const String discussionStarted = 'discussion_started';
+  static const String trialScheduled = 'trial_scheduled';
+  static const String opportunitySerious = 'opportunity_serious';
+  static const String notRelevant = 'not_relevant';
+  static const String issueReported = 'issue_reported';
+
+  static String normalize(String? value) {
+    switch (value?.trim().toLowerCase()) {
+      case discussionStarted:
+        return discussionStarted;
+      case trialScheduled:
+        return trialScheduled;
+      case opportunitySerious:
+        return opportunitySerious;
+      case notRelevant:
+        return notRelevant;
+      case issueReported:
+        return issueReported;
+      case noResponse:
+      default:
+        return noResponse;
+    }
+  }
+
+  static String label(String? value) {
+    switch (normalize(value)) {
+      case discussionStarted:
+        return 'Discussion engagée';
+      case trialScheduled:
+        return 'Essai / rendez-vous prévu';
+      case opportunitySerious:
+        return 'Opportunité sérieuse';
+      case notRelevant:
+        return 'Non pertinent';
+      case issueReported:
+        return 'Problème signalé';
+      case noResponse:
+      default:
+        return 'Pas encore de réponse';
     }
   }
 }
@@ -155,6 +202,12 @@ class ContactIntake {
     this.contextTitle,
     this.requesterSnapshot,
     this.targetSnapshot,
+    this.latestParticipantFeedbackStatus,
+    this.latestParticipantFeedbackNote,
+    this.latestParticipantFeedbackByUid,
+    this.latestParticipantFeedbackByRole,
+    this.latestParticipantFeedbackAt,
+    this.suggestedAgencyFollowUpStatus,
     this.createdAt,
     this.updatedAt,
   });
@@ -177,6 +230,12 @@ class ContactIntake {
   final String? contextTitle;
   final Map<String, dynamic>? requesterSnapshot;
   final Map<String, dynamic>? targetSnapshot;
+  final String? latestParticipantFeedbackStatus;
+  final String? latestParticipantFeedbackNote;
+  final String? latestParticipantFeedbackByUid;
+  final String? latestParticipantFeedbackByRole;
+  final DateTime? latestParticipantFeedbackAt;
+  final String? suggestedAgencyFollowUpStatus;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -216,6 +275,24 @@ class ContactIntake {
       contextTitle: _normalizeNullableString(map['contextTitle']),
       requesterSnapshot: _normalizeMap(map['requesterSnapshot']),
       targetSnapshot: _normalizeMap(map['targetSnapshot']),
+      latestParticipantFeedbackStatus: _normalizeNullableString(
+        map['latestParticipantFeedbackStatus'],
+      ),
+      latestParticipantFeedbackNote: _normalizeNullableString(
+        map['latestParticipantFeedbackNote'],
+      ),
+      latestParticipantFeedbackByUid: _normalizeNullableString(
+        map['latestParticipantFeedbackByUid'],
+      ),
+      latestParticipantFeedbackByRole: _normalizeNullableString(
+        map['latestParticipantFeedbackByRole'],
+      ),
+      latestParticipantFeedbackAt: _parseNullableDate(
+        map['latestParticipantFeedbackAt'],
+      ),
+      suggestedAgencyFollowUpStatus: _normalizeNullableString(
+        map['suggestedAgencyFollowUpStatus'],
+      ),
       createdAt: _parseNullableDate(map['createdAt']),
       updatedAt: _parseNullableDate(map['updatedAt']),
     );
@@ -242,6 +319,16 @@ class ContactIntake {
   String get followUpLabel => AgencyFollowUpStatus.label(agencyFollowUpStatus);
 
   bool get hasAgencyNote => agencyFollowUpNote?.trim().isNotEmpty == true;
+
+  bool get hasParticipantFeedback =>
+      latestParticipantFeedbackStatus?.trim().isNotEmpty == true;
+
+  String get participantFeedbackLabel => ParticipantFeedbackStatus.label(
+        latestParticipantFeedbackStatus,
+      );
+
+  String get participantFeedbackActorLabel =>
+      _roleLabel(latestParticipantFeedbackByRole ?? '');
 
   static String _roleLabel(String rawRole) {
     switch (rawRole.trim().toLowerCase()) {

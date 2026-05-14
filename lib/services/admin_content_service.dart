@@ -29,7 +29,7 @@ class AdminContentService {
       case 'unauthenticated':
         return 'Session admin expirée. Reconnectez-vous.';
       case 'permission-denied':
-        return "Action réservée à l'administration.";
+        return "Action réservée à l’administration.";
       case 'not-found':
         return 'Élément introuvable ou déjà supprimé.';
       case 'unavailable':
@@ -84,7 +84,7 @@ class AdminContentService {
         'status': status.trim(),
       },
       fallbackMessage:
-          "Mise à jour du statut de l'offre impossible pour le moment.",
+          "Mise à jour du statut de l’offre impossible pour le moment.",
     );
   }
 
@@ -96,7 +96,7 @@ class AdminContentService {
       payload: <String, dynamic>{
         'offerId': offerId.trim(),
       },
-      fallbackMessage: "Suppression de l'offre impossible pour le moment.",
+      fallbackMessage: "Suppression de l’offre impossible pour le moment.",
     );
   }
 
@@ -111,7 +111,7 @@ class AdminContentService {
         'status': status.trim(),
       },
       fallbackMessage:
-          "Mise à jour du statut de l'événement impossible pour le moment.",
+          "Mise à jour du statut de l’événement impossible pour le moment.",
     );
   }
 
@@ -123,7 +123,7 @@ class AdminContentService {
       payload: <String, dynamic>{
         'eventId': eventId.trim(),
       },
-      fallbackMessage: "Suppression de l'événement impossible pour le moment.",
+      fallbackMessage: "Suppression de l’événement impossible pour le moment.",
     );
   }
 
@@ -139,7 +139,7 @@ class AdminContentService {
         'status': status.trim(),
         'note': note.trim(),
       },
-      fallbackMessage: 'Mise a jour du suivi agence impossible pour le moment.',
+      fallbackMessage: 'Mise à jour du suivi agence impossible pour le moment.',
     );
   }
 }

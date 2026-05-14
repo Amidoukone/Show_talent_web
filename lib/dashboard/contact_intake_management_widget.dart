@@ -7,6 +7,20 @@ import '../theme/admin_theme.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 
+class _PipelineStage {
+  const _PipelineStage({
+    required this.status,
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
+
+  final String status;
+  final String title;
+  final String description;
+  final IconData icon;
+}
+
 class ContactIntakeManagementWidget extends StatefulWidget {
   const ContactIntakeManagementWidget({super.key});
 
@@ -18,6 +32,38 @@ class ContactIntakeManagementWidget extends StatefulWidget {
 class _ContactIntakeManagementWidgetState
     extends State<ContactIntakeManagementWidget> {
   static const int _rowsPerPage = 6;
+  static const List<_PipelineStage> _pipelineStages = <_PipelineStage>[
+    _PipelineStage(
+      status: AgencyFollowUpStatus.newLead,
+      title: 'Nouveau lead',
+      description: 'Premier contact reçu, qualification initiale à faire.',
+      icon: Icons.fiber_new_rounded,
+    ),
+    _PipelineStage(
+      status: AgencyFollowUpStatus.reviewing,
+      title: 'En revue',
+      description: 'Vérification du contexte, du profil et de la pertinence.',
+      icon: Icons.fact_check_outlined,
+    ),
+    _PipelineStage(
+      status: AgencyFollowUpStatus.inProgress,
+      title: 'En accompagnement',
+      description: 'Opportunité suivie avec une action terrain ou relation.',
+      icon: Icons.handshake_outlined,
+    ),
+    _PipelineStage(
+      status: AgencyFollowUpStatus.qualified,
+      title: 'Qualifié',
+      description: 'Mise en relation crédible, exploitable ou confirmée.',
+      icon: Icons.verified_rounded,
+    ),
+    _PipelineStage(
+      status: AgencyFollowUpStatus.closed,
+      title: 'Clos',
+      description: 'Dossier archivé avec une conclusion claire.',
+      icon: Icons.archive_outlined,
+    ),
+  ];
 
   final ContactIntakeController _contactIntakeController =
       Get.find<ContactIntakeController>();
@@ -66,12 +112,147 @@ class _ContactIntakeManagementWidgetState
     }
   }
 
-  Future<_FollowUpUpdateDraft?> _showFollowUpDialog(ContactIntake intake) {
+  Map<String, int> _buildStageCounts(List<ContactIntake> intakes) {
+    final counts = <String, int>{
+      for (final stage in _pipelineStages) stage.status: 0,
+    };
+
+    for (final intake in intakes) {
+      final status = AgencyFollowUpStatus.normalize(
+        intake.agencyFollowUpStatus,
+      );
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+
+    return counts;
+  }
+
+  String? _nextStatus(String status) {
+    switch (AgencyFollowUpStatus.normalize(status)) {
+      case AgencyFollowUpStatus.newLead:
+        return AgencyFollowUpStatus.reviewing;
+      case AgencyFollowUpStatus.reviewing:
+        return AgencyFollowUpStatus.inProgress;
+      case AgencyFollowUpStatus.inProgress:
+        return AgencyFollowUpStatus.qualified;
+      case AgencyFollowUpStatus.qualified:
+        return AgencyFollowUpStatus.closed;
+      case AgencyFollowUpStatus.closed:
+      default:
+        return null;
+    }
+  }
+
+  String _nextActionLabel(String status) {
+    switch (_nextStatus(status)) {
+      case AgencyFollowUpStatus.reviewing:
+        return 'Mettre en revue';
+      case AgencyFollowUpStatus.inProgress:
+        return 'Accompagner';
+      case AgencyFollowUpStatus.qualified:
+        return 'Qualifier';
+      case AgencyFollowUpStatus.closed:
+        return 'Clore';
+      default:
+        return 'Avancer';
+    }
+  }
+
+  bool _requiresFollowUpNote(String status) {
+    return AgencyFollowUpStatus.normalize(status) !=
+        AgencyFollowUpStatus.newLead;
+  }
+
+  DateTime? _lastFollowUpActivity(ContactIntake intake) {
+    return intake.agencyLastUpdatedAt ?? intake.updatedAt ?? intake.createdAt;
+  }
+
+  int _daysSinceLastActivity(ContactIntake intake) {
+    final activity = _lastFollowUpActivity(intake);
+    if (activity == null) {
+      return 0;
+    }
+    final days = DateTime.now().difference(activity).inDays;
+    return days < 0 ? 0 : days;
+  }
+
+  String _priorityLabel(ContactIntake intake) {
+    final status = AgencyFollowUpStatus.normalize(intake.agencyFollowUpStatus);
+    final days = _daysSinceLastActivity(intake);
+
+    if (status == AgencyFollowUpStatus.closed) {
+      return 'Archive';
+    }
+    if (intake.hasParticipantFeedback) {
+      switch (ParticipantFeedbackStatus.normalize(
+        intake.latestParticipantFeedbackStatus,
+      )) {
+        case ParticipantFeedbackStatus.issueReported:
+          return 'À vérifier';
+        case ParticipantFeedbackStatus.trialScheduled:
+        case ParticipantFeedbackStatus.opportunitySerious:
+          return 'Fort potentiel';
+        case ParticipantFeedbackStatus.discussionStarted:
+          return 'Signal positif';
+        case ParticipantFeedbackStatus.noResponse:
+          return days >= 2 ? 'Relance' : 'À suivre';
+        case ParticipantFeedbackStatus.notRelevant:
+          return 'À clore';
+      }
+    }
+    if (status == AgencyFollowUpStatus.qualified) {
+      return days >= 7 ? 'À confirmer' : 'Qualifié';
+    }
+    if (status == AgencyFollowUpStatus.inProgress) {
+      return days >= 7 ? 'Relance terrain' : 'En cours';
+    }
+    if (status == AgencyFollowUpStatus.reviewing) {
+      return days >= 3 ? 'Relance revue' : 'Analyse';
+    }
+    return days >= 2 ? 'Urgent' : 'À traiter';
+  }
+
+  Color _priorityColor(ContactIntake intake) {
+    final label = _priorityLabel(intake);
+    if (label == 'Urgent' ||
+        label == 'À vérifier' ||
+        label.startsWith('Relance')) {
+      return AdminTheme.warning;
+    }
+    if (label == 'À confirmer' ||
+        label == 'Qualifié' ||
+        label == 'Fort potentiel' ||
+        label == 'Signal positif') {
+      return AdminTheme.success;
+    }
+    if (label == 'Archive') {
+      return AdminTheme.textMuted;
+    }
+    return AdminTheme.cyan;
+  }
+
+  String _activityLabel(ContactIntake intake) {
+    final days = _daysSinceLastActivity(intake);
+    if (days == 0) {
+      return 'Mis à jour aujourd’hui';
+    }
+    if (days == 1) {
+      return 'Mis à jour hier';
+    }
+    return 'Inactif depuis $days j';
+  }
+
+  Future<_FollowUpUpdateDraft?> _showFollowUpDialog(
+    ContactIntake intake, {
+    String? initialStatus,
+  }) {
     final noteController = TextEditingController(
       text: intake.agencyFollowUpNote ?? '',
     );
-    var selectedStatus =
-        AgencyFollowUpStatus.normalize(intake.agencyFollowUpStatus);
+    var selectedStatus = AgencyFollowUpStatus.normalize(
+      initialStatus ?? intake.agencyFollowUpStatus,
+    );
+    String? validationError;
 
     return showDialog<_FollowUpUpdateDraft>(
       context: context,
@@ -79,61 +260,114 @@ class _ContactIntakeManagementWidgetState
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Mettre a jour le suivi agence'),
+              title: Text(
+                initialStatus == null
+                    ? 'Mettre à jour le suivi agence'
+                    : 'Avancer l’opportunité',
+              ),
               content: SizedBox(
-                width: 460,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
-                      style: const TextStyle(
-                        color: AdminTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
+                width: 560,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
+                        style: const TextStyle(
+                          color: AdminTheme.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Motif: ${intake.reasonLabel}',
-                      style: const TextStyle(color: AdminTheme.textSecondary),
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      value: selectedStatus,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Statut de suivi',
+                      const SizedBox(height: 8),
+                      Text(
+                        'Motif : ${intake.reasonLabel}',
+                        style: const TextStyle(color: AdminTheme.textSecondary),
                       ),
-                      items: ContactIntakeController.followUpStatuses
-                          .map(
-                            (status) => DropdownMenuItem<String>(
-                              value: status,
-                              child: Text(AgencyFollowUpStatus.label(status)),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _pipelineStages.map((stage) {
+                          final selected = selectedStatus == stage.status;
+                          final color = _followUpColor(stage.status);
+                          return ChoiceChip(
+                            label: Text(stage.title),
+                            selected: selected,
+                            showCheckmark: false,
+                            selectedColor: color.withValues(alpha: 0.22),
+                            backgroundColor:
+                                AdminTheme.surfaceSoft.withValues(alpha: 0.48),
+                            side: BorderSide(
+                              color: selected
+                                  ? color.withValues(alpha: 0.72)
+                                  : AdminTheme.border.withValues(alpha: 0.74),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) {
-                          return;
-                        }
-                        setDialogState(() {
-                          selectedStatus = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: noteController,
-                      maxLines: 4,
-                      maxLength: 500,
-                      decoration: const InputDecoration(
-                        labelText: 'Note agence',
-                        hintText:
-                            'Contexte terrain, action demandee ou suite donnee.',
+                            labelStyle: TextStyle(
+                              color:
+                                  selected ? color : AdminTheme.textSecondary,
+                              fontWeight:
+                                  selected ? FontWeight.w800 : FontWeight.w600,
+                            ),
+                            onSelected: (_) {
+                              setDialogState(() {
+                                selectedStatus = stage.status;
+                                validationError = null;
+                              });
+                            },
+                          );
+                        }).toList(),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String>(
+                        value: selectedStatus,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Statut de suivi',
+                        ),
+                        items: ContactIntakeController.followUpStatuses
+                            .map(
+                              (status) => DropdownMenuItem<String>(
+                                value: status,
+                                child: Text(AgencyFollowUpStatus.label(status)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setDialogState(() {
+                            selectedStatus = value;
+                            validationError = null;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: noteController,
+                        maxLines: 4,
+                        maxLength: 500,
+                        decoration: InputDecoration(
+                          labelText: 'Note agence',
+                          hintText:
+                              'Contexte terrain, action demandée ou suite donnée.',
+                          errorText: validationError,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _requiresFollowUpNote(selectedStatus)
+                            ? 'Note requise pour garder une trace exploitable de la décision.'
+                            : 'La note reste optionnelle au stade nouveau lead.',
+                        style: const TextStyle(
+                          color: AdminTheme.textMuted,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -143,10 +377,20 @@ class _ContactIntakeManagementWidgetState
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
+                    final note = noteController.text.trim();
+                    if (_requiresFollowUpNote(selectedStatus) &&
+                        note.length < 8) {
+                      setDialogState(() {
+                        validationError =
+                            'Ajoutez une note concrète avant de changer ce statut.';
+                      });
+                      return;
+                    }
+
                     Navigator.of(dialogContext).pop(
                       _FollowUpUpdateDraft(
                         status: selectedStatus,
-                        note: noteController.text.trim(),
+                        note: note,
                       ),
                     );
                   },
@@ -161,8 +405,14 @@ class _ContactIntakeManagementWidgetState
     ).whenComplete(noteController.dispose);
   }
 
-  Future<void> _updateFollowUp(ContactIntake intake) async {
-    final draft = await _showFollowUpDialog(intake);
+  Future<void> _updateFollowUp(
+    ContactIntake intake, {
+    String? initialStatus,
+  }) async {
+    final draft = await _showFollowUpDialog(
+      intake,
+      initialStatus: initialStatus,
+    );
     if (draft == null) {
       return;
     }
@@ -179,9 +429,9 @@ class _ContactIntakeManagementWidgetState
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succes',
+        title: 'Succès',
         message:
-            'Suivi agence mis a jour: ${AgencyFollowUpStatus.label(draft.status)}.',
+            'Suivi agence mis à jour : ${AgencyFollowUpStatus.label(draft.status)}.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -218,6 +468,9 @@ class _ContactIntakeManagementWidgetState
       intake.contextTitle ?? '',
       intake.introMessage,
       intake.agencyFollowUpNote ?? '',
+      intake.participantFeedbackLabel,
+      intake.latestParticipantFeedbackNote ?? '',
+      intake.participantFeedbackActorLabel,
     ].join(' ').toLowerCase();
 
     return haystack.contains(_searchQuery);
@@ -302,6 +555,210 @@ class _ContactIntakeManagementWidgetState
     );
   }
 
+  Widget _buildPriorityCell(ContactIntake intake) {
+    final color = _priorityColor(intake);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 150),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _PriorityPill(
+            label: _priorityLabel(intake),
+            color: color,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _activityLabel(intake),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AdminTheme.textMuted,
+              fontSize: 12,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _participantSignalColor(ContactIntake intake) {
+    switch (ParticipantFeedbackStatus.normalize(
+      intake.latestParticipantFeedbackStatus,
+    )) {
+      case ParticipantFeedbackStatus.issueReported:
+        return AdminTheme.warning;
+      case ParticipantFeedbackStatus.trialScheduled:
+      case ParticipantFeedbackStatus.opportunitySerious:
+        return AdminTheme.success;
+      case ParticipantFeedbackStatus.discussionStarted:
+        return AdminTheme.cyan;
+      case ParticipantFeedbackStatus.notRelevant:
+        return AdminTheme.textMuted;
+      case ParticipantFeedbackStatus.noResponse:
+      default:
+        return AdminTheme.accent;
+    }
+  }
+
+  Widget _buildParticipantSignalCell(ContactIntake intake) {
+    if (!intake.hasParticipantFeedback) {
+      return ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 180),
+        child: const Text(
+          'En attente de retour',
+          style: TextStyle(
+            color: AdminTheme.textMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    final color = _participantSignalColor(intake);
+    final note = intake.latestParticipantFeedbackNote?.trim();
+    final actor = intake.participantFeedbackActorLabel;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 220),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _PriorityPill(
+            label: intake.participantFeedbackLabel,
+            color: color,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Signale par: $actor',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AdminTheme.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (note?.isNotEmpty == true) ...[
+            const SizedBox(height: 4),
+            Text(
+              note!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AdminTheme.textSecondary,
+                fontSize: 12,
+                height: 1.3,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPipelineOverview({
+    required List<ContactIntake> intakes,
+    required Map<String, int> stageCounts,
+    required bool compact,
+  }) {
+    final openCount = intakes.where((intake) {
+      return AgencyFollowUpStatus.normalize(intake.agencyFollowUpStatus) !=
+          AgencyFollowUpStatus.closed;
+    }).length;
+
+    return AdminSubsectionCard(
+      title: 'Pipeline d’opportunités',
+      subtitle:
+          '$openCount opportunité(s) ouverte(s). Cliquez sur une étape pour filtrer et traiter le bon niveau de maturité.',
+      accentColor: AdminTheme.cyan,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final stacked = constraints.maxWidth < 780;
+          final cardWidth =
+              stacked ? constraints.maxWidth : (compact ? 218.0 : 238.0);
+          final cards = _pipelineStages.map((stage) {
+            final count = stageCounts[stage.status] ?? 0;
+            return SizedBox(
+              width: cardWidth,
+              child: _PipelineStageCard(
+                stage: stage,
+                count: count,
+                total: intakes.length,
+                color: _followUpColor(stage.status),
+                selected: _selectedFollowUpStatus == stage.status,
+                onTap: () {
+                  setState(() {
+                    _selectedFollowUpStatus =
+                        _selectedFollowUpStatus == stage.status
+                            ? 'Tous'
+                            : stage.status;
+                    _currentPage = 0;
+                  });
+                },
+              ),
+            );
+          }).toList();
+
+          final resetButton = Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _selectedFollowUpStatus == 'Tous'
+                  ? null
+                  : () {
+                      setState(() {
+                        _selectedFollowUpStatus = 'Tous';
+                        _currentPage = 0;
+                      });
+                    },
+              icon: const Icon(Icons.layers_clear_outlined, size: 18),
+              label: const Text('Voir tout'),
+            ),
+          );
+
+          if (stacked) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                resetButton,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: cards,
+                ),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              resetButton,
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: cards
+                      .map(
+                        (card) => Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: card,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
@@ -317,13 +774,13 @@ class _ContactIntakeManagementWidgetState
             badge: 'Mise en relation agence',
             title: 'Contact intakes',
             subtitle:
-                'Pilotage des premiers contacts qualifies pour garder la relation dans le circuit Adfoot.',
+                'Pilotage des premiers contacts qualifiés pour garder la relation dans le circuit Adfoot.',
           ),
           const SizedBox(height: 14),
           const AdminInfoBanner(
             title: 'Suivi centralise',
             message:
-                'Chaque premier contact peut etre qualifie, accompagne puis clos sans casser la conversation utilisateur.',
+                'Chaque premier contact peut être qualifié, accompagné puis clos sans casser la conversation utilisateur.',
             icon: Icons.support_agent_rounded,
             tone: AdminBannerTone.info,
           ),
@@ -419,6 +876,7 @@ class _ContactIntakeManagementWidgetState
                   normalizedStatus == _selectedFollowUpStatus;
               return matchesStatus && _matchesSearch(intake);
             }).toList();
+            final stageCounts = _buildStageCounts(allIntakes);
 
             if (_contactIntakeController.isLoading.value) {
               return const Center(
@@ -429,11 +887,11 @@ class _ContactIntakeManagementWidgetState
               );
             }
 
-            if (filtered.isEmpty) {
+            if (allIntakes.isEmpty) {
               return AdminEmptyState(
-                title: 'Aucune mise en relation a suivre',
+                title: 'Aucune mise en relation à suivre',
                 message:
-                    'Aucun contact intake ne correspond aux filtres appliques pour le moment.',
+                    'Les premiers contacts qualifiés apparaîtront ici dès qu’un utilisateur lancera une mise en relation.',
                 icon: Icons.support_agent_outlined,
                 actionLabel: 'Recharger',
                 actionIcon: Icons.refresh_rounded,
@@ -443,11 +901,7 @@ class _ContactIntakeManagementWidgetState
               );
             }
 
-            final newLeadCount = allIntakes
-                .where((item) =>
-                    AgencyFollowUpStatus.normalize(item.agencyFollowUpStatus) ==
-                    AgencyFollowUpStatus.newLead)
-                .length;
+            final newLeadCount = stageCounts[AgencyFollowUpStatus.newLead] ?? 0;
             final activeCount = allIntakes.where((item) {
               final normalized = AgencyFollowUpStatus.normalize(
                 item.agencyFollowUpStatus,
@@ -455,10 +909,22 @@ class _ContactIntakeManagementWidgetState
               return normalized == AgencyFollowUpStatus.reviewing ||
                   normalized == AgencyFollowUpStatus.inProgress;
             }).length;
-            final closedCount = allIntakes
+            final qualifiedCount =
+                stageCounts[AgencyFollowUpStatus.qualified] ?? 0;
+            final closedCount = stageCounts[AgencyFollowUpStatus.closed] ?? 0;
+            final strongSignalCount = allIntakes.where((item) {
+              final signal = ParticipantFeedbackStatus.normalize(
+                item.latestParticipantFeedbackStatus,
+              );
+              return signal == ParticipantFeedbackStatus.trialScheduled ||
+                  signal == ParticipantFeedbackStatus.opportunitySerious;
+            }).length;
+            final issueSignalCount = allIntakes
                 .where((item) =>
-                    AgencyFollowUpStatus.normalize(item.agencyFollowUpStatus) ==
-                    AgencyFollowUpStatus.closed)
+                    ParticipantFeedbackStatus.normalize(
+                      item.latestParticipantFeedbackStatus,
+                    ) ==
+                    ParticipantFeedbackStatus.issueReported)
                 .length;
 
             final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
@@ -478,11 +944,11 @@ class _ContactIntakeManagementWidgetState
                   runSpacing: 10,
                   children: [
                     AdminMiniStat(
-                      label: 'Resultats visibles',
+                      label: 'Résultats visibles',
                       value: '${filtered.length}',
                       icon: Icons.filter_alt_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Apres filtres',
+                      subtitle: 'Après filtres',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -490,7 +956,7 @@ class _ContactIntakeManagementWidgetState
                       value: '$newLeadCount',
                       icon: Icons.fiber_new_rounded,
                       accentColor: AdminTheme.accent,
-                      subtitle: 'A traiter',
+                      subtitle: 'À traiter',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -498,157 +964,374 @@ class _ContactIntakeManagementWidgetState
                       value: '$activeCount',
                       icon: Icons.track_changes_rounded,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'En revue ou accompagnes',
+                      subtitle: 'En revue ou accompagnés',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Clotures',
-                      value: '$closedCount',
+                      label: 'Qualifiées',
+                      value: '$qualifiedCount',
                       icon: Icons.verified_rounded,
                       accentColor: AdminTheme.success,
+                      subtitle: 'Opportunités crédibles',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Signaux forts',
+                      value: '$strongSignalCount',
+                      icon: Icons.insights_rounded,
+                      accentColor: AdminTheme.success,
+                      subtitle: 'Essai ou opportunité sérieuse',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Alertes',
+                      value: '$issueSignalCount',
+                      icon: Icons.report_problem_outlined,
+                      accentColor: AdminTheme.warning,
+                      subtitle: 'Problèmes signalés',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Clôturées',
+                      value: '$closedCount',
+                      icon: Icons.archive_outlined,
+                      accentColor: AdminTheme.textMuted,
                       subtitle: 'Historique',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                AdminDataTableCard(
+                _buildPipelineOverview(
+                  intakes: allIntakes,
+                  stageCounts: stageCounts,
                   compact: compact,
-                  child: DataTable(
-                    columnSpacing: compact ? 14 : 20,
-                    horizontalMargin: compact ? 8 : 10,
-                    columns: const [
-                      DataColumn(label: Text('Emission')),
-                      DataColumn(label: Text('Demandeur')),
-                      DataColumn(label: Text('Cible')),
-                      DataColumn(label: Text('Motif')),
-                      DataColumn(label: Text('Contexte')),
-                      DataColumn(label: Text('Suivi agence')),
-                      DataColumn(label: Text('Introduction')),
-                      DataColumn(label: Text('Actions')),
-                    ],
-                    rows: List<DataRow>.generate(
-                      displayed.length,
-                      (index) {
-                        final intake = displayed[index];
-                        final isActionInFlight = _actionIntakeId == intake.id;
-
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 150),
-                                child: Text(_formatDate(intake.createdAt)),
-                              ),
-                            ),
-                            DataCell(
-                              _buildActorCell(
-                                name: intake.requesterDisplayName,
-                                roleLabel: intake.requesterRoleLabel,
-                                organization: intake.requesterOrganization,
-                              ),
-                            ),
-                            DataCell(
-                              _buildActorCell(
-                                name: intake.targetDisplayName,
-                                roleLabel: intake.targetRoleLabel,
-                                organization: intake.targetOrganization,
-                              ),
-                            ),
-                            DataCell(
-                              ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 160),
-                                child: Text(
-                                  intake.reasonLabel,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 180),
-                                child: Text(
-                                  intake.contextTitle?.trim().isNotEmpty == true
-                                      ? '${intake.contextLabel} - ${intake.contextTitle!.trim()}'
-                                      : intake.contextLabel,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(_buildFollowUpCell(intake)),
-                            DataCell(
-                              ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 260),
-                                child: Text(
-                                  intake.introMessage,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              isActionInFlight
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : OutlinedButton.icon(
-                                      onPressed: () => _updateFollowUp(intake),
-                                      icon: const Icon(
-                                        Icons.edit_note_rounded,
-                                        size: 18,
-                                      ),
-                                      label: const Text('Suivi'),
-                                    ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                    ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: compact ? 88 : 96,
-                    dataRowMaxHeight: compact ? 88 : 96,
-                    headingRowHeight: compact ? 50 : 54,
-                  ),
                 ),
                 const SizedBox(height: 12),
-                AdminPaginationBar(
-                  currentPage: safePage,
-                  totalPages: totalPages,
-                  onPrevious: safePage > 0
-                      ? () {
-                          setState(() {
-                            _currentPage = safePage - 1;
-                          });
-                        }
-                      : null,
-                  onNext: safePage < totalPages - 1
-                      ? () {
-                          setState(() {
-                            _currentPage = safePage + 1;
-                          });
-                        }
-                      : null,
-                ),
+                if (filtered.isEmpty)
+                  AdminEmptyState(
+                    title: 'Aucune opportunité dans cette vue',
+                    message:
+                        'Aucun dossier ne correspond aux filtres actuels. Changez de statut ou élargissez la recherche.',
+                    icon: Icons.filter_alt_off_outlined,
+                    actionLabel: 'Voir tout',
+                    actionIcon: Icons.layers_clear_outlined,
+                    onAction: () {
+                      setState(() {
+                        _selectedFollowUpStatus = 'Tous';
+                        _searchQuery = '';
+                        _searchController.clear();
+                        _currentPage = 0;
+                      });
+                    },
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: compact ? 14 : 20,
+                      horizontalMargin: compact ? 8 : 10,
+                      columns: const [
+                        DataColumn(label: Text('Émission')),
+                        DataColumn(label: Text('Demandeur')),
+                        DataColumn(label: Text('Cible')),
+                        DataColumn(label: Text('Motif')),
+                        DataColumn(label: Text('Contexte')),
+                        DataColumn(label: Text('Suivi agence')),
+                        DataColumn(label: Text('Signal utilisateurs')),
+                        DataColumn(label: Text('Priorité')),
+                        DataColumn(label: Text('Introduction')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: List<DataRow>.generate(
+                        displayed.length,
+                        (index) {
+                          final intake = displayed[index];
+                          final isActionInFlight = _actionIntakeId == intake.id;
+                          final nextStatus = _nextStatus(
+                            intake.agencyFollowUpStatus,
+                          );
+
+                          return DataRow(
+                            cells: [
+                              DataCell(
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 150),
+                                  child: Text(_formatDate(intake.createdAt)),
+                                ),
+                              ),
+                              DataCell(
+                                _buildActorCell(
+                                  name: intake.requesterDisplayName,
+                                  roleLabel: intake.requesterRoleLabel,
+                                  organization: intake.requesterOrganization,
+                                ),
+                              ),
+                              DataCell(
+                                _buildActorCell(
+                                  name: intake.targetDisplayName,
+                                  roleLabel: intake.targetRoleLabel,
+                                  organization: intake.targetOrganization,
+                                ),
+                              ),
+                              DataCell(
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 160),
+                                  child: Text(
+                                    intake.reasonLabel,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 180),
+                                  child: Text(
+                                    intake.contextTitle?.trim().isNotEmpty ==
+                                            true
+                                        ? '${intake.contextLabel} - ${intake.contextTitle!.trim()}'
+                                        : intake.contextLabel,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              DataCell(_buildFollowUpCell(intake)),
+                              DataCell(_buildParticipantSignalCell(intake)),
+                              DataCell(_buildPriorityCell(intake)),
+                              DataCell(
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 260),
+                                  child: Text(
+                                    intake.introMessage,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                isActionInFlight
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Wrap(
+                                        spacing: 8,
+                                        runSpacing: 6,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            onPressed: () =>
+                                                _updateFollowUp(intake),
+                                            icon: const Icon(
+                                              Icons.edit_note_rounded,
+                                              size: 18,
+                                            ),
+                                            label: const Text('Suivi'),
+                                          ),
+                                          if (nextStatus != null)
+                                            ElevatedButton.icon(
+                                              onPressed: () => _updateFollowUp(
+                                                intake,
+                                                initialStatus: nextStatus,
+                                              ),
+                                              icon: const Icon(
+                                                Icons.arrow_forward_rounded,
+                                                size: 18,
+                                              ),
+                                              label: Text(
+                                                _nextActionLabel(
+                                                  intake.agencyFollowUpStatus,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                      ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: compact ? 112 : 124,
+                      dataRowMaxHeight: compact ? 126 : 140,
+                      headingRowHeight: compact ? 50 : 54,
+                    ),
+                  ),
+                if (filtered.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  AdminPaginationBar(
+                    currentPage: safePage,
+                    totalPages: totalPages,
+                    onPrevious: safePage > 0
+                        ? () {
+                            setState(() {
+                              _currentPage = safePage - 1;
+                            });
+                          }
+                        : null,
+                    onNext: safePage < totalPages - 1
+                        ? () {
+                            setState(() {
+                              _currentPage = safePage + 1;
+                            });
+                          }
+                        : null,
+                  ),
+                ],
               ],
             );
           }),
         ],
+      ),
+    );
+  }
+}
+
+class _PipelineStageCard extends StatelessWidget {
+  const _PipelineStageCard({
+    required this.stage,
+    required this.count,
+    required this.total,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _PipelineStage stage;
+  final int count;
+  final int total;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = total == 0 ? 0.0 : count / total;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withValues(alpha: 0.15)
+                : AdminTheme.surfaceSoft.withValues(alpha: 0.36),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.72)
+                  : AdminTheme.border.withValues(alpha: 0.72),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(stage.icon, color: color, size: 19),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '$count',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 22,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                stage.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AdminTheme.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                stage.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AdminTheme.textSecondary,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  value: ratio.clamp(0.0, 1.0).toDouble(),
+                  backgroundColor: AdminTheme.borderSoft.withValues(alpha: 0.5),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PriorityPill extends StatelessWidget {
+  const _PriorityPill({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
       ),
     );
   }

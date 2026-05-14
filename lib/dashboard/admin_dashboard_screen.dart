@@ -52,9 +52,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       icon: Icons.groups_rounded,
     ),
     _DashboardItem(
-      title: 'Comptes administres',
+      title: 'Comptes administrés',
       subtitle:
-          'Provisionnement et suivi des comptes crees par l administration.',
+          "Provisionnement et suivi des comptes créés par l'administration.",
       icon: Icons.manage_accounts_rounded,
     ),
     _DashboardItem(
@@ -531,9 +531,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           progress: totalUsers == 0 ? 0 : 1,
         ),
         AdminMetricCard(
-          title: 'Comptes crees par l administration',
+          title: "Comptes créés par l'administration",
           value: '$managedCount',
-          subtitle: 'Provisionnes cote admin',
+          subtitle: 'Provisionnés côté admin',
           icon: Icons.badge_rounded,
           progress: totalUsers == 0 ? 0 : managedCount / totalUsers,
           accentColor: AdminTheme.cyan,

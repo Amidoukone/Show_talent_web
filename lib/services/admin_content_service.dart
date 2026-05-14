@@ -142,4 +142,36 @@ class AdminContentService {
       fallbackMessage: 'Mise à jour du suivi agence impossible pour le moment.',
     );
   }
+
+  Future<AdminActionResponse> deleteContactIntake({
+    required String contactIntakeId,
+    String? conversationId,
+  }) {
+    return _callable(
+      'adminDeleteContactIntake',
+      payload: <String, dynamic>{
+        'contactIntakeId': contactIntakeId.trim(),
+        if (conversationId?.trim().isNotEmpty == true)
+          'conversationId': conversationId!.trim(),
+      },
+      fallbackMessage:
+          'Suppression de la mise en relation impossible pour le moment.',
+    );
+  }
+
+  Future<AdminActionResponse> deleteContactIntakeConversation({
+    required String contactIntakeId,
+    String? conversationId,
+  }) {
+    return _callable(
+      'adminDeleteContactIntakeConversation',
+      payload: <String, dynamic>{
+        'contactIntakeId': contactIntakeId.trim(),
+        if (conversationId?.trim().isNotEmpty == true)
+          'conversationId': conversationId!.trim(),
+      },
+      fallbackMessage:
+          'Suppression de la conversation impossible pour le moment.',
+    );
+  }
 }

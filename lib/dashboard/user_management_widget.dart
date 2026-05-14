@@ -97,7 +97,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   String get _bannerTitle => 'Règles de modération';
 
   String get _bannerMessage =>
-      'La moderation passe desormais par la desactivation d acces Auth ou par la suppression definitive du compte. Le changement de role et le renvoi d invitation restent limites aux comptes crees par l administration.';
+      "La modération passe désormais par la désactivation d'accès Auth ou par la suppression définitive du compte. Le changement de rôle et le renvoi d'invitation restent limités aux comptes créés par l'administration.";
 
   String get _searchHint => 'Rechercher un utilisateur';
 

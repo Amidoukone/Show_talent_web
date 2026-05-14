@@ -66,7 +66,7 @@ class ContactIntakeController extends GetxController {
             parsed.add(ContactIntake.fromDoc(doc));
           } catch (error) {
             debugPrint(
-              'Prise de contact ignoree (parsing) : ${doc.id} -> $error',
+              'Prise de contact ignorée (parsing) : ${doc.id} -> $error',
             );
           }
         }
@@ -165,6 +165,80 @@ class ContactIntakeController extends GetxController {
                 data['updatedBy']?.toString() ?? current.agencyLastUpdatedByUid,
             'agencyLastUpdatedAt': DateTime.now(),
             'conversationId': current.conversationId,
+            'contextId': current.contextId,
+            'contextTitle': current.contextTitle,
+            'requesterSnapshot': current.requesterSnapshot,
+            'targetSnapshot': current.targetSnapshot,
+            'latestParticipantFeedbackStatus':
+                current.latestParticipantFeedbackStatus,
+            'latestParticipantFeedbackNote':
+                current.latestParticipantFeedbackNote,
+            'latestParticipantFeedbackByUid':
+                current.latestParticipantFeedbackByUid,
+            'latestParticipantFeedbackByRole':
+                current.latestParticipantFeedbackByRole,
+            'latestParticipantFeedbackAt': current.latestParticipantFeedbackAt,
+            'suggestedAgencyFollowUpStatus':
+                current.suggestedAgencyFollowUpStatus,
+            'createdAt': current.createdAt,
+            'updatedAt': DateTime.now(),
+          },
+          fallbackId: current.id,
+        );
+        contactIntakes[index] = updated;
+        contactIntakes.refresh();
+      }
+    }
+
+    return response;
+  }
+
+  Future<AdminActionResponse> deleteContactIntake({
+    required ContactIntake intake,
+  }) async {
+    final response = await _adminContentService.deleteContactIntake(
+      contactIntakeId: intake.id,
+      conversationId: intake.conversationId,
+    );
+
+    if (response.success) {
+      contactIntakes.removeWhere((current) => current.id == intake.id);
+      contactIntakes.refresh();
+    }
+
+    return response;
+  }
+
+  Future<AdminActionResponse> deleteContactIntakeConversation({
+    required ContactIntake intake,
+  }) async {
+    final response = await _adminContentService.deleteContactIntakeConversation(
+      contactIntakeId: intake.id,
+      conversationId: intake.conversationId,
+    );
+
+    if (response.success) {
+      final index = contactIntakes.indexWhere(
+        (current) => current.id == intake.id,
+      );
+      if (index != -1) {
+        final current = contactIntakes[index];
+        final updated = ContactIntake.fromMap(
+          <String, dynamic>{
+            'id': current.id,
+            'requesterUid': current.requesterUid,
+            'targetUid': current.targetUid,
+            'requesterRole': current.requesterRole,
+            'targetRole': current.targetRole,
+            'contextType': current.contextType,
+            'contactReason': current.contactReason,
+            'introMessage': current.introMessage,
+            'status': current.status,
+            'agencyFollowUpStatus': current.agencyFollowUpStatus,
+            'agencyFollowUpNote': current.agencyFollowUpNote,
+            'agencyLastUpdatedByUid': current.agencyLastUpdatedByUid,
+            'agencyLastUpdatedAt': current.agencyLastUpdatedAt,
+            'conversationId': null,
             'contextId': current.contextId,
             'contextTitle': current.contextTitle,
             'requesterSnapshot': current.requesterSnapshot,

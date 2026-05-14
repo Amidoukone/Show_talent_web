@@ -451,6 +451,92 @@ class _ContactIntakeManagementWidgetState
     }
   }
 
+  Future<void> _deleteContactIntake(ContactIntake intake) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Supprimer la mise en relation'),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
+                      style: const TextStyle(
+                        color: AdminTheme.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Cette action supprime le dossier de suivi côté admin. Si une conversation liée existe encore, elle sera supprimée avec ses messages.',
+                      style: TextStyle(
+                        color: AdminTheme.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Annuler'),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AdminTheme.danger,
+                    foregroundColor: AdminTheme.background,
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Supprimer'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) {
+      return;
+    }
+
+    setState(() {
+      _actionIntakeId = intake.id;
+    });
+
+    final response = await _contactIntakeController.deleteContactIntake(
+      intake: intake,
+    );
+
+    if (response.success) {
+      showAdminFeedback(
+        title: 'Mise en relation supprimée',
+        message:
+            'Le dossier de suivi a été supprimé. La conversation liée a été nettoyée si elle existait encore.',
+        tone: AdminBannerTone.success,
+        position: SnackPosition.BOTTOM,
+      );
+    } else {
+      showAdminFeedback(
+        title: 'Erreur',
+        message: response.message,
+        tone: AdminBannerTone.danger,
+        position: SnackPosition.BOTTOM,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _actionIntakeId = null;
+      });
+    }
+  }
+
   bool _matchesSearch(ContactIntake intake) {
     if (_searchQuery.isEmpty) {
       return true;
@@ -772,15 +858,15 @@ class _ContactIntakeManagementWidgetState
         children: [
           const AdminSectionHeader(
             badge: 'Mise en relation agence',
-            title: 'Contact intakes',
+            title: 'Mises en relation',
             subtitle:
                 'Pilotage des premiers contacts qualifiés pour garder la relation dans le circuit Adfoot.',
           ),
           const SizedBox(height: 14),
           const AdminInfoBanner(
-            title: 'Suivi centralise',
+            title: 'Suivi centralisé',
             message:
-                'Chaque premier contact peut être qualifié, accompagné puis clos sans casser la conversation utilisateur.',
+                'Chaque premier contact peut être qualifié, accompagné, clos ou supprimé proprement, même si la conversation n’existe plus.',
             icon: Icons.support_agent_rounded,
             tone: AdminBannerTone.info,
           ),
@@ -1135,6 +1221,23 @@ class _ContactIntakeManagementWidgetState
                                               size: 18,
                                             ),
                                             label: const Text('Suivi'),
+                                          ),
+                                          OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor:
+                                                  AdminTheme.danger,
+                                              side: BorderSide(
+                                                color: AdminTheme.danger
+                                                    .withValues(alpha: 0.48),
+                                              ),
+                                            ),
+                                            onPressed: () =>
+                                                _deleteContactIntake(intake),
+                                            icon: const Icon(
+                                              Icons.delete_outline_rounded,
+                                              size: 18,
+                                            ),
+                                            label: const Text('Supprimer'),
                                           ),
                                           if (nextStatus != null)
                                             ElevatedButton.icon(

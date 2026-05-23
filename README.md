@@ -136,6 +136,37 @@ Le portail admin est maintenant multi-environnement :
 - l ecran de provisionnement affiche clairement l environnement actif, le `projectId` cible et la region Functions
 - utiliser `APP_ENV`, `FIREBASE_PROJECT_ID` et `FIREBASE_FUNCTIONS_REGION` via `--dart-define` pour viser le bon projet
 
+## Production release checks
+
+Depuis la racine du portail admin :
+
+```powershell
+npm.cmd run production:check
+npm.cmd run contract:mobile
+npm.cmd run test
+npm.cmd run analyze
+```
+
+Commande groupee avant publication du portail admin :
+
+```powershell
+npm.cmd run release:check
+```
+
+Build web production :
+
+```powershell
+npm.cmd run build:web:production
+```
+
+Le script `contract:mobile` cherche par defaut le depot mobile dans :
+
+```text
+%USERPROFILE%\Desktop\ODC_PROJECT\MOBILE\Show-Talent
+```
+
+Si le chemin change, definir `ADFOOT_MOBILE_REPO` avant de lancer le script.
+
 ## Bootstrap admin
 
 Les operateurs admin sont crees uniquement via Admin SDK, depuis le depot

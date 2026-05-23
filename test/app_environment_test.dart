@@ -6,7 +6,11 @@ void main() {
     expect(AppEnvironmentConfig.environment, AppEnvironment.production);
     expect(AppEnvironmentConfig.environmentName, 'production');
     expect(AppEnvironmentConfig.useFirebaseEmulators, isFalse);
+    expect(AppEnvironmentConfig.firebaseProjectId, 'adfoot-production');
+    expect(
+      AppEnvironmentConfig.firebaseOptions.storageBucket,
+      'adfoot-production.firebasestorage.app',
+    );
     expect(AppEnvironmentConfig.functionsRegion, 'europe-west1');
-    expect(AppEnvironmentConfig.firebaseProjectId, isNotEmpty);
   });
 }

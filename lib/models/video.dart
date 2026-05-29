@@ -10,6 +10,9 @@ class Video {
   int shareCount;
   List<String> reports;
   int reportCount;
+  String status;
+  String moderationStatus;
+  bool optimized;
 
   Video({
     required this.id,
@@ -23,6 +26,9 @@ class Video {
     this.shareCount = 0,
     this.reports = const [],
     this.reportCount = 0,
+    this.status = 'ready',
+    this.moderationStatus = '',
+    this.optimized = false,
   });
 
   factory Video.fromMap(Map<String, dynamic> map) {
@@ -38,6 +44,9 @@ class Video {
       shareCount: map['shareCount'] ?? 0,
       reports: List<String>.from(map['reports'] ?? []),
       reportCount: map['reportCount'] ?? 0,
+      status: (map['status'] ?? 'ready').toString(),
+      moderationStatus: (map['moderationStatus'] ?? '').toString(),
+      optimized: map['optimized'] == true,
     );
   }
 
@@ -54,6 +63,9 @@ class Video {
       'shareCount': shareCount,
       'reports': reports,
       'reportCount': reportCount,
+      'status': status,
+      'moderationStatus': moderationStatus,
+      'optimized': optimized,
     };
   }
 }

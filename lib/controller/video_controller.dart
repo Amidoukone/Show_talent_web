@@ -3,8 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../models/video.dart';
+import '../services/admin_content_service.dart';
 
 class VideoController extends GetxController {
+  VideoController({AdminContentService? adminContentService})
+      : _adminContentService = adminContentService ?? AdminContentService();
+
+  final AdminContentService _adminContentService;
+
   var videoList = <Video>[].obs;
 
   @override
@@ -21,7 +27,10 @@ class VideoController extends GetxController {
         snapshot.docs
             .map((doc) {
               try {
-                return Video.fromMap(doc.data());
+                return Video.fromMap({
+                  ...doc.data(),
+                  'id': doc.id,
+                });
               } catch (e) {
                 debugPrint('Erreur lors de la récupération de la vidéo : $e');
                 return null;
@@ -128,16 +137,43 @@ class VideoController extends GetxController {
 
   Future<void> deleteVideo(String videoId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('videos')
-          .doc(videoId)
-          .delete();
+      final response = await _adminContentService.deleteVideo(videoId: videoId);
+      if (!response.success) {
+        final message = response.message.trim().isNotEmpty
+            ? response.message
+            : 'Suppression de la vidéo impossible.';
+        throw StateError(message);
+      }
 
       videoList.removeWhere((video) => video.id == videoId);
 
       Get.snackbar('Succès', 'Vidéo supprimée avec succès.');
     } catch (e) {
       Get.snackbar('Erreur', 'Échec de la suppression de la vidéo : $e');
+      rethrow;
+    }
+  }
+
+  Future<void> setVideoStatus(String videoId, String status) async {
+    try {
+      final response = await _adminContentService.setVideoStatus(
+        videoId: videoId,
+        status: status,
+      );
+      if (!response.success) {
+        final message = response.message.trim().isNotEmpty
+            ? response.message
+            : 'Mise à jour du statut vidéo impossible.';
+        throw StateError(message);
+      }
+
+      Get.snackbar('Succès', 'Statut vidéo mis à jour avec succès.');
+    } catch (e) {
+      Get.snackbar(
+        'Erreur',
+        'Erreur lors de la mise à jour du statut vidéo : $e',
+      );
+      rethrow;
     }
   }
 
@@ -163,7 +199,10 @@ class VideoController extends GetxController {
           .doc(videoId)
           .get();
       if (doc.exists) {
-        return Video.fromMap(doc.data() as Map<String, dynamic>);
+        return Video.fromMap({
+          ...(doc.data() as Map<String, dynamic>),
+          'id': doc.id,
+        });
       }
     } catch (e) {
       Get.snackbar('Erreur', 'Impossible de récupérer la vidéo.');

@@ -127,6 +127,32 @@ class AdminContentService {
     );
   }
 
+  Future<AdminActionResponse> setVideoStatus({
+    required String videoId,
+    required String status,
+  }) {
+    return _callable(
+      'adminSetVideoStatus',
+      payload: <String, dynamic>{
+        'videoId': videoId.trim(),
+        'status': status.trim(),
+      },
+      fallbackMessage: 'Mise à jour du statut vidéo impossible pour le moment.',
+    );
+  }
+
+  Future<AdminActionResponse> deleteVideo({
+    required String videoId,
+  }) {
+    return _callable(
+      'adminDeleteVideo',
+      payload: <String, dynamic>{
+        'videoId': videoId.trim(),
+      },
+      fallbackMessage: 'Suppression de la vidéo impossible pour le moment.',
+    );
+  }
+
   Future<AdminActionResponse> setContactIntakeFollowUp({
     required String contactIntakeId,
     required String status,

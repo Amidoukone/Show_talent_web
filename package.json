@@ -7,10 +7,13 @@
     "build:web:production": "flutter build web --release --dart-define=APP_ENV=production --dart-define=FIREBASE_PROJECT_ID=adfoot-production --dart-define=FIREBASE_FUNCTIONS_REGION=europe-west1",
     "contract:mobile": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\check_mobile_contract.ps1",
     "create-admin": "node scripts/create_admin_account.mjs",
+    "create-admin:guided": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\create_admin_account.ps1",
+    "create-admin:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\create_admin_account.ps1 -Environment staging",
+    "create-admin:production": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\create_admin_account.ps1 -Environment production",
     "production:check": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\check_admin_production_config.ps1",
     "release:check": "npm.cmd run production:check && npm.cmd run contract:mobile && npm.cmd run test:release && npm.cmd run analyze",
     "test": "flutter test",
-    "test:release": "flutter test test\\app_environment_test.dart test\\admin_release_guardrails_test.dart test\\managed_account_service_test.dart test\\managed_account_provision_result_test.dart test\\managed_accounts_widget_test.dart test\\user_management_widget_test.dart"
+    "test:release": "node scripts/run_admin_release_tests.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.5.0",

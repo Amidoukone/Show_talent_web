@@ -103,7 +103,18 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
           Obx(() {
             final allVideos = videoController.getAllVideos();
             final filteredVideos = allVideos.where((video) {
-              return video.caption.toLowerCase().contains(searchQuery);
+              final normalizedQuery = searchQuery.trim().toLowerCase();
+              if (normalizedQuery.isEmpty) {
+                return true;
+              }
+
+              return [
+                video.displayTitle,
+                video.songName,
+                video.uid,
+                video.status,
+                video.moderationStatus,
+              ].any((value) => value.toLowerCase().contains(normalizedQuery));
             }).toList();
 
             final totalPages = (filteredVideos.length / rowsPerPage).ceil();
@@ -145,6 +156,8 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
 
             final reportedCount =
                 allVideos.where((video) => video.reportCount > 0).length;
+            final multiSourceCount =
+                allVideos.where((video) => video.hasMultipleMp4Sources).length;
 
             return Column(
               children: [
@@ -174,6 +187,14 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       icon: Icons.flag_outlined,
                       accentColor: AdminTheme.warning,
                       subtitle: 'Dans le catalogue',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'MP4 multi-sources',
+                      value: '$multiSourceCount',
+                      icon: Icons.dynamic_feed_outlined,
+                      accentColor: AdminTheme.success,
+                      subtitle: 'Contrat mobile',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
@@ -217,7 +238,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                           ),
                           DataCell(
                             Text(
-                              displayedVideos[index].caption,
+                              displayedVideos[index].displayTitle,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -242,12 +263,24 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                     tooltip: 'Actions vidéo',
                                     onSelected: (value) {
                                       if (value == 'view_video') {
+                                        final video = displayedVideos[index];
+                                        final videoUrl = video.effectiveUrl;
+                                        if (videoUrl.isEmpty) {
+                                          showAdminFeedback(
+                                            title: 'Lecture indisponible',
+                                            message:
+                                                'Aucune source MP4 exploitable pour cette vidéo.',
+                                            tone: AdminBannerTone.warning,
+                                            position: SnackPosition.BOTTOM,
+                                          );
+                                          return;
+                                        }
+
                                         Get.to(
                                           () => VideoPlayerScreen(
-                                            videoUrl:
-                                                displayedVideos[index].videoUrl,
-                                            userId: displayedVideos[index].uid,
-                                            videoId: displayedVideos[index].id,
+                                            videoUrl: videoUrl,
+                                            userId: video.uid,
+                                            videoId: video.id,
                                           ),
                                         );
                                       } else if (value == 'delete_video') {

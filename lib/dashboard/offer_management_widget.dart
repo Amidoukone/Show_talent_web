@@ -267,9 +267,17 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
               final statusMatch =
                   _selectedStatus == 'Tous' || status == _selectedStatus;
               final searchMatch = _searchQuery.isEmpty ||
-                  offre.titre.toLowerCase().contains(_searchQuery) ||
-                  offre.description.toLowerCase().contains(_searchQuery) ||
-                  offre.recruteur.nom.toLowerCase().contains(_searchQuery);
+                  [
+                    offre.titre,
+                    offre.description,
+                    offre.recruteur.nom,
+                    offre.localisation,
+                    offre.remuneration,
+                    offre.niveau,
+                    offre.posteRecherche,
+                  ].whereType<String>().any(
+                        (value) => value.toLowerCase().contains(_searchQuery),
+                      );
               return statusMatch && searchMatch;
             }).toList();
 
@@ -310,6 +318,10 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                 .where((offre) =>
                     Offre.normalizeStatus(offre.statut) == 'archivee')
                 .length;
+            final totalViews = allOffres.fold<int>(
+              0,
+              (sum, offre) => sum + (offre.vues ?? 0),
+            );
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -342,6 +354,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                       subtitle: 'Catalogue global',
                       minWidth: compact ? 180 : 220,
                     ),
+                    AdminMiniStat(
+                      label: 'Vues offres',
+                      value: '$totalViews',
+                      icon: Icons.visibility_outlined,
+                      accentColor: AdminTheme.accentSoft,
+                      subtitle: 'Champ mobile vues',
+                      minWidth: compact ? 180 : 220,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -365,6 +385,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                         final status = Offre.normalizeStatus(offre.statut);
                         final color = _statusColor(status);
                         final isActionInFlight = _actionOfferId == offre.id;
+                        final offerMeta = [
+                          offre.posteRecherche,
+                          offre.localisation,
+                          offre.niveau,
+                        ]
+                            .whereType<String>()
+                            .where((value) => value.trim().isNotEmpty)
+                            .join(' | ');
 
                         return DataRow(
                           cells: [
@@ -372,14 +400,32 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                               ConstrainedBox(
                                 constraints:
                                     const BoxConstraints(maxWidth: 220),
-                                child: Text(
-                                  offre.titre,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AdminTheme.textPrimary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      offre.titre,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AdminTheme.textPrimary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (offerMeta.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        offerMeta,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AdminTheme.textSecondary,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),

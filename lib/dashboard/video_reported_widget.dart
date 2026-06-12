@@ -103,7 +103,18 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
           Obx(() {
             final reportedVideos = videoController.getReportedVideos();
             final filteredVideos = reportedVideos.where((video) {
-              return video.caption.toLowerCase().contains(searchQuery);
+              final normalizedQuery = searchQuery.trim().toLowerCase();
+              if (normalizedQuery.isEmpty) {
+                return true;
+              }
+
+              return [
+                video.displayTitle,
+                video.songName,
+                video.uid,
+                video.status,
+                video.moderationStatus,
+              ].any((value) => value.toLowerCase().contains(normalizedQuery));
             }).toList();
 
             final totalPages = (filteredVideos.length / rowsPerPage).ceil();
@@ -220,7 +231,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                           ),
                           DataCell(
                             Text(
-                              displayedVideos[index].caption,
+                              displayedVideos[index].displayTitle,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -253,12 +264,24 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                                     tooltip: 'Actions vidéo',
                                     onSelected: (value) {
                                       if (value == 'view_video') {
+                                        final video = displayedVideos[index];
+                                        final videoUrl = video.effectiveUrl;
+                                        if (videoUrl.isEmpty) {
+                                          showAdminFeedback(
+                                            title: 'Lecture indisponible',
+                                            message:
+                                                'Aucune source MP4 exploitable pour cette vidéo.',
+                                            tone: AdminBannerTone.warning,
+                                            position: SnackPosition.BOTTOM,
+                                          );
+                                          return;
+                                        }
+
                                         Get.to(
                                           () => VideoPlayerScreen(
-                                            videoUrl:
-                                                displayedVideos[index].videoUrl,
-                                            userId: displayedVideos[index].uid,
-                                            videoId: displayedVideos[index].id,
+                                            videoUrl: videoUrl,
+                                            userId: video.uid,
+                                            videoId: video.id,
                                           ),
                                         );
                                       } else if (value == 'delete_video') {

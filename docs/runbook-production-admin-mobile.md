@@ -74,7 +74,20 @@ Commande de reference :
 
 ```powershell
 $env:FIREBASE_SERVICE_ACCOUNT_KEY_PATH="C:\chemin\vers\serviceAccount.json"
-npm.cmd run create-admin -- --email superadmin@adfoot.com --password "MotDePasseTemporaire123!" --name "Super Admin ADFOOT" --claim superAdmin
+npm.cmd run create-admin -- --email admin@example.com --name "Super Admin ADFOOT" --claim superAdmin
+```
+
+Commande guidee recommandee :
+
+```powershell
+npm.cmd run create-admin:staging -- -Email admin@example.com -Name "Super Admin ADFOOT" -DryRun
+npm.cmd run create-admin:staging -- -Email admin@example.com -Name "Super Admin ADFOOT"
+```
+
+Pour la production :
+
+```powershell
+npm.cmd run create-admin:production -- -ServiceAccount "C:\chemin\vers\serviceAccount-production.json" -Email admin@example.com -Name "Super Admin ADFOOT"
 ```
 
 Resultat attendu :
@@ -82,6 +95,8 @@ Resultat attendu :
 - utilisateur cree dans Firebase Auth
 - claim `superAdmin: true` ou claim demande
 - document `/users/{uid}` present
+- `emailVerified: true` dans Auth et Firestore
+- aucune verification d e-mail a envoyer pour un operateur admin
 
 Document coherent attendu :
 

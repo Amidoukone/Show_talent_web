@@ -2,14 +2,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:show_talent/models/user.dart';
 
 class Offre {
-  final String id;
-  final String titre;
-  final String description;
-  final DateTime dateDebut;
-  final DateTime dateFin;
-  final AppUser recruteur;
-  final List<AppUser> candidats;
+  String id;
+  String titre;
+  String description;
+  DateTime dateDebut;
+  DateTime dateFin;
+  AppUser recruteur;
+  List<AppUser> candidats;
   String statut;
+  DateTime dateCreation;
+
+  String? localisation;
+  String? remuneration;
+  String? niveau;
+  String? posteRecherche;
+  String? pieceJointeUrl;
+  int? vues;
+  List<String>? viewedBy;
+  DateTime? archivedAt;
+  DateTime? lastUpdated;
 
   Offre({
     required this.id,
@@ -20,24 +31,39 @@ class Offre {
     required this.recruteur,
     required this.candidats,
     required this.statut,
-  });
+    DateTime? dateCreation,
+    this.localisation,
+    this.remuneration,
+    this.niveau,
+    this.posteRecherche,
+    this.pieceJointeUrl,
+    this.vues,
+    this.viewedBy,
+    this.archivedAt,
+    this.lastUpdated,
+  }) : dateCreation = dateCreation ?? DateTime.now();
 
   static String normalizeStatus(String rawStatus) {
     final value = rawStatus.trim().toLowerCase();
     switch (value) {
       case 'ouverte':
+      case 'open':
         return 'ouverte';
       case 'fermee':
       case 'ferm\u00e9e':
       case 'ferm\u00c3\u00a9e':
       case 'ferm\u00c3\u00a3\u00c2\u00a9e':
+      case 'closed':
         return 'fermee';
       case 'archivee':
       case 'archiv\u00e9e':
       case 'archiv\u00c3\u00a9e':
       case 'archiv\u00c3\u00a3\u00c2\u00a9e':
+      case 'archive':
+      case 'archived':
         return 'archivee';
       case 'brouillon':
+      case 'draft':
         return 'brouillon';
       default:
         return value;
@@ -58,6 +84,24 @@ class Offre {
     return fallback ?? DateTime.now();
   }
 
+  static DateTime? _parseNullableDate(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  static dynamic _readFirst(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      if (map.containsKey(key) && map[key] != null) {
+        return map[key];
+      }
+    }
+    return null;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -65,9 +109,19 @@ class Offre {
       'description': description,
       'dateDebut': dateDebut,
       'dateFin': dateFin,
-      'recruteur': recruteur.toMap(),
-      'candidats': candidats.map((joueur) => joueur.toMap()).toList(),
+      'recruteur': recruteur.toEmbeddedMap(),
+      'candidats': candidats.map((joueur) => joueur.toEmbeddedMap()).toList(),
       'statut': normalizeStatus(statut),
+      'dateCreation': dateCreation,
+      'localisation': localisation,
+      'remuneration': remuneration,
+      'niveau': niveau,
+      'posteRecherche': posteRecherche,
+      'pieceJointeUrl': pieceJointeUrl,
+      'vues': vues,
+      'viewedBy': viewedBy,
+      'archivedAt': archivedAt,
+      'lastUpdated': lastUpdated,
     };
   }
 
@@ -77,27 +131,84 @@ class Offre {
   }) {
     final rawId = map['id']?.toString().trim() ?? '';
     final resolvedId = rawId.isNotEmpty ? rawId : (fallbackId ?? '');
-    final rawRecruteur = map['recruteur'];
+    final rawRecruteur =
+        _readFirst(map, ['recruteur', 'owner', 'author', 'club']);
     final recruteurMap = rawRecruteur is Map
         ? Map<String, dynamic>.from(rawRecruteur)
-        : <String, dynamic>{};
-    final rawCandidats = map['candidats'];
+        : <String, dynamic>{
+            'uid': _readFirst(
+              map,
+              ['recruteurUid', 'ownerUid', 'authorUid', 'clubUid', 'userId'],
+            ),
+            'nom': _readFirst(
+              map,
+              ['recruteurNom', 'ownerName', 'authorName', 'clubNom'],
+            ),
+            'email': _readFirst(
+              map,
+              ['recruteurEmail', 'ownerEmail', 'authorEmail'],
+            ),
+            'role': _readFirst(
+              map,
+              ['recruteurRole', 'ownerRole', 'authorRole', 'clubRole', 'role'],
+            ),
+            'photoProfil': _readFirst(
+              map,
+              ['recruteurPhoto', 'ownerPhoto', 'authorPhoto', 'photoProfil'],
+            ),
+          };
+    final rawCandidats =
+        _readFirst(map, ['candidats', 'participants', 'applications']);
     final candidatsMaps = rawCandidats is List
         ? rawCandidats
             .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
+            .map((candidate) => Map<String, dynamic>.from(candidate))
             .toList()
         : const <Map<String, dynamic>>[];
 
     return Offre(
       id: resolvedId,
-      titre: map['titre']?.toString() ?? '',
-      description: map['description']?.toString() ?? '',
-      dateDebut: _parseDate(map['dateDebut']),
-      dateFin: _parseDate(map['dateFin']),
-      recruteur: AppUser.fromMap(recruteurMap),
-      candidats: candidatsMaps.map(AppUser.fromMap).toList(),
-      statut: normalizeStatus(map['statut']?.toString() ?? 'ouverte'),
+      titre: _readFirst(map, ['titre', 'title', 'intitule', 'poste'])
+              ?.toString() ??
+          '',
+      description:
+          _readFirst(map, ['description', 'details', 'contenu', 'body'])
+                  ?.toString() ??
+              '',
+      dateDebut: _parseDate(
+        _readFirst(
+          map,
+          ['dateDebut', 'startDate', 'createdAt', 'dateCreation'],
+        ),
+      ),
+      dateFin: _parseDate(
+        _readFirst(map, ['dateFin', 'endDate', 'expirationDate', 'expiresAt']),
+      ),
+      recruteur: AppUser.fromEmbeddedMap(recruteurMap),
+      candidats: candidatsMaps.map(AppUser.fromEmbeddedMap).toList(),
+      statut: normalizeStatus(
+        _readFirst(map, ['statut', 'status'])?.toString() ?? 'ouverte',
+      ),
+      dateCreation: _parseDate(
+        _readFirst(map, ['dateCreation', 'createdAt', 'publishedAt']),
+      ),
+      localisation:
+          _readFirst(map, ['localisation', 'location', 'lieu'])?.toString(),
+      remuneration:
+          _readFirst(map, ['remuneration', 'salary', 'salaire'])?.toString(),
+      niveau: _readFirst(map, ['niveau', 'level'])?.toString(),
+      posteRecherche:
+          _readFirst(map, ['posteRecherche', 'poste', 'position'])?.toString(),
+      pieceJointeUrl: _readFirst(
+        map,
+        ['pieceJointeUrl', 'attachmentUrl', 'documentUrl'],
+      )?.toString(),
+      vues: (map['vues'] as num?)?.toInt(),
+      viewedBy: map['viewedBy'] is List
+          ? (map['viewedBy'] as List).map((id) => id.toString()).toList()
+          : null,
+      archivedAt: _parseNullableDate(map['archivedAt']),
+      lastUpdated: _parseNullableDate(map['lastUpdated']),
     );
   }
 

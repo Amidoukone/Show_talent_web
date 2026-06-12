@@ -520,7 +520,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final panelPadding = compact ? 16.0 : 22.0;
     final spacing = compact ? 12.0 : 16.0;
     final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 52.0 : 56.0;
+    final rowHeight = compact ? 66.0 : 72.0;
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -584,9 +584,23 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               final matchesRole =
                   selectedRole == 'Tous' || user.role == selectedRole;
               final normalizedQuery = searchQuery.toLowerCase();
-              final matchesSearch =
-                  user.nom.toLowerCase().contains(normalizedQuery) ||
-                      user.email.toLowerCase().contains(normalizedQuery);
+              final matchesSearch = normalizedQuery.isEmpty ||
+                  [
+                    user.nom,
+                    user.email,
+                    user.phone,
+                    user.city,
+                    user.region,
+                    user.country,
+                    user.team,
+                    user.nomClub,
+                    user.entreprise,
+                    user.position,
+                    user.clubActuel,
+                  ].whereType<String>().any(
+                        (value) =>
+                            value.toLowerCase().contains(normalizedQuery),
+                      );
 
               return matchesRole && matchesSearch;
             }).toList();
@@ -626,6 +640,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             final managedUsers = filteredUsers
                 .where((user) => _isAdminManagedAccount(user))
                 .length;
+            final advancedProfiles =
+                filteredUsers.where((user) => user.hasAdvancedProfile).length;
 
             return Column(
               children: [
@@ -656,6 +672,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       icon: Icons.lock_person_outlined,
                       accentColor: AdminTheme.warning,
                       subtitle: 'Accès suspendus',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Profils avances',
+                      value: '$advancedProfiles',
+                      icon: Icons.verified_outlined,
+                      accentColor: AdminTheme.success,
+                      subtitle: 'Donnees mobile pro',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -712,6 +736,13 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(displayedUsers[index].role),
+                                Text(
+                                  displayedUsers[index].profileLevelLabel,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AdminTheme.textSecondary,
+                                  ),
+                                ),
                                 if (displayedUsers[index].createdByAdmin)
                                   const Text(
                                     'créé par admin',

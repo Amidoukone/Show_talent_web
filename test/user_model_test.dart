@@ -86,4 +86,62 @@ void main() {
     expect(disabled.isEffectivelyActiveAccount, isFalse);
     expect(unverified.isEffectivelyActiveAccount, isFalse);
   });
+
+  test('AppUser parses mobile advanced profile fields', () {
+    final user = AppUser.fromMap({
+      'uid': 'player-1',
+      'nom': 'Advanced Player',
+      'email': 'player@adfoot.org',
+      'role': 'joueur',
+      'followers': 0,
+      'followings': 0,
+      'emailVerified': true,
+      'birthDate': Timestamp.fromDate(DateTime.utc(2004, 6, 1)),
+      'country': 'CI',
+      'city': 'Abidjan',
+      'languages': ['fr', 'en'],
+      'openToOpportunities': true,
+      'position': 'Milieu',
+      'team': 'Academy A',
+      'cvUrl': 'https://cdn.example/cv.pdf',
+      'playerProfile': {
+        'physical': {
+          'heightCm': 181,
+          'strongFoot': 'right',
+        },
+        'positions': ['CM'],
+        'skills': ['vision'],
+        'stats': {'minutes': 900},
+      },
+      'clubProfile': {
+        'categories': ['U19']
+      },
+    });
+
+    expect(user.birthDate, isNotNull);
+    expect(user.languages, ['fr', 'en']);
+    expect(user.openToOpportunities, isTrue);
+    expect(user.primaryLocation, 'Abidjan');
+    expect(user.matchesLocation('abi'), isTrue);
+    expect(user.hasAdvancedProfile, isTrue);
+    expect(user.hasScoutReadyProfile, isTrue);
+    expect(user.profileLevelLabel, 'Profil elite');
+  });
+
+  test('fromEmbeddedMap avoids recursively parsing nested collections', () {
+    final embedded = AppUser.fromEmbeddedMap({
+      'uid': 'club-1',
+      'nom': 'Club embedded',
+      'email': 'club@adfoot.org',
+      'role': 'club',
+      'followers': 0,
+      'followings': 0,
+      'offrePubliees': [
+        {'id': 'offer-1'},
+      ],
+    });
+
+    expect(embedded.offrePubliees, isNull);
+    expect(embedded.toEmbeddedMap()['role'], 'club');
+  });
 }

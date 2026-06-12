@@ -1,4 +1,7 @@
 const List<String> publicSelfSignupRoles = [];
+const String publicSignupDisabledMessage =
+    "La creation de compte se fait uniquement via le super admin dans le projet administration Adfoot.";
+
 const List<String> adminProvisionedRoles = [
   'joueur',
   'fan',

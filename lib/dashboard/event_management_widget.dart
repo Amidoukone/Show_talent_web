@@ -266,10 +266,17 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
               final statusMatch =
                   _selectedStatus == 'Tous' || status == _selectedStatus;
               final searchMatch = _searchQuery.isEmpty ||
-                  event.titre.toLowerCase().contains(_searchQuery) ||
-                  event.description.toLowerCase().contains(_searchQuery) ||
-                  event.organisateur.nom.toLowerCase().contains(_searchQuery) ||
-                  event.lieu.toLowerCase().contains(_searchQuery);
+                  [
+                    event.titre,
+                    event.description,
+                    event.organisateur.nom,
+                    event.lieu,
+                    event.streamingUrl,
+                    event.flyerUrl,
+                    ...?event.tags,
+                  ].whereType<String>().any(
+                        (value) => value.toLowerCase().contains(_searchQuery),
+                      );
               return statusMatch && searchMatch;
             }).toList();
 
@@ -308,6 +315,10 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                 .where(
                     (event) => Event.normalizeStatus(event.statut) == 'archive')
                 .length;
+            final totalViews = allEvents.fold<int>(
+              0,
+              (sum, event) => sum + (event.views ?? 0),
+            );
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -340,6 +351,14 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                       subtitle: 'Catalogue global',
                       minWidth: compact ? 180 : 220,
                     ),
+                    AdminMiniStat(
+                      label: 'Vues evenements',
+                      value: '$totalViews',
+                      icon: Icons.visibility_outlined,
+                      accentColor: AdminTheme.accentSoft,
+                      subtitle: 'Champ mobile views',
+                      minWidth: compact ? 180 : 220,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -364,6 +383,13 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                         final status = Event.normalizeStatus(event.statut);
                         final color = _statusColor(status);
                         final isActionInFlight = _actionEventId == event.id;
+                        final tagsLabel = event.tags
+                            ?.where((value) => value.trim().isNotEmpty)
+                            .take(3)
+                            .join(' | ');
+                        final capacityLabel = event.capaciteMax == null
+                            ? ''
+                            : '${event.participants.length}/${event.capaciteMax} places';
 
                         return DataRow(
                           cells: [
@@ -371,14 +397,32 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                               ConstrainedBox(
                                 constraints:
                                     const BoxConstraints(maxWidth: 220),
-                                child: Text(
-                                  event.titre,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AdminTheme.textPrimary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      event.titre,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AdminTheme.textPrimary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (tagsLabel?.isNotEmpty == true) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        tagsLabel!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AdminTheme.textSecondary,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),
@@ -399,10 +443,28 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                               ConstrainedBox(
                                 constraints:
                                     const BoxConstraints(maxWidth: 180),
-                                child: Text(
-                                  event.lieu,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      event.lieu,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (capacityLabel.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        capacityLabel,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AdminTheme.textSecondary,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),

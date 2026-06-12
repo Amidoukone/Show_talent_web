@@ -66,5 +66,44 @@ void main() {
       final map = offre.toMap();
       expect(map['statut'], 'fermee');
     });
+
+    test('fromMap accepts mobile enriched fields and aliases', () {
+      final offre = Offre.fromMap(
+        <String, dynamic>{
+          'title': 'Gardien U19',
+          'body': 'Recherche gardien disponible rapidement.',
+          'startDate': '2026-05-01T00:00:00.000Z',
+          'expiresAt': '2026-06-01T00:00:00.000Z',
+          'ownerUid': 'club-1',
+          'ownerName': 'Academy FC',
+          'ownerRole': 'club',
+          'status': 'closed',
+          'location': 'Abidjan',
+          'salary': 'Prime de match',
+          'level': 'U19',
+          'position': 'Gardien',
+          'attachmentUrl': 'https://cdn.example/offer.pdf',
+          'vues': 12,
+          'viewedBy': ['u1', 2],
+          'archivedAt': Timestamp.fromDate(DateTime.utc(2026, 6, 2)),
+        },
+        fallbackId: 'offer-alias',
+      );
+
+      expect(offre.id, 'offer-alias');
+      expect(offre.titre, 'Gardien U19');
+      expect(offre.description, contains('gardien'));
+      expect(offre.recruteur.uid, 'club-1');
+      expect(offre.recruteur.nom, 'Academy FC');
+      expect(offre.statut, 'fermee');
+      expect(offre.localisation, 'Abidjan');
+      expect(offre.remuneration, 'Prime de match');
+      expect(offre.niveau, 'U19');
+      expect(offre.posteRecherche, 'Gardien');
+      expect(offre.pieceJointeUrl, 'https://cdn.example/offer.pdf');
+      expect(offre.vues, 12);
+      expect(offre.viewedBy, ['u1', '2']);
+      expect(offre.archivedAt, isNotNull);
+    });
   });
 }

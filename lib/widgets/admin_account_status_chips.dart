@@ -15,6 +15,20 @@ class AdminAccountStatusChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final statuses = <_StatusItem>[];
 
+    if (user.profileVerified) {
+      statuses.add(const _StatusItem(
+        label: 'profil certifié',
+        backgroundColor: Color(0x3367F1AB),
+        textColor: AdminTheme.success,
+      ));
+    } else if (user.profileVerificationNeedsReview) {
+      statuses.add(const _StatusItem(
+        label: 'a revalider',
+        backgroundColor: Color(0x33F4D27A),
+        textColor: AdminTheme.warning,
+      ));
+    }
+
     if (user.authDisabled) {
       statuses.add(const _StatusItem(
         label: 'auth désactivée',
@@ -31,13 +45,15 @@ class AdminAccountStatusChips extends StatelessWidget {
       ));
     }
 
-    if (statuses.isEmpty) {
-      statuses.add(const _StatusItem(
-        label: 'actif',
-        backgroundColor: Color(0x3367F1AB),
-        textColor: AdminTheme.success,
-      ));
-    }
+    statuses.add(_StatusItem(
+      label: user.isEffectivelyActiveAccount ? 'actif' : 'accès limité',
+      backgroundColor: user.isEffectivelyActiveAccount
+          ? const Color(0x3367F1AB)
+          : const Color(0x334A655C),
+      textColor: user.isEffectivelyActiveAccount
+          ? AdminTheme.success
+          : AdminTheme.textMuted,
+    ));
 
     return Wrap(
       spacing: 6,

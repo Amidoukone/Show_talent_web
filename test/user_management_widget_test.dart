@@ -103,4 +103,105 @@ void main() {
       (tester) async {
     await expectAdminActionsForRole(tester, 'fan');
   });
+
+  testWidgets('profile verification action calls managed profile backend',
+      (tester) async {
+    final recordedCalls = <Map<String, dynamic>>[];
+    final service = ManagedAccountService(
+      callableExecutor: (callableName, payload) async {
+        recordedCalls.add({
+          'callableName': callableName,
+          'payload': payload,
+        });
+        return <String, dynamic>{'success': true};
+      },
+    );
+    final controller = TestUserController(
+      users: [
+        buildTestUser(
+          uid: 'player-1',
+          nom: 'Player One',
+          email: 'player@example.com',
+          role: 'joueur',
+          createdByAdmin: true,
+          position: 'Milieu',
+          team: 'Academy A',
+        ),
+      ],
+    );
+
+    await pumpAdminTestApp(
+      tester,
+      UserManagementWidget(
+        selectedRole: 'Tous',
+        userController: controller,
+        managedAccountService: service,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final actionMenu = find.byType(PopupMenuButton<String>);
+    await tester.ensureVisible(actionMenu);
+    await tester.tap(actionMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Certifier le profil'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField).last,
+      'Identité et dossier profil contrôlés',
+    );
+    await tester.tap(find.text('Certifier').last);
+    await tester.pumpAndSettle();
+
+    expect(recordedCalls, hasLength(1));
+    expect(recordedCalls.single['callableName'], 'updateManagedAccountProfile');
+    expect(recordedCalls.single['payload'], {
+      'uid': 'player-1',
+      'patch': {
+        'profileVerified': true,
+        'profileVerificationStatus': 'verified',
+        'profileVerificationNote': 'Identité et dossier profil contrôlés',
+      },
+    });
+  });
+
+  testWidgets('pending profile verification is surfaced for admin review',
+      (tester) async {
+    final controller = TestUserController(
+      users: [
+        buildTestUser(
+          uid: 'player-pending',
+          nom: 'Player Pending',
+          email: 'pending@example.com',
+          role: 'joueur',
+          createdByAdmin: true,
+          position: 'Milieu',
+          team: 'Academy A',
+          profileVerificationStatus: 'pending',
+          profileVerificationInvalidatedAt: DateTime.utc(2026, 6, 5),
+        ),
+      ],
+    );
+
+    await pumpAdminTestApp(
+      tester,
+      UserManagementWidget(
+        selectedRole: 'Tous',
+        userController: controller,
+        managedAccountService: buildService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('A revalider'), findsWidgets);
+    expect(find.text('a revalider'), findsOneWidget);
+
+    final actionMenu = find.byType(PopupMenuButton<String>);
+    await tester.ensureVisible(actionMenu);
+    await tester.tap(actionMenu);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Revalider le profil'), findsOneWidget);
+  });
 }

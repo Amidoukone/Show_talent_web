@@ -37,4 +37,41 @@ void main() {
     expect(recordedCalls[0]['payload']['role'], 'joueur');
     expect(recordedCalls[1]['payload']['role'], 'fan');
   });
+
+  test('profile verification actions use managed profile callable', () async {
+    final recordedCalls = <Map<String, dynamic>>[];
+    final service = ManagedAccountService(
+      callableExecutor: (callableName, payload) async {
+        recordedCalls.add({
+          'callableName': callableName,
+          'payload': payload,
+        });
+        return <String, dynamic>{'success': true};
+      },
+    );
+
+    await service.verifyManagedAccountProfile(
+      uid: 'player-1',
+      note: 'Identité et dossier scout contrôlés',
+    );
+    await service.unverifyManagedAccountProfile(uid: 'player-1');
+
+    expect(recordedCalls, hasLength(2));
+    expect(recordedCalls.first['callableName'], 'updateManagedAccountProfile');
+    expect(recordedCalls.first['payload'], {
+      'uid': 'player-1',
+      'patch': {
+        'profileVerified': true,
+        'profileVerificationStatus': 'verified',
+        'profileVerificationNote': 'Identité et dossier scout contrôlés',
+      },
+    });
+    expect(recordedCalls.last['payload'], {
+      'uid': 'player-1',
+      'patch': {
+        'profileVerified': false,
+        'profileVerificationStatus': 'unverified',
+      },
+    });
+  });
 }

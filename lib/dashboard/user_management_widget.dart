@@ -38,6 +38,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   static const String _actionEnableAuth = 'enable_auth';
   static const String _actionChangeRole = 'change_role';
   static const String _actionResendInvite = 'resend_invite';
+  static const String _actionReviewProfile = 'review_profile';
+  static const String _actionVerifyProfile = 'verify_profile';
+  static const String _actionUnverifyProfile = 'unverify_profile';
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -81,6 +84,16 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     return user.createdByAdmin || isManagedAccountRole(user.role);
   }
 
+  bool _canManageProfileVerification(AppUser user) {
+    return _isAdminManagedAccount(user) && !isAdminPortalOnlyRole(user.role);
+  }
+
+  String _verifyProfileActionLabel(AppUser user) {
+    return user.profileVerificationNeedsReview
+        ? 'Revalider le profil'
+        : 'Certifier le profil';
+  }
+
   Color get _panelAccentColor => AdminTheme.accent;
 
   IconData get _rowLeadingIcon => Icons.person_rounded;
@@ -92,12 +105,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   String get _headerTitle => 'Gestion des utilisateurs';
 
   String get _headerSubtitle =>
-      'Recherche, rôles, statuts Auth et actions admin centralisées.';
+      'Recherche, rôles, statuts Auth, profils certifiés et actions admin centralisées.';
 
-  String get _bannerTitle => 'Règles de modération';
+  String get _bannerTitle => 'Gouvernance des profils';
 
   String get _bannerMessage =>
-      "La modération passe désormais par la désactivation d'accès Auth ou par la suppression définitive du compte. Le changement de rôle et le renvoi d'invitation restent limités aux comptes créés par l'administration.";
+      "La certification profil est un signal de confiance séparé de l'e-mail vérifié. Si l'utilisateur modifie une information de confiance côté mobile, le profil repasse à revalider avant d'afficher le badge Adfoot.";
 
   String get _searchHint => 'Rechercher un utilisateur';
 
@@ -407,6 +420,223 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     }
   }
 
+  Future<String?> _requestProfileVerificationNote({
+    required AppUser user,
+    required bool verifying,
+  }) async {
+    var note = '';
+
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            verifying
+                ? _verifyProfileActionLabel(user)
+                : 'Retirer la certification profil',
+          ),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Compte cible : ${user.nom} (${user.email})'),
+                const SizedBox(height: 12),
+                Text(
+                  verifying
+                      ? 'Confirmez que les informations du profil sont cohérentes avec le contrat mobile et suffisamment fiables pour afficher un signal de confiance.'
+                      : 'La certification sera retirée du profil. Le compte reste actif si Auth et l’e-mail sont valides.',
+                  style: const TextStyle(color: AdminTheme.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  onChanged: (value) {
+                    note = value;
+                  },
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Note interne optionnelle',
+                    hintText: 'Ex. identité et dossier profil contrôlés',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(context).pop(note.trim()),
+              icon: Icon(
+                verifying
+                    ? Icons.verified_rounded
+                    : Icons.remove_moderator_outlined,
+                size: 18,
+              ),
+              label: Text(verifying ? 'Certifier' : 'Retirer'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result;
+  }
+
+  Future<void> _verifyManagedAccountProfile(AppUser user) async {
+    if (!_canManageProfileVerification(user)) {
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message:
+            'La certification profil est réservée aux comptes gérés par l’administration et exclut les comptes admin.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    if (user.profileVerified) {
+      showAdminFeedback(
+        title: 'Profil déjà certifié',
+        message: '${user.nom} possède déjà le signal de confiance profil.',
+        tone: AdminBannerTone.info,
+      );
+      return;
+    }
+
+    if (!user.isEffectivelyActiveAccount) {
+      showAdminFeedback(
+        title: 'Compte non éligible',
+        message:
+            'Activez d’abord Auth et la vérification e-mail avant de certifier le profil.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    if (!user.isMvpProfileComplete) {
+      showAdminFeedback(
+        title: 'Profil incomplet',
+        message:
+            'Le profil doit au minimum respecter les champs essentiels utilisés par le mobile avant certification.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    final note = await _requestProfileVerificationNote(
+      user: user,
+      verifying: true,
+    );
+    if (note == null) {
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: updateManagedAccountProfileAction,
+      request: () => _managedAccountService.verifyManagedAccountProfile(
+        uid: user.uid,
+        note: note,
+      ),
+      successMessage:
+          'Le profil de ${user.nom} est maintenant certifié par l’administration.',
+    );
+  }
+
+  Future<void> _unverifyManagedAccountProfile(AppUser user) async {
+    if (!_canManageProfileVerification(user)) {
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message:
+            'La certification profil est réservée aux comptes gérés par l’administration et exclut les comptes admin.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    if (!user.profileVerified) {
+      showAdminFeedback(
+        title: 'Profil non certifié',
+        message: 'Aucune certification profil active à retirer.',
+        tone: AdminBannerTone.info,
+      );
+      return;
+    }
+
+    final note = await _requestProfileVerificationNote(
+      user: user,
+      verifying: false,
+    );
+    if (note == null) {
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: updateManagedAccountProfileAction,
+      request: () => _managedAccountService.unverifyManagedAccountProfile(
+        uid: user.uid,
+        note: note,
+      ),
+      successMessage: 'La certification profil de ${user.nom} a été retirée.',
+    );
+  }
+
+  Future<void> _showProfileReviewDialog(AppUser user) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.fact_check_outlined),
+              const SizedBox(width: 10),
+              Expanded(child: Text('Revue profil - ${user.nom}')),
+            ],
+          ),
+          content: SizedBox(
+            width: 620,
+            child: SingleChildScrollView(
+              child: _ProfileReviewContent(user: user),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Fermer'),
+            ),
+            if (_canManageProfileVerification(user))
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  if (user.profileVerified) {
+                    _unverifyManagedAccountProfile(user);
+                  } else {
+                    _verifyManagedAccountProfile(user);
+                  }
+                },
+                icon: Icon(
+                  user.profileVerified
+                      ? Icons.remove_moderator_outlined
+                      : Icons.verified_outlined,
+                  size: 18,
+                ),
+                label: Text(
+                  user.profileVerified
+                      ? 'Retirer la certification'
+                      : _verifyProfileActionLabel(user),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
   List<PopupMenuEntry<String>> _buildActionMenuItems(AppUser user) {
     final items = <PopupMenuEntry<String>>[
       PopupMenuItem(
@@ -432,6 +662,57 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         ),
       ),
     ];
+
+    items.add(const PopupMenuDivider());
+    items.add(
+      const PopupMenuItem(
+        value: _actionReviewProfile,
+        child: Row(
+          children: [
+            Icon(Icons.fact_check_outlined, size: 18, color: AdminTheme.cyan),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Revoir le profil',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (_canManageProfileVerification(user)) {
+      items.add(
+        PopupMenuItem(
+          value: user.profileVerified
+              ? _actionUnverifyProfile
+              : _actionVerifyProfile,
+          child: Row(
+            children: [
+              Icon(
+                user.profileVerified
+                    ? Icons.remove_moderator_outlined
+                    : Icons.verified_outlined,
+                size: 18,
+                color: user.profileVerified
+                    ? AdminTheme.warning
+                    : AdminTheme.success,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  user.profileVerified
+                      ? 'Retirer certification'
+                      : _verifyProfileActionLabel(user),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (_isAdminManagedAccount(user)) {
       items.add(const PopupMenuDivider());
@@ -511,6 +792,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       case _actionResendInvite:
         await _resendManagedAccountInvite(user);
         break;
+      case _actionReviewProfile:
+        await _showProfileReviewDialog(user);
+        break;
+      case _actionVerifyProfile:
+        await _verifyManagedAccountProfile(user);
+        break;
+      case _actionUnverifyProfile:
+        await _unverifyManagedAccountProfile(user);
+        break;
     }
   }
 
@@ -520,7 +810,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final panelPadding = compact ? 16.0 : 22.0;
     final spacing = compact ? 12.0 : 16.0;
     final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 66.0 : 72.0;
+    final rowHeight = compact ? 86.0 : 92.0;
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -597,6 +887,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                     user.entreprise,
                     user.position,
                     user.clubActuel,
+                    user.profileTrustLabel,
+                    user.profileVerificationStatusLabel,
                   ].whereType<String>().any(
                         (value) =>
                             value.toLowerCase().contains(normalizedQuery),
@@ -642,6 +934,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 .length;
             final advancedProfiles =
                 filteredUsers.where((user) => user.hasAdvancedProfile).length;
+            final verifiedProfiles =
+                filteredUsers.where((user) => user.profileVerified).length;
+            final readyForVerification = filteredUsers
+                .where((user) =>
+                    !user.profileVerified && user.canBeProfileVerifiedByAdmin)
+                .length;
+            final pendingReview = filteredUsers
+                .where((user) => user.profileVerificationNeedsReview)
+                .length;
 
             return Column(
               children: [
@@ -675,11 +976,35 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Profils avances',
+                      label: 'Profils certifiés',
+                      value: '$verifiedProfiles',
+                      icon: Icons.verified_rounded,
+                      accentColor: AdminTheme.success,
+                      subtitle: 'Signal de confiance',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'A revalider',
+                      value: '$pendingReview',
+                      icon: Icons.fact_check_outlined,
+                      accentColor: AdminTheme.warning,
+                      subtitle: 'Modifies cote mobile',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Prets a verifier',
+                      value: '$readyForVerification',
+                      icon: Icons.rule_folder_outlined,
+                      accentColor: AdminTheme.cyan,
+                      subtitle: 'Eligibles',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Profils avancés',
                       value: '$advancedProfiles',
                       icon: Icons.verified_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Donnees mobile pro',
+                      subtitle: 'Données mobile pro',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -741,6 +1066,21 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AdminTheme.textSecondary,
+                                  ),
+                                ),
+                                Text(
+                                  displayedUsers[index].profileTrustLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: displayedUsers[index].profileVerified
+                                        ? AdminTheme.success
+                                        : displayedUsers[index]
+                                                .profileVerificationNeedsReview
+                                            ? AdminTheme.warning
+                                            : AdminTheme.textMuted,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 if (displayedUsers[index].createdByAdmin)
@@ -824,6 +1164,320 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               ],
             );
           }),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileReviewContent extends StatelessWidget {
+  const _ProfileReviewContent({required this.user});
+
+  final AppUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            AdminPill(
+              label: user.profileTrustLabel,
+              icon: user.profileVerified
+                  ? Icons.verified_rounded
+                  : Icons.fact_check_outlined,
+              color:
+                  user.profileVerified ? AdminTheme.success : AdminTheme.cyan,
+            ),
+            AdminPill(
+              label: user.profileLevelLabel,
+              icon: Icons.military_tech_outlined,
+              color: user.hasAdvancedProfile
+                  ? AdminTheme.accent
+                  : AdminTheme.textMuted,
+            ),
+            AdminPill(
+              label: user.profilePublic ? 'Profil public' : 'Profil restreint',
+              icon: user.profilePublic
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              color:
+                  user.profilePublic ? AdminTheme.success : AdminTheme.warning,
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _ProfileReviewSection(
+          title: 'Éligibilité confiance',
+          children: [
+            _ProfileReviewItem.boolean(
+              label: 'Compte actif et e-mail vérifié',
+              value: user.isEffectivelyActiveAccount,
+            ),
+            _ProfileReviewItem.boolean(
+              label: 'Profil de base complet',
+              value: user.isMvpProfileComplete,
+            ),
+            _ProfileReviewItem.boolean(
+              label: 'Profil avancé mobile renseigné',
+              value: user.hasAdvancedProfile,
+            ),
+            if (user.isPlayer)
+              _ProfileReviewItem.boolean(
+                label: 'Dossier scout exploitable',
+                value: user.hasScoutReadyProfile,
+              ),
+            _ProfileReviewItem(
+              label: 'Statut actuel',
+              value: user.profileVerificationStatusLabel,
+            ),
+            if (user.profileVerificationNeedsReview)
+              _ProfileReviewItem(
+                label: 'Action requise',
+                value: 'Revalidation Adfoot apres modification utilisateur',
+              ),
+            if (user.profileVerificationInvalidatedAt != null)
+              _ProfileReviewItem(
+                label: 'A revalider depuis',
+                value:
+                    user.profileVerificationInvalidatedAt!.toLocal().toString(),
+              ),
+            if (user.profileVerificationInvalidatedBy != null)
+              _ProfileReviewItem(
+                label: 'Modification par',
+                value: user.profileVerificationInvalidatedBy!,
+              ),
+            if (user.profileVerificationInvalidationReason != null)
+              _ProfileReviewItem(
+                label: 'Cause',
+                value: user.profileVerificationInvalidationReason!,
+              ),
+            if (user.profileVerifiedAt != null)
+              _ProfileReviewItem(
+                label: user.profileVerified
+                    ? 'Certifie le'
+                    : 'Derniere certification',
+                value: user.profileVerifiedAt!.toLocal().toString(),
+              ),
+            if (user.profileVerificationNote != null)
+              _ProfileReviewItem(
+                label: 'Note interne',
+                value: user.profileVerificationNote!,
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _ProfileReviewSection(
+          title: 'Identité et contact',
+          children: [
+            _ProfileReviewItem(label: 'Nom', value: user.nom),
+            _ProfileReviewItem(label: 'E-mail', value: user.email),
+            _ProfileReviewItem(label: 'Rôle', value: user.role),
+            _ProfileReviewItem(
+              label: 'Téléphone',
+              value: user.phone ?? 'Non renseigné',
+            ),
+            _ProfileReviewItem(
+              label: 'Localisation',
+              value: user.primaryLocation ?? 'Non renseignée',
+            ),
+            _ProfileReviewItem(
+              label: 'Langues',
+              value: user.languages?.join(', ') ?? 'Non renseignées',
+            ),
+            _ProfileReviewItem.boolean(
+              label: 'Ouvert aux opportunités',
+              value: user.openToOpportunities == true,
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _ProfileReviewSection(
+          title: 'Profil métier mobile',
+          children: _buildRoleProfileItems(user),
+        ),
+      ],
+    );
+  }
+
+  static List<_ProfileReviewItem> _buildRoleProfileItems(AppUser user) {
+    if (user.isPlayer) {
+      return [
+        _ProfileReviewItem(
+          label: 'Poste',
+          value: user.position ?? 'Non renseigné',
+        ),
+        _ProfileReviewItem(
+          label: 'Équipe',
+          value: user.team ?? user.clubActuel ?? 'Non renseignée',
+        ),
+        _ProfileReviewItem(
+          label: 'CV',
+          value: user.cvUrl?.isNotEmpty == true ? 'Présent' : 'Absent',
+        ),
+        _ProfileReviewItem(
+          label: 'Profil joueur avancé',
+          value: _formatMapSummary(user.playerProfile),
+        ),
+      ];
+    }
+
+    if (user.isClub) {
+      return [
+        _ProfileReviewItem(
+          label: 'Club',
+          value: user.nomClub ?? user.nom,
+        ),
+        _ProfileReviewItem(
+          label: 'Ligue',
+          value: user.ligue ?? 'Non renseignée',
+        ),
+        _ProfileReviewItem(
+          label: 'Profil club avancé',
+          value: _formatMapSummary(user.clubProfile),
+        ),
+      ];
+    }
+
+    if (user.isRecruiter) {
+      return [
+        _ProfileReviewItem(
+          label: 'Organisation',
+          value: user.entreprise ?? 'Non renseignée',
+        ),
+        _ProfileReviewItem(
+          label: 'Recrutements',
+          value: user.nombreDeRecrutements?.toString() ?? 'Non renseigné',
+        ),
+        _ProfileReviewItem(
+          label: 'Profil agent/recruteur',
+          value: _formatMapSummary(user.agentProfile),
+        ),
+      ];
+    }
+
+    return [
+      _ProfileReviewItem(
+        label: 'Profil',
+        value: user.bio ?? 'Aucune donnée métier avancée pour ce rôle.',
+      ),
+    ];
+  }
+
+  static String _formatMapSummary(Map<String, dynamic>? value) {
+    if (value == null || value.isEmpty) {
+      return 'Non renseigné';
+    }
+
+    return value.entries
+        .take(4)
+        .map((entry) => '${entry.key}: ${_formatValue(entry.value)}')
+        .join(' | ');
+  }
+
+  static String _formatValue(dynamic value) {
+    if (value is List) {
+      return value.join(', ');
+    }
+    if (value is Map) {
+      return '${value.length} champs';
+    }
+    return value?.toString() ?? 'Non renseigné';
+  }
+}
+
+class _ProfileReviewSection extends StatelessWidget {
+  const _ProfileReviewSection({
+    required this.title,
+    required this.children,
+  });
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AdminTheme.surface.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AdminTheme.borderSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AdminTheme.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileReviewItem extends StatelessWidget {
+  const _ProfileReviewItem({
+    required this.label,
+    required this.value,
+  }) : success = null;
+
+  const _ProfileReviewItem.boolean({
+    required this.label,
+    required bool value,
+  })  : value = value ? 'Oui' : 'Non',
+        success = value;
+
+  final String label;
+  final String value;
+  final bool? success;
+
+  @override
+  Widget build(BuildContext context) {
+    final successValue = success;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (successValue != null) ...[
+            Icon(
+              successValue
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.error_outline_rounded,
+              size: 18,
+              color: successValue ? AdminTheme.success : AdminTheme.warning,
+            ),
+            const SizedBox(width: 8),
+          ],
+          SizedBox(
+            width: 190,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AdminTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: AdminTheme.textPrimary),
+            ),
+          ),
         ],
       ),
     );

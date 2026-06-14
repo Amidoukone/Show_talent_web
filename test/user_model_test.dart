@@ -128,6 +128,80 @@ void main() {
     expect(user.profileLevelLabel, 'Profil elite');
   });
 
+  test('AppUser separates profile completion from admin verification', () {
+    final user = AppUser.fromMap({
+      'uid': 'verified-player',
+      'nom': 'Verified Player',
+      'email': 'verified@adfoot.org',
+      'role': 'joueur',
+      'followers': 0,
+      'followings': 0,
+      'emailVerified': true,
+      'authDisabled': false,
+      'position': 'Attaquant',
+      'team': 'Academy A',
+      'profileVerified': true,
+      'profileVerificationStatus': 'verified',
+      'profileVerifiedAt': Timestamp.fromDate(DateTime.utc(2026, 6, 1)),
+      'profileVerifiedBy': 'admin-1',
+      'profileVerificationNote': 'Profil contrôlé',
+      'profileVerificationInvalidatedAt':
+          Timestamp.fromDate(DateTime.utc(2026, 6, 5)),
+      'profileVerificationInvalidatedBy': 'verified-player',
+      'profileVerificationInvalidationReason': 'profile_updated_by_user',
+    });
+
+    expect(user.profileLevelLabel, 'Profil complet');
+    expect(user.profileVerified, isTrue);
+    expect(user.isProfileTrusted, isTrue);
+    expect(user.profileTrustLabel, 'Profil certifie');
+    expect(user.profileVerificationStatusLabel, 'Verifie par admin');
+    expect(user.profileVerifiedAt?.toUtc(), DateTime.utc(2026, 6, 1));
+    expect(user.profileVerifiedBy, 'admin-1');
+    expect(user.profileVerificationNote, 'Profil contrôlé');
+    expect(
+      user.profileVerificationInvalidatedAt?.toUtc(),
+      DateTime.utc(2026, 6, 5),
+    );
+    expect(user.profileVerificationInvalidatedBy, 'verified-player');
+    expect(
+      user.profileVerificationInvalidationReason,
+      'profile_updated_by_user',
+    );
+    expect(user.toEmbeddedMap()['profileVerified'], isTrue);
+    expect(user.toMap()['profileVerifiedBy'], 'admin-1');
+  });
+
+  test('AppUser exposes pending profile reverification state', () {
+    final user = AppUser.fromMap({
+      'uid': 'pending-player',
+      'nom': 'Pending Player',
+      'email': 'pending@adfoot.org',
+      'role': 'joueur',
+      'followers': 0,
+      'followings': 0,
+      'emailVerified': true,
+      'authDisabled': false,
+      'position': 'Attaquant',
+      'team': 'Academy A',
+      'profileVerified': false,
+      'profileVerificationStatus': 'pending',
+      'profileVerificationInvalidatedAt':
+          Timestamp.fromDate(DateTime.utc(2026, 6, 5)),
+      'profileVerificationInvalidatedBy': 'pending-player',
+      'profileVerificationInvalidationReason': 'profile_updated_by_user',
+    });
+
+    expect(user.profileVerificationNeedsReview, isTrue);
+    expect(user.isProfileTrusted, isFalse);
+    expect(user.profileTrustLabel, 'A revalider');
+    expect(user.profileVerificationStatusLabel, 'Verification a refaire');
+    expect(
+      user.toMap()['profileVerificationInvalidationReason'],
+      'profile_updated_by_user',
+    );
+  });
+
   test('fromEmbeddedMap avoids recursively parsing nested collections', () {
     final embedded = AppUser.fromEmbeddedMap({
       'uid': 'club-1',

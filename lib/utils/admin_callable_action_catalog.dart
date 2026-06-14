@@ -91,13 +91,13 @@ const AdminCallableActionDescriptor enableManagedAccountAuthAction =
 const AdminCallableActionDescriptor updateManagedAccountProfileAction =
     AdminCallableActionDescriptor(
   id: 'update_managed_account_profile',
-  label: 'Mettre à jour le profil géré',
+  label: 'Gérer le profil',
   callableName: 'updateManagedAccountProfile',
   summary:
-      'Mise à jour admin de champs profil sensibles via Cloud Function dédiée.',
-  uiSurfaces: ['UI à ajouter'],
+      'Mise à jour admin de champs profil sensibles et de la vérification profil via Cloud Function dédiée.',
+  uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
-  isConnectedInUi: false,
+  isConnectedInUi: true,
 );
 
 const List<AdminCallableActionDescriptor> adminCallableActions = [

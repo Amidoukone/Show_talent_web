@@ -21,6 +21,16 @@ class AppUser {
   DateTime? emailVerifiedAt;
   String? phone;
   String? authDisabledReason;
+  bool profileVerified;
+  String profileVerificationStatus;
+  DateTime? profileVerifiedAt;
+  String? profileVerifiedBy;
+  DateTime? profileVerificationUpdatedAt;
+  String? profileVerificationUpdatedBy;
+  String? profileVerificationNote;
+  DateTime? profileVerificationInvalidatedAt;
+  String? profileVerificationInvalidatedBy;
+  String? profileVerificationInvalidationReason;
 
   DateTime? birthDate;
   String? country;
@@ -78,6 +88,16 @@ class AppUser {
     this.emailVerifiedAt,
     this.phone,
     this.authDisabledReason,
+    this.profileVerified = false,
+    this.profileVerificationStatus = 'unverified',
+    this.profileVerifiedAt,
+    this.profileVerifiedBy,
+    this.profileVerificationUpdatedAt,
+    this.profileVerificationUpdatedBy,
+    this.profileVerificationNote,
+    this.profileVerificationInvalidatedAt,
+    this.profileVerificationInvalidatedBy,
+    this.profileVerificationInvalidationReason,
     this.birthDate,
     this.country,
     this.city,
@@ -127,6 +147,7 @@ class AppUser {
   }) {
     final normalizedRole = normalizeUserRole(map['role']?.toString());
     final safeMapPerformances = _safeMap(map['performances']);
+    final profileVerified = map['profileVerified'] == true;
 
     return AppUser(
       uid: map['uid']?.toString() ?? '',
@@ -145,6 +166,25 @@ class AppUser {
       emailVerifiedAt: _parseNullableDate(map['emailVerifiedAt']),
       phone: _normalizeNullableString(map['phone']),
       authDisabledReason: _normalizeNullableString(map['authDisabledReason']),
+      profileVerified: profileVerified,
+      profileVerificationStatus: _normalizeProfileVerificationStatus(
+        map['profileVerificationStatus'],
+        verified: profileVerified,
+      ),
+      profileVerifiedAt: _parseNullableDate(map['profileVerifiedAt']),
+      profileVerifiedBy: _normalizeNullableString(map['profileVerifiedBy']),
+      profileVerificationUpdatedAt:
+          _parseNullableDate(map['profileVerificationUpdatedAt']),
+      profileVerificationUpdatedBy:
+          _normalizeNullableString(map['profileVerificationUpdatedBy']),
+      profileVerificationNote:
+          _normalizeNullableString(map['profileVerificationNote']),
+      profileVerificationInvalidatedAt:
+          _parseNullableDate(map['profileVerificationInvalidatedAt']),
+      profileVerificationInvalidatedBy:
+          _normalizeNullableString(map['profileVerificationInvalidatedBy']),
+      profileVerificationInvalidationReason: _normalizeNullableString(
+          map['profileVerificationInvalidationReason']),
       birthDate: _parseNullableDate(map['birthDate']),
       country: _normalizeNullableString(map['country']),
       city: _normalizeNullableString(map['city']),
@@ -242,6 +282,8 @@ class AppUser {
       'emailVerified': emailVerified,
       'createdByAdmin': createdByAdmin,
       'phone': phone,
+      'profileVerified': profileVerified,
+      'profileVerificationStatus': profileVerificationStatus,
       'nomClub': nomClub,
       'ligue': ligue,
       'entreprise': entreprise,
@@ -261,6 +303,22 @@ class AppUser {
       'emailVerifiedAt':
           emailVerifiedAt != null ? Timestamp.fromDate(emailVerifiedAt!) : null,
       'authDisabledReason': authDisabledReason,
+      'profileVerifiedAt': profileVerifiedAt != null
+          ? Timestamp.fromDate(profileVerifiedAt!)
+          : null,
+      'profileVerifiedBy': profileVerifiedBy,
+      'profileVerificationUpdatedAt': profileVerificationUpdatedAt != null
+          ? Timestamp.fromDate(profileVerificationUpdatedAt!)
+          : null,
+      'profileVerificationUpdatedBy': profileVerificationUpdatedBy,
+      'profileVerificationNote': profileVerificationNote,
+      'profileVerificationInvalidatedAt':
+          profileVerificationInvalidatedAt != null
+              ? Timestamp.fromDate(profileVerificationInvalidatedAt!)
+              : null,
+      'profileVerificationInvalidatedBy': profileVerificationInvalidatedBy,
+      'profileVerificationInvalidationReason':
+          profileVerificationInvalidationReason,
       'birthDate': birthDate != null ? Timestamp.fromDate(birthDate!) : null,
       'country': country,
       'city': city,
@@ -315,6 +373,40 @@ class AppUser {
   bool get isFan => role == 'fan';
 
   bool get isEffectivelyActiveAccount => !authDisabled && emailVerified;
+  bool get isProfileTrusted => profileVerified && isEffectivelyActiveAccount;
+  bool get profileVerificationNeedsReview =>
+      !profileVerified && profileVerificationStatus == 'pending';
+
+  bool get canBeProfileVerifiedByAdmin {
+    return !isAdminPortalOnly &&
+        isEffectivelyActiveAccount &&
+        isMvpProfileComplete;
+  }
+
+  String get profileTrustLabel {
+    if (isProfileTrusted) return 'Profil certifie';
+    if (profileVerified && !isEffectivelyActiveAccount) {
+      return 'Certification suspendue';
+    }
+    if (!isEffectivelyActiveAccount) return 'Compte a activer';
+    if (profileVerificationNeedsReview) return 'A revalider';
+    if (isMvpProfileComplete) return 'Pret a verifier';
+    return 'Profil a completer';
+  }
+
+  String get profileVerificationStatusLabel {
+    switch (profileVerificationStatus) {
+      case 'verified':
+        return 'Verifie par admin';
+      case 'rejected':
+        return 'Verification refusee';
+      case 'pending':
+        return 'Verification a refaire';
+      case 'unverified':
+      default:
+        return 'Non verifie';
+    }
+  }
 
   bool get isAdminPortalOnly => isAdminPortalOnlyRole(role);
   bool get hasManagedAccountRole => isManagedAccountRole(role);
@@ -416,7 +508,7 @@ class AppUser {
   String get profileLevelLabel {
     if (hasScoutReadyProfile) return 'Profil elite';
     if (hasAdvancedProfile) return 'Profil avance';
-    if (isMvpProfileComplete) return 'Profil verifie';
+    if (isMvpProfileComplete) return 'Profil complet';
     return 'Profil basique';
   }
 
@@ -464,5 +556,24 @@ class AppUser {
   static String? _normalizeNullableString(dynamic value) {
     final normalized = value?.toString().trim();
     return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+
+  static String _normalizeProfileVerificationStatus(
+    dynamic value, {
+    required bool verified,
+  }) {
+    final normalized = value?.toString().trim().toLowerCase();
+    const supportedStatuses = {
+      'verified',
+      'unverified',
+      'pending',
+      'rejected',
+    };
+
+    if (normalized != null && supportedStatuses.contains(normalized)) {
+      return normalized;
+    }
+
+    return verified ? 'verified' : 'unverified';
   }
 }

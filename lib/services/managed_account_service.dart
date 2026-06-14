@@ -167,6 +167,40 @@ class ManagedAccountService {
     );
   }
 
+  Future<void> verifyManagedAccountProfile({
+    required String uid,
+    String? note,
+  }) {
+    final normalizedNote = note?.trim();
+
+    return updateManagedAccountProfile(
+      uid: uid,
+      patch: <String, dynamic>{
+        'profileVerified': true,
+        'profileVerificationStatus': 'verified',
+        if (normalizedNote != null && normalizedNote.isNotEmpty)
+          'profileVerificationNote': normalizedNote,
+      },
+    );
+  }
+
+  Future<void> unverifyManagedAccountProfile({
+    required String uid,
+    String? note,
+  }) {
+    final normalizedNote = note?.trim();
+
+    return updateManagedAccountProfile(
+      uid: uid,
+      patch: <String, dynamic>{
+        'profileVerified': false,
+        'profileVerificationStatus': 'unverified',
+        if (normalizedNote != null && normalizedNote.isNotEmpty)
+          'profileVerificationNote': normalizedNote,
+      },
+    );
+  }
+
   Map<String, dynamic> _normalizeManagedAccountProfilePayload({
     String? uid,
     Map<String, dynamic>? profileData,

@@ -51,6 +51,11 @@ AppUser buildTestUser({
   bool createdByAdmin = false,
   bool authDisabled = false,
   bool emailVerified = true,
+  bool profileVerified = false,
+  String? profileVerificationStatus,
+  DateTime? profileVerificationInvalidatedAt,
+  String? position,
+  String? team,
 }) {
   final now = DateTime(2026, 4, 17);
   return AppUser(
@@ -63,6 +68,18 @@ AppUser buildTestUser({
     authDisabled: authDisabled,
     emailVerified: emailVerified,
     createdByAdmin: createdByAdmin,
+    profileVerified: profileVerified,
+    profileVerificationStatus: profileVerificationStatus ??
+        (profileVerified ? 'verified' : 'unverified'),
+    profileVerificationInvalidatedAt: profileVerificationInvalidatedAt,
+    profileVerificationInvalidatedBy:
+        profileVerificationInvalidatedAt == null ? null : uid,
+    profileVerificationInvalidationReason:
+        profileVerificationInvalidatedAt == null
+            ? null
+            : 'profile_updated_by_user',
+    position: position,
+    team: team,
     followers: 0,
     followings: 0,
     dateInscription: now,

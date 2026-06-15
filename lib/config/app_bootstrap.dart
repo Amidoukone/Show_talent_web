@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_bindings.dart';
+import 'app_environment.dart';
 import 'firebase_bootstrap.dart';
 
 class AppBootstrap {
@@ -13,8 +14,10 @@ class AppBootstrap {
     WidgetsFlutterBinding.ensureInitialized();
     _configureSystemUi();
 
-    await FirebaseBootstrap.initialize();
-    await FirebaseAuth.instance.setLanguageCode('fr');
+    if (!AppEnvironmentConfig.visualQaMode) {
+      await FirebaseBootstrap.initialize();
+      await FirebaseAuth.instance.setLanguageCode('fr');
+    }
 
     AppBindings.registerPermanentDependencies();
     _configureFlutterErrors();

@@ -45,7 +45,7 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const AdminPill(
-                                  label: 'Provisionnement sécurisé',
+                                  label: 'Accès sécurisé',
                                   icon: Icons.rule_rounded,
                                   color: AdminTheme.warning,
                                 ),
@@ -72,17 +72,17 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                                 ),
                                 const SizedBox(height: 22),
                                 const Text(
-                                  'Création admin côté client désactivée',
+                                  'Accès administrateur géré',
                                   style: TextStyle(
                                     fontSize: 30,
                                     fontWeight: FontWeight.w800,
                                     color: AdminTheme.textPrimary,
-                                    letterSpacing: -0.5,
+                                    letterSpacing: 0,
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 const Text(
-                                  'Le portail admin ne crée plus de compte sensible localement. La gouvernance reste centralisée par les claims et les outils backend.',
+                                  "Pour protéger la production, les comptes administrateur sont créés et validés par l'équipe habilitée.",
                                   style: TextStyle(
                                     color: AdminTheme.textSecondary,
                                     height: 1.6,
@@ -95,17 +95,17 @@ class _AdminSignupScreenState extends State<AdminSignupScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const AdminInfoBanner(
-                                  title: 'Attribution des rôles',
+                                  title: "Droits d'accès",
                                   message:
-                                      'Les comptes admin et leurs custom claims doivent être attribués côté serveur. La création locale avec createUserWithEmailAndPassword est retirée.',
+                                      "Les droits admin sont attribués par l'équipe habilitée puis vérifiés à chaque connexion.",
                                   icon: Icons.security_rounded,
                                   tone: AdminBannerTone.warning,
                                 ),
                                 const SizedBox(height: 16),
                                 const AdminInfoBanner(
-                                  title: 'Provisionnement métier',
+                                  title: 'Comptes métier',
                                   message:
-                                      'Tous les comptes metier sont maintenant provisionnes depuis le dashboard via la Cloud Function partagee provisionManagedAccount.',
+                                      'Les comptes joueurs, clubs, agents et recruteurs se créent depuis le dashboard avec un parcours contrôlé.',
                                   icon: Icons.hub_outlined,
                                   tone: AdminBannerTone.info,
                                 ),

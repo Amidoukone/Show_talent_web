@@ -24,6 +24,8 @@ class AppEnvironmentConfig {
       String.fromEnvironment('APP_ENV', defaultValue: 'production');
   static const bool useFirebaseEmulators =
       bool.fromEnvironment('USE_FIREBASE_EMULATORS', defaultValue: false);
+  static const bool visualQaMode =
+      bool.fromEnvironment('ADMIN_VISUAL_QA', defaultValue: false);
   static const String functionsRegion = String.fromEnvironment(
     'FIREBASE_FUNCTIONS_REGION',
     defaultValue: 'europe-west1',

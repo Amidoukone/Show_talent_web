@@ -16,9 +16,11 @@ class StatisticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 720;
+
     return Scaffold(
       body: AdminAppBackground(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(compact ? 16 : 24),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1380),
@@ -89,23 +91,19 @@ class StatisticsOverviewPanel extends StatelessWidget {
             ),
             const SizedBox(height: 20),
           ],
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              SizedBox(
-                width: 280,
-                child: AdminMetricCard(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth =
+                  constraints.maxWidth < 280 ? constraints.maxWidth : 280.0;
+              final metricCards = <Widget>[
+                AdminMetricCard(
                   title: 'Utilisateurs',
                   value: '$totalUsers',
                   subtitle: '$activeUsers actifs dans le portail',
                   icon: Icons.groups_2_rounded,
                   progress: activeRate,
                 ),
-              ),
-              SizedBox(
-                width: 280,
-                child: AdminMetricCard(
+                AdminMetricCard(
                   title: "Comptes créés par l'administration",
                   value: '$managedUsers',
                   subtitle: 'Comptes administrés',
@@ -113,10 +111,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   progress: managedRate,
                   accentColor: AdminTheme.cyan,
                 ),
-              ),
-              SizedBox(
-                width: 280,
-                child: AdminMetricCard(
+                AdminMetricCard(
                   title: 'Vidéos publiées',
                   value: '$totalVideos',
                   subtitle: '${reportedVideos.length} vidéos signalées',
@@ -124,19 +119,29 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   progress: 1,
                   accentColor: AdminTheme.accentSoft,
                 ),
-              ),
-              SizedBox(
-                width: 280,
-                child: AdminMetricCard(
-                  title: 'Alertes moderation',
+                AdminMetricCard(
+                  title: 'Alertes modération',
                   value: '$authDisabledUsers',
-                  subtitle: 'Accès Auth désactivés',
+                  subtitle: 'Accès suspendus',
                   icon: Icons.lock_person_rounded,
                   progress: disabledRate,
                   accentColor: AdminTheme.warning,
                 ),
-              ),
-            ],
+              ];
+
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: metricCards
+                    .map(
+                      (card) => SizedBox(
+                        width: cardWidth,
+                        child: card,
+                      ),
+                    )
+                    .toList(),
+              );
+            },
           ),
           const SizedBox(height: 18),
           LayoutBuilder(
@@ -152,8 +157,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   children: [
                     const AdminSectionHeader(
                       title: 'Activité globale',
-                      subtitle:
-                          'Lecture rapide des volumes admin actuellement exposés dans le portail.',
+                      subtitle: 'Lecture rapide des volumes clés du portail.',
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
@@ -210,16 +214,20 @@ class StatisticsOverviewPanel extends StatelessWidget {
                                 getTitlesWidget: (value, meta) {
                                   const labels = [
                                     'Utilisateurs',
-                                    'Admin',
+                                    'Gérés',
                                     'Vidéos',
                                     'Signalés',
-                                    'Auth off',
+                                    'Suspendus',
                                   ];
+                                  final index = value.toInt();
+                                  if (index < 0 || index >= labels.length) {
+                                    return const SizedBox.shrink();
+                                  }
 
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 8),
                                     child: Text(
-                                      labels[value.toInt()],
+                                      labels[index],
                                       style: const TextStyle(
                                         color: AdminTheme.textSecondary,
                                         fontSize: 11,
@@ -283,7 +291,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                         ),
                         const SizedBox(height: 14),
                         _SignalRow(
-                          label: 'Auth désactivée',
+                          label: 'Accès suspendus',
                           value: '${(disabledRate * 100).round()}%',
                           progress: disabledRate,
                           color: AdminTheme.danger,
@@ -293,9 +301,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   const AdminInfoBanner(
-                    title: 'Lecture admin',
+                    title: 'Lecture opérationnelle',
                     message:
-                        'Cette vue reste purement front et n’impacte aucune logique métier. Elle reformule uniquement les données déjà présentes dans les controllers.',
+                        'Ces indicateurs aident à suivre l’activité, la modération et les accès sensibles.',
                     icon: Icons.auto_graph_rounded,
                     tone: AdminBannerTone.neutral,
                   ),

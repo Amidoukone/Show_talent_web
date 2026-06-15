@@ -1,38 +1,38 @@
 import 'package:flutter/material.dart';
 
 class AdminTheme {
-  static const Color background = Color(0xFF040B09);
-  static const Color backgroundSecondary = Color(0xFF071411);
-  static const Color surface = Color(0xFF0C1815);
-  static const Color surfaceRaised = Color(0xFF12231E);
-  static const Color surfaceSoft = Color(0xFF17302A);
-  static const Color surfaceHighlight = Color(0xFF1B3A31);
-  static const Color border = Color(0xFF295247);
-  static const Color borderSoft = Color(0xFF1F3F37);
-  static const Color accent = Color(0xFF67F1AB);
-  static const Color accentSoft = Color(0xFFB7F8D7);
-  static const Color cyan = Color(0xFF74D9FF);
-  static const Color warning = Color(0xFFF4D27A);
-  static const Color danger = Color(0xFFFF7E8A);
-  static const Color success = Color(0xFF7BF1B7);
-  static const Color textPrimary = Color(0xFFF2FFF8);
-  static const Color textSecondary = Color(0xFF9ABCB1);
-  static const Color textMuted = Color(0xFF719287);
+  static const Color background = Color(0xFF0E1114);
+  static const Color backgroundSecondary = Color(0xFF12161C);
+  static const Color surface = Color(0xFF12161C);
+  static const Color surfaceRaised = Color(0xFF1A1F26);
+  static const Color surfaceSoft = Color(0xFF202632);
+  static const Color surfaceHighlight = Color(0xFF26313D);
+  static const Color border = Color(0xFF2E3A45);
+  static const Color borderSoft = Color(0xFF202632);
+  static const Color accent = Color(0xFF2ED573);
+  static const Color accentSoft = Color(0xFFB6F04A);
+  static const Color cyan = Color(0xFF4EA8FF);
+  static const Color warning = Color(0xFFE6C75A);
+  static const Color danger = Color(0xFFE53935);
+  static const Color success = Color(0xFF26C165);
+  static const Color textPrimary = Color(0xFFEDEDED);
+  static const Color textSecondary = Color(0xFF9AA3AD);
+  static const Color textMuted = Color(0xFF6E7A85);
 
   static const LinearGradient pageGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF040B09),
-      Color(0xFF091713),
-      Color(0xFF08110F),
+      Color(0xFF0E1114),
+      Color(0xFF10161B),
+      Color(0xFF0E1114),
     ],
   );
 
   static BoxDecoration panelDecoration({
     Color? accentColor,
     bool highlight = false,
-    double radius = 30,
+    double radius = 18,
   }) {
     final glow = accentColor ?? accent;
 
@@ -59,7 +59,7 @@ class AdminTheme {
         ),
         BoxShadow(
           color: glow.withValues(alpha: highlight ? 0.14 : 0.06),
-          blurRadius: 26,
+          blurRadius: 22,
           spreadRadius: 1,
         ),
       ],
@@ -94,21 +94,21 @@ class AdminTheme {
         displaySmall: const TextStyle(
           fontSize: 34,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.6,
+          letterSpacing: 0,
           color: textPrimary,
           height: 1.05,
         ),
         headlineMedium: const TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
+          letterSpacing: 0,
           color: textPrimary,
         ),
         titleLarge: const TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w700,
           color: textPrimary,
-          letterSpacing: -0.2,
+          letterSpacing: 0,
         ),
         titleMedium: const TextStyle(
           fontSize: 18,
@@ -134,7 +134,7 @@ class AdminTheme {
           fontSize: 14,
           fontWeight: FontWeight.w700,
           color: background,
-          letterSpacing: 0.1,
+          letterSpacing: 0,
         ),
       ),
       appBarTheme: const AppBarTheme(
@@ -151,7 +151,7 @@ class AdminTheme {
         shadowColor: Colors.black.withValues(alpha: 0.18),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(18),
           side: BorderSide(color: border.withValues(alpha: 0.8)),
         ),
       ),
@@ -159,7 +159,7 @@ class AdminTheme {
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(18),
           side: BorderSide(color: accent.withValues(alpha: 0.18)),
         ),
       ),
@@ -175,19 +175,19 @@ class AdminTheme {
           vertical: 18,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: border.withValues(alpha: 0.8)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: border.withValues(alpha: 0.8)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: accent, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: danger, width: 1.2),
         ),
       ),
@@ -201,7 +201,7 @@ class AdminTheme {
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(14),
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
@@ -220,7 +220,7 @@ class AdminTheme {
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(14),
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
@@ -275,7 +275,7 @@ class AdminTheme {
         color: surfaceRaised,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: border.withValues(alpha: 0.9)),
         ),
         textStyle: const TextStyle(color: textPrimary),
@@ -285,7 +285,7 @@ class AdminTheme {
         contentTextStyle: const TextStyle(color: textPrimary),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: accent.withValues(alpha: 0.18)),
         ),
       ),

@@ -2,20 +2,30 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
+import '../config/app_environment.dart';
 import '../models/video.dart';
 import '../services/admin_content_service.dart';
 
 class VideoController extends GetxController {
   VideoController({AdminContentService? adminContentService})
-      : _adminContentService = adminContentService ?? AdminContentService();
+      : _visualQaMode = AppEnvironmentConfig.visualQaMode,
+        _adminContentService = AppEnvironmentConfig.visualQaMode
+            ? AdminContentService.visualQa()
+            : adminContentService ?? AdminContentService();
 
   final AdminContentService _adminContentService;
+  final bool _visualQaMode;
 
   var videoList = <Video>[].obs;
 
   @override
   void onInit() {
     super.onInit();
+    if (_visualQaMode) {
+      videoList.clear();
+      return;
+    }
+
     fetchVideos();
   }
 

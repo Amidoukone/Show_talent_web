@@ -32,14 +32,15 @@ void main() {
       expect(service, contains('adminDeleteContactIntakeConversation'));
       expect(widget, contains('Mettre à jour le suivi agence'));
       expect(widget, contains('AdminDataTableCard'));
-      expect(widget, contains('Pipeline d’opportunités'));
+      expect(widget, contains('Parcours de suivi'));
       expect(widget, contains('Note requise'));
       expect(widget, contains('DataColumn(label: Text(\'Priorité\'))'));
       expect(
         widget,
-        contains('DataColumn(label: Text(\'Signal utilisateurs\'))'),
+        contains('DataColumn(label: Text(\'Retour utilisateur\'))'),
       );
       expect(widget, contains('_buildParticipantSignalCell'));
+      expect(widget, contains('_buildActionMenuCell'));
       expect(widget, contains('Signaux forts'));
       expect(widget, contains('Alertes'));
       expect(widget, contains('_nextStatus('));

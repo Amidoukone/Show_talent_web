@@ -77,13 +77,13 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             badge: 'File de modération',
             title: 'Vidéos signalées',
             subtitle:
-                'Traitement prioritaire des contenus remontés par les utilisateurs.',
+                'Traitez en priorité les contenus remontés par les utilisateurs.',
           ),
           SizedBox(height: spacing),
           const AdminInfoBanner(
-            title: 'Priorisation de la modération',
+            title: 'Signalements à traiter',
             message:
-                'Cette vue met en avant les contenus remontés ainsi que le volume de signalements déjà reçus pour chaque vidéo.',
+                'Chaque vidéo signalée affiche son auteur, le volume de remontées et les actions disponibles.',
             icon: Icons.report_gmailerrorred_outlined,
             tone: AdminBannerTone.warning,
           ),
@@ -91,6 +91,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
             child: AdminSearchField(
               controller: _searchController,
+              maxWidth: 640,
               hintText: 'Rechercher une vidéo signalée',
               onChanged: (value) {
                 setState(() {
@@ -117,8 +118,12 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
               ].any((value) => value.toLowerCase().contains(normalizedQuery));
             }).toList();
 
-            final totalPages = (filteredVideos.length / rowsPerPage).ceil();
-            final startIndex = currentPage * rowsPerPage;
+            final totalPagesRaw = (filteredVideos.length / rowsPerPage).ceil();
+            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+            final safePage = currentPage >= totalPages
+                ? totalPages - 1
+                : currentPage.clamp(0, totalPages - 1);
+            final startIndex = safePage * rowsPerPage;
             final endIndex = (startIndex + rowsPerPage).clamp(
               0,
               filteredVideos.length,
@@ -170,23 +175,23 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                       value: '${reportedVideos.length}',
                       icon: Icons.report_gmailerrorred_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'File de modération',
+                      subtitle: 'À traiter',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Après filtre',
+                      label: 'Résultats',
                       value: '${filteredVideos.length}',
                       icon: Icons.filter_alt_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Résultats courants',
+                      subtitle: 'Après filtres',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Volume de signalements',
+                      label: 'Signalements reçus',
                       value: '$totalReports',
                       icon: Icons.flag_circle_outlined,
                       accentColor: AdminTheme.danger,
-                      subtitle: 'Sur la sélection',
+                      subtitle: 'Sélection affichée',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
@@ -338,19 +343,19 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                 ),
                 SizedBox(height: spacing),
                 AdminPaginationBar(
-                  currentPage: currentPage,
+                  currentPage: safePage,
                   totalPages: totalPages,
-                  onPrevious: currentPage > 0
+                  onPrevious: safePage > 0
                       ? () {
                           setState(() {
-                            currentPage--;
+                            currentPage = safePage - 1;
                           });
                         }
                       : null,
-                  onNext: currentPage < totalPages - 1
+                  onNext: safePage < totalPages - 1
                       ? () {
                           setState(() {
-                            currentPage++;
+                            currentPage = safePage + 1;
                           });
                         }
                       : null,

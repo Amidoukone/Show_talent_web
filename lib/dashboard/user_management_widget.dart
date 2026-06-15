@@ -105,7 +105,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   String get _headerTitle => 'Gestion des utilisateurs';
 
   String get _headerSubtitle =>
-      'Recherche, rôles, statuts Auth, profils certifiés et actions admin centralisées.';
+      'Recherche, rôles, accès, profils certifiés et actions de suivi.';
 
   String get _bannerTitle => 'Gouvernance des profils';
 
@@ -193,7 +193,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: error.message ?? 'Opération ${action.callableName} refusée.',
+        message: error.message ?? 'Opération ${action.label} refusée.',
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -203,7 +203,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Erreur',
-        message: 'Opération ${action.callableName} impossible : $error',
+        message: 'Opération impossible : $error',
         tone: AdminBannerTone.danger,
       );
     } finally {
@@ -233,7 +233,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: deleteManagedAccountAction.label,
       message:
-          'Cette suppression passe par le backend partagé et peut supprimer l’accès du compte ${user.email}.',
+          'Cette suppression passe par le service sécurisé et peut supprimer l’accès du compte ${user.email}.',
       confirmLabel: 'Supprimer',
     );
     if (!confirmed) {
@@ -252,8 +252,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: disableManagedAccountAuthAction.label,
       message:
-          'Cette action désactive immédiatement l’accès Firebase Auth pour ${user.email}. La session mobile sera fermée et les prochaines connexions seront refusées avec un message cohérent.',
-      confirmLabel: 'Désactiver Auth',
+          'Cette action désactive immédiatement l’accès au compte ${user.email}. La session mobile sera fermée et les prochaines connexions seront refusées.',
+      confirmLabel: 'Désactiver',
     );
     if (!confirmed) {
       return;
@@ -265,7 +265,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       request: () =>
           _managedAccountService.disableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'L’accès Auth a été désactivé pour ${user.email}. Le compte ne pourra plus se reconnecter tant qu’il ne sera pas réactivé.',
+          'L’accès a été désactivé pour ${user.email}. Le compte ne pourra plus se reconnecter tant qu’il ne sera pas réactivé.',
     );
   }
 
@@ -275,7 +275,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       action: enableManagedAccountAuthAction,
       request: () =>
           _managedAccountService.enableManagedAccountAuth(uid: user.uid),
-      successMessage: 'L’accès Auth a été réactivé pour ${user.email}.',
+      successMessage: 'L’accès a été réactivé pour ${user.email}.',
     );
   }
 
@@ -445,8 +445,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 const SizedBox(height: 12),
                 Text(
                   verifying
-                      ? 'Confirmez que les informations du profil sont cohérentes avec le contrat mobile et suffisamment fiables pour afficher un signal de confiance.'
-                      : 'La certification sera retirée du profil. Le compte reste actif si Auth et l’e-mail sont valides.',
+                      ? 'Confirmez que les informations du profil sont cohérentes et suffisamment fiables pour afficher un signal de confiance.'
+                      : 'La certification sera retirée du profil. Le compte reste actif si son accès et son e-mail sont valides.',
                   style: const TextStyle(color: AdminTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -511,7 +511,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Compte non éligible',
         message:
-            'Activez d’abord Auth et la vérification e-mail avant de certifier le profil.',
+            'Réactivez d’abord l’accès et la vérification e-mail avant de certifier le profil.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -654,7 +654,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                user.authDisabled ? 'Réactiver Auth' : 'Désactiver Auth',
+                user.authDisabled ? 'Réactiver l’accès' : 'Suspendre l’accès',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -959,7 +959,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Comptes administres',
+                      label: 'Comptes administrés',
                       value: '$managedUsers',
                       icon: Icons.manage_accounts_outlined,
                       accentColor: AdminTheme.accent,
@@ -967,7 +967,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Auth désactivée',
+                      label: 'Accès suspendus',
                       value:
                           '${filteredUsers.where((user) => user.authDisabled).length}',
                       icon: Icons.lock_person_outlined,
@@ -984,15 +984,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'A revalider',
+                      label: 'À revalider',
                       value: '$pendingReview',
                       icon: Icons.fact_check_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'Modifies cote mobile',
+                      subtitle: 'Informations à revoir',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Prets a verifier',
+                      label: 'Prêts à vérifier',
                       value: '$readyForVerification',
                       icon: Icons.rule_folder_outlined,
                       accentColor: AdminTheme.cyan,
@@ -1004,7 +1004,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       value: '$advancedProfiles',
                       icon: Icons.verified_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Données mobile pro',
+                      subtitle: 'Profils complets',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -1242,7 +1242,7 @@ class _ProfileReviewContent extends StatelessWidget {
               ),
             if (user.profileVerificationInvalidatedAt != null)
               _ProfileReviewItem(
-                label: 'A revalider depuis',
+                label: 'À revalider depuis',
                 value:
                     user.profileVerificationInvalidatedAt!.toLocal().toString(),
               ),

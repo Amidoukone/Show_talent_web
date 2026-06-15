@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -28,10 +27,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         normalized.contains('web-internal-error') ||
         normalized.contains('identity toolkit') ||
         normalized.contains('api key')) {
-      return "Firebase Auth refuse la requête. Si le projet Google Cloud ou Firebase est suspendu, la connexion admin est bloquée même si l’interface fonctionne.";
+      return "Le service d'authentification refuse la requête. Vérifiez que votre accès administrateur est actif avant de réessayer.";
     }
 
-    return error.message ?? 'Erreur Firebase Auth : ${error.code}';
+    return error.message ?? "Erreur d'authentification : ${error.code}";
   }
 
   @override
@@ -77,10 +76,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final compactViewport = MediaQuery.sizeOf(context).width < 600;
+
     return Scaffold(
       body: SafeArea(
         child: AdminAppBackground(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(compactViewport ? 16 : 24),
           child: LayoutBuilder(
             builder: (context, viewportConstraints) {
               return SingleChildScrollView(
@@ -93,53 +94,53 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                   ),
                   child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1220),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isWide = constraints.maxWidth >= 980 &&
-                              viewportConstraints.maxHeight >= 760;
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1220),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isWide = constraints.maxWidth >= 980 &&
+                                viewportConstraints.maxHeight >= 760;
 
-                          final showcaseSection = const _LoginShowcasePanel();
-                          final formSection = _LoginFormPanel(
-                            emailController: _emailController,
-                            passwordController: _passwordController,
-                            obscurePassword: _obscurePassword,
-                            onToggleObscurePassword: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                            onSubmit: _loginAdmin,
-                            onOpenPreview: kDebugMode
-                                ? () => Get.offAllNamed(
-                                      AppRoutes.adminDashboard,
-                                      arguments: const {'previewMode': true},
-                                    )
-                                : null,
-                          );
+                            final showcaseSection = const _LoginShowcasePanel();
+                            final formSection = _LoginFormPanel(
+                              emailController: _emailController,
+                              passwordController: _passwordController,
+                              obscurePassword: _obscurePassword,
+                              onToggleObscurePassword: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                              onSubmit: _loginAdmin,
+                            );
 
-                          return isWide
-                              ? Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Expanded(
-                                      flex: 12,
-                                      child: _LoginShowcasePanel(),
-                                    ),
-                                    const SizedBox(width: 24),
-                                    Expanded(flex: 10, child: formSection),
-                                  ],
-                                )
-                              : Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    showcaseSection,
-                                    const SizedBox(height: 24),
-                                    formSection,
-                                  ],
-                                );
-                        },
+                            return isWide
+                                ? Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Expanded(
+                                        flex: 12,
+                                        child: _LoginShowcasePanel(),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Expanded(flex: 10, child: formSection),
+                                    ],
+                                  )
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      formSection,
+                                      const SizedBox(height: 24),
+                                      showcaseSection,
+                                    ],
+                                  );
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -159,152 +160,125 @@ class _LoginShowcasePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final viewportSize = MediaQuery.sizeOf(context);
+    final compact = viewportSize.width < 600;
+    final viewportHeight = viewportSize.height;
 
     return AdminGlassPanel(
+      width: compact ? viewportSize.width - 32 : double.infinity,
       padding: const EdgeInsets.all(28),
       highlight: true,
       accentColor: AdminTheme.accent,
-      child: Stack(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            top: 18,
-            right: 10,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AdminTheme.cyan.withValues(alpha: 0.08),
-              ),
-            ),
+          const AdminPill(
+            label: 'Expérience admin',
+            icon: Icons.shield_outlined,
           ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 24),
+          Row(
             children: [
-              const AdminPill(
-                label: 'Expérience admin',
-                icon: Icons.shield_outlined,
-              ),
-              const SizedBox(height: 24),
-              Row(
+              const AdminBrandMark(),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: AdminTheme.surfaceSoft.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: AdminTheme.accent.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(10),
-                    child: Image.asset('assets/logo.png'),
+                  Text(
+                    'Adfoot',
+                    style: textTheme.titleLarge,
                   ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Adfoot',
-                        style: textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Portail de pilotage premium',
-                        style: TextStyle(color: AdminTheme.textSecondary),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  const Text(
+                    "Portail d'administration",
+                    style: TextStyle(color: AdminTheme.textSecondary),
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
-              Text(
-                'Pilote la plateforme avec une interface plus nette, plus sobre et plus fiable.',
-                style: textTheme.displaySmall,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'La direction artistique reprend un univers sombre, lumineux et plus éditorial afin de donner une présence plus professionnelle au back-office.',
-                style: TextStyle(
-                  color: AdminTheme.textSecondary,
-                  height: 1.6,
-                ),
-              ),
-              const SizedBox(height: 30),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final useCompactCards =
-                      constraints.maxWidth < 560 || viewportHeight < 820;
-
-                  final cards = [
-                    const _ShowcaseCard(
-                      icon: Icons.people_alt_rounded,
-                      title: 'Comptes administres',
-                      subtitle:
-                          'Provisionnement, claims et activation centralises.',
-                      accentColor: AdminTheme.accent,
-                    ),
-                    const _ShowcaseCard(
-                      icon: Icons.play_circle_outline_rounded,
-                      title: 'Modération vidéo',
-                      subtitle:
-                          'Lecture, suppression et suivi des signalements.',
-                      accentColor: AdminTheme.cyan,
-                    ),
-                    const _ShowcaseCard(
-                      icon: Icons.insights_rounded,
-                      title: 'Vue d’ensemble',
-                      subtitle:
-                          'Des cartes KPI et une lecture rapide de l’activité.',
-                      accentColor: AdminTheme.warning,
-                    ),
-                  ];
-
-                  if (useCompactCards) {
-                    return Column(
-                      children: [
-                        cards[0],
-                        const SizedBox(height: 14),
-                        cards[1],
-                        const SizedBox(height: 14),
-                        cards[2],
-                      ],
-                    );
-                  }
-
-                  return SizedBox(
-                    height: 360,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: Transform.translate(
-                            offset: const Offset(-18, 10),
-                            child: cards[0],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: Transform.translate(
-                            offset: const Offset(24, 0),
-                            child: cards[1],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: Transform.translate(
-                            offset: const Offset(-8, -8),
-                            child: cards[2],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
             ],
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'Pilotez la plateforme avec une interface claire, sobre et fiable.',
+            style: textTheme.displaySmall,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "Un espace centralisé pour suivre les comptes, les contenus, les offres, les événements et les mises en relation.",
+            style: TextStyle(
+              color: AdminTheme.textSecondary,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 30),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final useCompactCards =
+                  constraints.maxWidth < 560 || viewportHeight < 820;
+
+              final cards = [
+                const _ShowcaseCard(
+                  icon: Icons.people_alt_rounded,
+                  title: 'Comptes administrés',
+                  subtitle: 'Provisionnement et activation centralisés.',
+                  accentColor: AdminTheme.accent,
+                ),
+                const _ShowcaseCard(
+                  icon: Icons.play_circle_outline_rounded,
+                  title: 'Modération vidéo',
+                  subtitle: 'Lecture, suppression et suivi des signalements.',
+                  accentColor: AdminTheme.cyan,
+                ),
+                const _ShowcaseCard(
+                  icon: Icons.insights_rounded,
+                  title: 'Vue d’ensemble',
+                  subtitle:
+                      'Des cartes KPI et une lecture rapide de l’activité.',
+                  accentColor: AdminTheme.warning,
+                ),
+              ];
+
+              if (useCompactCards) {
+                return Column(
+                  children: [
+                    cards[0],
+                    const SizedBox(height: 14),
+                    cards[1],
+                    const SizedBox(height: 14),
+                    cards[2],
+                  ],
+                );
+              }
+
+              return SizedBox(
+                height: 360,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Transform.translate(
+                        offset: const Offset(-18, 10),
+                        child: cards[0],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: Transform.translate(
+                        offset: const Offset(24, 0),
+                        child: cards[1],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: Transform.translate(
+                        offset: const Offset(-8, -8),
+                        child: cards[2],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -319,7 +293,6 @@ class _LoginFormPanel extends StatelessWidget {
     required this.obscurePassword,
     required this.onToggleObscurePassword,
     required this.onSubmit,
-    this.onOpenPreview,
   });
 
   final TextEditingController emailController;
@@ -327,12 +300,15 @@ class _LoginFormPanel extends StatelessWidget {
   final bool obscurePassword;
   final VoidCallback onToggleObscurePassword;
   final VoidCallback onSubmit;
-  final VoidCallback? onOpenPreview;
 
   @override
   Widget build(BuildContext context) {
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final compact = viewportWidth < 600;
+
     return AdminGlassPanel(
-      padding: const EdgeInsets.all(28),
+      width: compact ? viewportWidth - 32 : double.infinity,
+      padding: EdgeInsets.all(compact ? 20 : 28),
       highlight: true,
       accentColor: AdminTheme.cyan,
       child: Column(
@@ -345,17 +321,17 @@ class _LoginFormPanel extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           const Text(
-            'Connexion Admin',
+            'Connexion admin',
             style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w800,
               color: AdminTheme.textPrimary,
-              letterSpacing: -0.4,
+              letterSpacing: 0,
             ),
           ),
           const SizedBox(height: 10),
           const Text(
-            'Connectez-vous avec un compte admin autorisé. Les droits sont toujours contrôlés par les custom claims et le profil Firestore.',
+            "Connectez-vous avec un compte autorisé. Les droits sont vérifiés avant l'ouverture du tableau de bord.",
             style: TextStyle(
               color: AdminTheme.textSecondary,
               height: 1.6,
@@ -372,25 +348,28 @@ class _LoginFormPanel extends StatelessWidget {
                 color: AdminTheme.border.withValues(alpha: 0.85),
               ),
             ),
-            child: Column(
+            child: AdminFormColumn(
+              maxWidth: 440,
               children: [
-                Container(
-                  width: 76,
-                  height: 76,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AdminTheme.accent.withValues(alpha: 0.1),
-                    border: Border.all(
-                      color: AdminTheme.accent.withValues(alpha: 0.24),
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AdminTheme.accent.withValues(alpha: 0.1),
+                      border: Border.all(
+                        color: AdminTheme.accent.withValues(alpha: 0.24),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.admin_panel_settings_rounded,
+                      color: AdminTheme.accent,
+                      size: 34,
                     ),
                   ),
-                  child: const Icon(
-                    Icons.admin_panel_settings_rounded,
-                    color: AdminTheme.accent,
-                    size: 34,
-                  ),
                 ),
-                const SizedBox(height: 18),
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -399,7 +378,6 @@ class _LoginFormPanel extends StatelessWidget {
                     prefixIcon: Icon(Icons.mail_outline_rounded),
                   ),
                 ),
-                const SizedBox(height: 16),
                 TextField(
                   controller: passwordController,
                   obscureText: obscurePassword,
@@ -417,7 +395,6 @@ class _LoginFormPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -426,17 +403,6 @@ class _LoginFormPanel extends StatelessWidget {
                     label: const Text('Ouvrir le tableau de bord'),
                   ),
                 ),
-                if (onOpenPreview != null) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: onOpenPreview,
-                      icon: const Icon(Icons.visibility_outlined),
-                      label: const Text('Ouvrir un aperçu local'),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -444,20 +410,10 @@ class _LoginFormPanel extends StatelessWidget {
           const AdminInfoBanner(
             title: 'Contrôle d’accès',
             message:
-                'La création admin côté client reste désactivée. Le portail se concentre sur l’exploitation, pas sur l’élévation de privilège.',
+                "Les accès administrateur sont attribués par l'équipe habilitée. Le portail se concentre sur le pilotage opérationnel.",
             icon: Icons.verified_user_outlined,
             tone: AdminBannerTone.info,
           ),
-          if (onOpenPreview != null) ...[
-            const SizedBox(height: 14),
-            const AdminInfoBanner(
-              title: 'Mode debug',
-              message:
-                  'Si Firebase ou Google Cloud est suspendu, l’aperçu local permet de vérifier le design sans connexion réelle.',
-              icon: Icons.design_services_outlined,
-              tone: AdminBannerTone.warning,
-            ),
-          ],
           const SizedBox(height: 14),
           Align(
             alignment: Alignment.center,

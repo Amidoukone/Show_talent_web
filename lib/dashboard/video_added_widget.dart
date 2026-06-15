@@ -77,13 +77,13 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             badge: 'Catalogue vidéo',
             title: 'Gestion des vidéos',
             subtitle:
-                'Parcours des contenus publiés avec lecture rapide et suppression ciblée.',
+                'Consultez les contenus publiés, lancez la lecture et retirez les vidéos non conformes.',
           ),
           SizedBox(height: spacing),
           const AdminInfoBanner(
-            title: 'Modération visuelle',
+            title: 'Catalogue centralisé',
             message:
-                'Cette vue centralise les aperçus, les auteurs et les actions de lecture ou suppression sans modifier le flux métier existant.',
+                'Les aperçus, auteurs et actions de lecture sont regroupés pour une modération rapide.',
             icon: Icons.video_collection_outlined,
             tone: AdminBannerTone.info,
           ),
@@ -91,6 +91,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
             child: AdminSearchField(
               controller: _searchController,
+              maxWidth: 640,
               hintText: 'Rechercher par titre',
               onChanged: (value) {
                 setState(() {
@@ -117,8 +118,12 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
               ].any((value) => value.toLowerCase().contains(normalizedQuery));
             }).toList();
 
-            final totalPages = (filteredVideos.length / rowsPerPage).ceil();
-            final startIndex = currentPage * rowsPerPage;
+            final totalPagesRaw = (filteredVideos.length / rowsPerPage).ceil();
+            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+            final safePage = currentPage >= totalPages
+                ? totalPages - 1
+                : currentPage.clamp(0, totalPages - 1);
+            final startIndex = safePage * rowsPerPage;
             final endIndex = (startIndex + rowsPerPage).clamp(
               0,
               filteredVideos.length,
@@ -130,7 +135,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
               final hasSearch = searchQuery.trim().isNotEmpty;
 
               return AdminEmptyState(
-                title: 'Aucune video disponible',
+                title: 'Aucune vidéo disponible',
                 message:
                     'Le catalogue ne contient encore aucun élément correspondant à la recherche.',
                 icon: Icons.slow_motion_video_rounded,
@@ -178,7 +183,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       value: '${allVideos.length}',
                       icon: Icons.ondemand_video_outlined,
                       accentColor: AdminTheme.accent,
-                      subtitle: 'Base complete',
+                      subtitle: 'Catalogue global',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -190,11 +195,11 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'MP4 multi-sources',
+                      label: 'Sources prêtes',
                       value: '$multiSourceCount',
                       icon: Icons.dynamic_feed_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Contrat mobile',
+                      subtitle: 'Lecture mobile',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
@@ -337,19 +342,19 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                 ),
                 SizedBox(height: spacing),
                 AdminPaginationBar(
-                  currentPage: currentPage,
+                  currentPage: safePage,
                   totalPages: totalPages,
-                  onPrevious: currentPage > 0
+                  onPrevious: safePage > 0
                       ? () {
                           setState(() {
-                            currentPage--;
+                            currentPage = safePage - 1;
                           });
                         }
                       : null,
-                  onNext: currentPage < totalPages - 1
+                  onNext: safePage < totalPages - 1
                       ? () {
                           setState(() {
-                            currentPage++;
+                            currentPage = safePage + 1;
                           });
                         }
                       : null,

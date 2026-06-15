@@ -24,9 +24,14 @@ import 'video_added_widget.dart';
 import 'video_reported_widget.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  AdminDashboardScreen({super.key, this.previewMode = false});
+  AdminDashboardScreen({
+    super.key,
+    this.previewMode = false,
+    this.initialIndex = 0,
+  });
 
   final bool previewMode;
+  final int initialIndex;
 
   final AuthController authController = Get.find<AuthController>();
   final UserController userController = Get.find<UserController>();
@@ -41,7 +46,7 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   bool _isAuthorizing = true;
   final ScrollController _mainScrollController = ScrollController();
 
@@ -69,17 +74,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ),
     _DashboardItem(
       title: 'Offres',
-      subtitle: 'Modération des offres via actions admin centralisées.',
+      subtitle: 'Suivi des offres, statuts et candidatures.',
       icon: Icons.work_outline_rounded,
     ),
     _DashboardItem(
       title: 'Événements',
-      subtitle: 'Modération des événements depuis le portail admin.',
+      subtitle: 'Suivi des événements, statuts et participants.',
       icon: Icons.event_note_rounded,
     ),
     _DashboardItem(
       title: 'Mise en relation',
-      subtitle: 'Suivi agence des premiers contacts qualifiés.',
+      subtitle: 'Suivi des premiers contacts qualifiés.',
       icon: Icons.support_agent_rounded,
     ),
     _DashboardItem(
@@ -92,6 +97,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex.clamp(
+      0,
+      _dashboardItems.length - 1,
+    );
     _guardDashboardAccess();
   }
 
@@ -199,18 +208,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: extendedRail
                 ? Row(
                     children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: AdminTheme.surfaceSoft.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: AdminTheme.accent.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(10),
-                        child: Image.asset('assets/logo.png'),
+                      const AdminBrandMark(
+                        size: 46,
+                        width: 86,
+                        label: 'ADFOOT',
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
@@ -239,18 +240,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ],
                   )
                 : Center(
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: AdminTheme.surfaceSoft.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AdminTheme.accent.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      child: Image.asset('assets/logo.png'),
+                    child: const AdminBrandMark(
+                      size: 50,
+                      width: 74,
+                      label: 'ADFOOT',
                     ),
                   ),
           ),
@@ -374,8 +367,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           AdminPill(
-                            label:
-                                widget.previewMode ? 'Aperçu local' : 'Session',
+                            label: widget.previewMode
+                                ? 'Prévisualisation'
+                                : 'Session',
                             icon: widget.previewMode
                                 ? Icons.visibility_outlined
                                 : Icons.verified_user_outlined,
@@ -386,7 +380,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(height: 10),
                           Text(
                             widget.previewMode
-                                ? 'Mode design'
+                                ? 'Revue locale'
                                 : adminUser?.nom.isNotEmpty == true
                                     ? adminUser!.nom
                                     : 'Compte admin',
@@ -400,8 +394,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(height: 2),
                           Text(
                             widget.previewMode
-                                ? 'Sans vérification distante'
-                                : '$claimCount claim(s) valides',
+                                ? 'Navigation de contrôle'
+                                : '$claimCount droit(s) validé(s)',
                             style: const TextStyle(
                               color: AdminTheme.textSecondary,
                               fontSize: 12,
@@ -443,11 +437,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const AdminPill(
-                label: 'Thème harmonisé',
-                icon: Icons.palette_outlined,
-                color: AdminTheme.cyan,
-              ),
               OutlinedButton.icon(
                 onPressed: () => Get.toNamed(AppRoutes.statistics),
                 icon: const Icon(Icons.auto_graph_rounded),
@@ -526,14 +515,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         AdminMetricCard(
           title: 'Utilisateurs',
           value: '$totalUsers',
-          subtitle: 'Base suivie dans le portail',
+          subtitle: 'Profils du portail',
           icon: Icons.groups_2_rounded,
           progress: totalUsers == 0 ? 0 : 1,
         ),
         AdminMetricCard(
-          title: "Comptes créés par l'administration",
+          title: 'Comptes administrés',
           value: '$managedCount',
-          subtitle: 'Provisionnés côté admin',
+          subtitle: "Suivis par l'administration",
           icon: Icons.badge_rounded,
           progress: totalUsers == 0 ? 0 : managedCount / totalUsers,
           accentColor: AdminTheme.cyan,
@@ -563,9 +552,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           accentColor: AdminTheme.success,
         ),
         AdminMetricCard(
-          title: 'Auth désactivée',
+          title: 'Accès suspendus',
           value: '$authDisabledCount',
-          subtitle: 'Accès actuellement suspendus',
+          subtitle: 'Comptes temporairement bloqués',
           icon: Icons.lock_person_rounded,
           progress: totalUsers == 0 ? 0 : authDisabledCount / totalUsers,
           accentColor: AdminTheme.warning,
@@ -581,33 +570,44 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ];
 
-      if (compact) {
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: cards
-              .map(
-                (card) => SizedBox(
-                  width: 248,
-                  child: card,
-                ),
-              )
-              .toList(),
-        );
-      }
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final mobileMetrics = constraints.maxWidth < 640;
+          final cardWidth = mobileMetrics
+              ? 236.0
+              : compact
+                  ? 248.0
+                  : 266.0;
 
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: cards
-              .map(
-                (card) => Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: SizedBox(width: 266, child: card),
-                ),
-              )
-              .toList(),
-        ),
+          if (mobileMetrics) {
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: cards
+                    .map(
+                      (card) => Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: SizedBox(width: cardWidth, child: card),
+                      ),
+                    )
+                    .toList(),
+              ),
+            );
+          }
+
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: cards
+                .map(
+                  (card) => SizedBox(
+                    width: cardWidth,
+                    child: card,
+                  ),
+                )
+                .toList(),
+          );
+        },
       );
     });
   }

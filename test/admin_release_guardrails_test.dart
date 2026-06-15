@@ -54,6 +54,18 @@ void main() {
         releaseTestScript,
         contains('test/app_environment_test.dart'),
       );
+      expect(
+        releaseTestScript,
+        contains('test/admin_text_quality_guardrails_test.dart'),
+      );
+      expect(
+        releaseTestScript,
+        contains('test/admin_responsive_guardrails_test.dart'),
+      );
+      expect(
+        releaseTestScript,
+        contains('test/contact_intake_management_guardrails_test.dart'),
+      );
       expect(releaseTestScript, contains('spawnSync'));
       expect(releaseTestScript, contains("shell: false"));
     });

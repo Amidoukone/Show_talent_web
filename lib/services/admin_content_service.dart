@@ -8,9 +8,15 @@ class AdminContentService {
       : _functions = functions ??
             FirebaseFunctions.instanceFor(
               region: AppEnvironmentConfig.functionsRegion,
-            );
+            ),
+        _visualQaMode = false;
 
-  final FirebaseFunctions _functions;
+  AdminContentService.visualQa()
+      : _functions = null,
+        _visualQaMode = true;
+
+  final FirebaseFunctions? _functions;
+  final bool _visualQaMode;
 
   String _buildFailureMessage(
     FirebaseFunctionsException error, {
@@ -46,8 +52,15 @@ class AdminContentService {
     required Map<String, dynamic> payload,
     required String fallbackMessage,
   }) async {
+    if (_visualQaMode) {
+      return AdminActionResponse.failure(
+        message: 'Action indisponible pendant la QA visuelle locale.',
+        retriable: false,
+      );
+    }
+
     try {
-      final callable = _functions.httpsCallable(callableName);
+      final callable = _functions!.httpsCallable(callableName);
       final response = await callable.call(payload);
       final data = response.data;
       final map = data is Map<String, dynamic>

@@ -35,8 +35,7 @@ const AdminCallableActionDescriptor deleteManagedAccountAction =
   id: 'delete_managed_account',
   label: 'Supprimer un compte',
   callableName: 'deleteManagedAccount',
-  summary:
-      'Suppression admin effectuée via backend partagé, sans mutation client de /users.',
+  summary: "Suppression traitée par le service sécurisé de l'administration.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -47,8 +46,7 @@ const AdminCallableActionDescriptor changeManagedAccountRoleAction =
   id: 'change_managed_account_role',
   label: 'Changer le rôle',
   callableName: 'changeManagedAccountRole',
-  summary:
-      "Change le rôle d'un compte créé par l'administration via backend, sans modification client directe de /users.",
+  summary: "Change le rôle d'un compte créé ou suivi par l'administration.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -68,10 +66,9 @@ const AdminCallableActionDescriptor resendManagedAccountInviteAction =
 const AdminCallableActionDescriptor disableManagedAccountAuthAction =
     AdminCallableActionDescriptor(
   id: 'disable_managed_account_auth',
-  label: 'Désactiver Auth',
+  label: 'Suspendre l’accès',
   callableName: 'disableManagedAccountAuth',
-  summary:
-      'Désactive immédiatement Firebase Auth pour fermer la session et refuser les prochaines connexions.',
+  summary: "Suspend l'accès au compte et bloque les prochaines connexions.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -80,9 +77,9 @@ const AdminCallableActionDescriptor disableManagedAccountAuthAction =
 const AdminCallableActionDescriptor enableManagedAccountAuthAction =
     AdminCallableActionDescriptor(
   id: 'enable_managed_account_auth',
-  label: 'Réactiver Auth',
+  label: 'Réactiver l’accès',
   callableName: 'enableManagedAccountAuth',
-  summary: 'Réactive Firebase Auth pour rétablir les connexions du compte.',
+  summary: "Rétablit l'accès du compte aux prochaines connexions.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -93,8 +90,7 @@ const AdminCallableActionDescriptor updateManagedAccountProfileAction =
   id: 'update_managed_account_profile',
   label: 'Gérer le profil',
   callableName: 'updateManagedAccountProfile',
-  summary:
-      'Mise à jour admin de champs profil sensibles et de la vérification profil via Cloud Function dédiée.',
+  summary: "Met à jour les champs de confiance et la certification du profil.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,

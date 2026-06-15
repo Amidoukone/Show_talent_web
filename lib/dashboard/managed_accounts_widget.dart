@@ -3,12 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../config/app_environment.dart';
 import '../controller/user_controller.dart';
 import '../models/managed_account_provision_result.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
-import '../utils/admin_callable_action_catalog.dart';
 import '../utils/account_role_policy.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
@@ -84,8 +82,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     if (grantedClaims.isEmpty) {
       setState(() {
         _errorMessage =
-            'Aucun custom claim admin/platformAdmin/superAdmin détecté. '
-            'Le provisionnement est bloqué côté client.';
+            "Votre session ne dispose pas des droits nécessaires pour provisionner un compte.";
       });
       return;
     }
@@ -135,7 +132,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
 
       setState(() {
         _errorMessage =
-            error.message ?? 'La Cloud Function a refusé le provisionnement.';
+            error.message ?? 'Le service sécurisé a refusé le provisionnement.';
       });
     } catch (error) {
       if (!mounted) {
@@ -194,90 +191,6 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     );
   }
 
-  Widget _buildActionInventoryCard({
-    required String title,
-    required List<AdminCallableActionDescriptor> actions,
-  }) {
-    return AdminGlassPanel(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      radius: 24,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AdminTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...actions.map((action) {
-            final surfaceList = action.uiSurfaces.join(', ');
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${action.label} (${action.callableName})',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: action.isConnectedInUi
-                              ? AdminTheme.success.withValues(alpha: 0.14)
-                              : AdminTheme.warning.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: action.isConnectedInUi
-                                ? AdminTheme.success.withValues(alpha: 0.18)
-                                : AdminTheme.warning.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Text(
-                          action.isConnectedInUi ? 'Branchée' : 'Backend prêt',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: action.isConnectedInUi
-                                ? AdminTheme.success
-                                : AdminTheme.warning,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    action.summary,
-                    style: const TextStyle(color: AdminTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Surfaces UI: $surfaceList',
-                    style: const TextStyle(color: AdminTheme.textMuted),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
@@ -294,24 +207,23 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
           const AdminSectionHeader(
             badge: 'Provisionnement',
             title: 'Provisionnement des comptes',
-            subtitle:
-                "Création, mise à jour et restitution des liens d'activation via le backend partagé.",
-          ),
-          SizedBox(height: compact ? 10 : 12),
-          Text(
-            'Environnement actif : ${AppEnvironmentConfig.environmentName}. '
-            'Projet Firebase : ${AppEnvironmentConfig.firebaseProjectId}. '
-            'Région Functions : ${AppEnvironmentConfig.functionsRegion}.',
-            style: const TextStyle(color: AdminTheme.textSecondary),
+            subtitle: "Création, mise à jour et remise des liens d'activation.",
           ),
           SizedBox(height: spacing),
           Obx(() {
+            final managedAccounts = _userController.userList
+                .where(
+                  (user) =>
+                      user.createdByAdmin || isManagedAccountRole(user.role),
+                )
+                .length;
+
             return Wrap(
               spacing: compact ? 10 : 12,
               runSpacing: compact ? 10 : 12,
               children: [
                 AdminMiniStat(
-                  label: 'Claims admin',
+                  label: 'Droits admin',
                   value: '${_userController.grantedAdminClaims.length}',
                   icon: Icons.verified_user_outlined,
                   accentColor: AdminTheme.cyan,
@@ -321,27 +233,19 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                   minWidth: compact ? 180 : 220,
                 ),
                 AdminMiniStat(
-                  label: 'Environnement',
-                  value: AppEnvironmentConfig.environmentName,
-                  icon: Icons.public_outlined,
+                  label: 'Comptes gérés',
+                  value: '$managedAccounts',
+                  icon: Icons.manage_accounts_outlined,
                   accentColor: AdminTheme.success,
-                  subtitle: AppEnvironmentConfig.firebaseProjectId,
+                  subtitle: 'Créés ou suivis par admin',
                   minWidth: compact ? 180 : 220,
                 ),
                 AdminMiniStat(
-                  label: 'Actions branchées',
-                  value: '${connectedAdminCallableActions.length}',
-                  icon: Icons.hub_outlined,
+                  label: 'Rôles disponibles',
+                  value: '${adminProvisionedRoles.length}',
+                  icon: Icons.badge_outlined,
                   accentColor: AdminTheme.accent,
-                  subtitle: 'Disponibles dans cette vue',
-                  minWidth: compact ? 180 : 220,
-                ),
-                AdminMiniStat(
-                  label: 'Actions en attente',
-                  value: '${backendReadyButPendingUiActions.length}',
-                  icon: Icons.extension_outlined,
-                  accentColor: AdminTheme.warning,
-                  subtitle: 'Backend déjà prêt',
+                  subtitle: 'Profils métier',
                   minWidth: compact ? 180 : 220,
                 ),
               ],
@@ -353,61 +257,47 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
               return _buildInfoBanner(
                 backgroundColor: const Color(0xFFDFF3E4),
                 icon: Icons.verified_user,
-                title: 'Claims admin valides',
+                title: 'Droits administrateur vérifiés',
                 message:
-                    'Claims détectés : ${_userController.grantedAdminClaims.join(', ')}',
+                    'Votre session peut provisionner et mettre à jour les comptes métier.',
               );
             }
 
             return _buildInfoBanner(
               backgroundColor: const Color(0xFFFFF3CD),
               icon: Icons.warning_amber_rounded,
-              title: 'Claims admin manquants',
-              message: 'Cette UI vérifie admin/platformAdmin/superAdmin avant '
-                  'd’appeler provisionManagedAccount.',
+              title: 'Droits administrateur manquants',
+              message:
+                  'Reconnectez-vous avec un compte autorisé avant de provisionner.',
             );
           }),
           SizedBox(height: spacing),
           _buildInfoBanner(
             backgroundColor: const Color(0xFFEAF4FF),
             icon: Icons.security,
-            title: 'Contrat backend',
-            message: 'La création des comptes ne passe plus par Auth '
-                'ou Firestore directement depuis le client admin.',
+            title: 'Provisionnement sécurisé',
+            message:
+                "La création et la mise à jour sont contrôlées avant activation du compte.",
           ),
           SizedBox(height: spacing),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1180 && !compact;
 
-              final inventorySection = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildActionInventoryCard(
-                    title: 'Actions déjà branchées dans l’UI',
-                    actions: connectedAdminCallableActions,
-                  ),
-                  SizedBox(height: spacing),
-                  _buildActionInventoryCard(
-                    title:
-                        'Actions backend présentes mais UI encore à raccorder',
-                    actions: backendReadyButPendingUiActions,
-                  ),
-                ],
-              );
-
               final formSection = AdminSubsectionCard(
                 title: 'Créer ou mettre à jour un compte',
                 subtitle:
-                    'Le formulaire client appelle provisionManagedAccount et restitue ensuite les liens retournés par le backend partagé.',
+                    "Renseignez le titulaire, choisissez son rôle et transmettez les liens d'activation générés.",
                 accentColor: AdminTheme.cyan,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: AdminFormColumn(
+                  maxWidth: 560,
+                  spacing: compact ? 12 : 16,
                   children: [
                     Form(
                       key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      child: AdminFormColumn(
+                        maxWidth: 560,
+                        spacing: compact ? 12 : 16,
                         children: [
                           TextFormField(
                             controller: _nameController,
@@ -423,7 +313,6 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                               return null;
                             },
                           ),
-                          SizedBox(height: compact ? 12 : 16),
                           TextFormField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
@@ -443,7 +332,6 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                               return null;
                             },
                           ),
-                          SizedBox(height: compact ? 12 : 16),
                           TextFormField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
@@ -453,7 +341,6 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                               prefixIcon: Icon(Icons.call_outlined),
                             ),
                           ),
-                          SizedBox(height: compact ? 12 : 16),
                           DropdownButtonFormField<String>(
                             value: _selectedRole,
                             decoration: const InputDecoration(
@@ -478,30 +365,31 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                               });
                             },
                           ),
-                          SizedBox(height: compact ? 16 : 20),
-                          ElevatedButton.icon(
-                            onPressed: _isSubmitting ? null : _submit,
-                            icon: _isSubmitting
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.person_add_alt_1),
-                            label: Text(
-                              _isSubmitting
-                                  ? 'Provisionnement en cours...'
-                                  : 'Provisionner le compte',
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _isSubmitting ? null : _submit,
+                              icon: _isSubmitting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.person_add_alt_1),
+                              label: Text(
+                                _isSubmitting
+                                    ? 'Provisionnement en cours...'
+                                    : 'Provisionner le compte',
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                     if (_errorMessage != null) ...[
-                      SizedBox(height: compact ? 14 : 20),
                       _buildInfoBanner(
                         backgroundColor: const Color(0xFFF8D7DA),
                         icon: Icons.error_outline,
@@ -510,7 +398,6 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                       ),
                     ],
                     if (_lastResult != null) ...[
-                      SizedBox(height: compact ? 14 : 20),
                       AdminSubsectionCard(
                         title: 'Résultat du provisionnement',
                         subtitle:
@@ -547,24 +434,14 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                 ),
               );
 
-              if (wide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 6, child: formSection),
-                    SizedBox(width: spacing),
-                    Expanded(flex: 5, child: inventorySection),
-                  ],
-                );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  inventorySection,
-                  SizedBox(height: spacing),
-                  formSection,
-                ],
+              return Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: wide ? 760 : constraints.maxWidth,
+                  ),
+                  child: formSection,
+                ),
               );
             },
           ),

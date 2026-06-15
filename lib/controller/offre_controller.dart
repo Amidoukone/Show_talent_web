@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
+import '../config/app_environment.dart';
 import '../models/admin_action_response.dart';
 import '../models/offre.dart';
 import '../services/admin_content_service.dart';
@@ -13,11 +14,17 @@ class OffreController extends GetxController {
   OffreController({
     FirebaseFirestore? firestore,
     AdminContentService? adminContentService,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _adminContentService = adminContentService ?? AdminContentService();
+  })  : _visualQaMode = AppEnvironmentConfig.visualQaMode,
+        _firestore = AppEnvironmentConfig.visualQaMode
+            ? null
+            : firestore ?? FirebaseFirestore.instance,
+        _adminContentService = AppEnvironmentConfig.visualQaMode
+            ? AdminContentService.visualQa()
+            : adminContentService ?? AdminContentService();
 
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _firestore;
   final AdminContentService _adminContentService;
+  final bool _visualQaMode;
 
   static const List<String> moderationStatuses = <String>[
     'brouillon',
@@ -36,6 +43,13 @@ class OffreController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    if (_visualQaMode) {
+      offres.clear();
+      lastError.value = '';
+      isLoading.value = false;
+      return;
+    }
+
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
           _handleAuthStateChanged,
         );
@@ -60,7 +74,7 @@ class OffreController extends GetxController {
     isLoading.value = true;
     _offresSubscription?.cancel();
 
-    _offresSubscription = _firestore.collection('offres').snapshots().listen(
+    _offresSubscription = _firestore!.collection('offres').snapshots().listen(
       (snapshot) {
         final parsed = <Offre>[];
 

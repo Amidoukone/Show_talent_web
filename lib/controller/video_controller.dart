@@ -164,11 +164,16 @@ class VideoController extends GetxController {
     }
   }
 
-  Future<void> setVideoStatus(String videoId, String status) async {
+  Future<void> setVideoStatus(
+    String videoId,
+    String status, {
+    String reason = '',
+  }) async {
     try {
       final response = await _adminContentService.setVideoStatus(
         videoId: videoId,
         status: status,
+        reason: reason,
       );
       if (!response.success) {
         final message = response.message.trim().isNotEmpty
@@ -182,6 +187,35 @@ class VideoController extends GetxController {
       Get.snackbar(
         'Erreur',
         'Erreur lors de la mise à jour du statut vidéo : $e',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> approveVideo(String videoId) async {
+    await setVideoStatus(videoId, 'approved');
+  }
+
+  Future<void> rejectVideo(String videoId, {String reason = ''}) async {
+    try {
+      final response = await _adminContentService.rejectVideo(
+        videoId: videoId,
+        reason: reason,
+      );
+      if (!response.success) {
+        final message = response.message.trim().isNotEmpty
+            ? response.message
+            : 'Refus de la video impossible.';
+        throw StateError(message);
+      }
+
+      videoList.removeWhere((video) => video.id == videoId);
+
+      Get.snackbar('Succes', 'Video refusee et supprimee.');
+    } catch (e) {
+      Get.snackbar(
+        'Erreur',
+        'Erreur lors du refus de la video : $e',
       );
       rethrow;
     }

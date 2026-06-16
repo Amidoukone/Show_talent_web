@@ -34,7 +34,7 @@ class AppRoutes {
     ),
   ];
 
-  static const int _lastDashboardIndex = 7;
+  static const int _lastDashboardIndex = 8;
 
   static const Map<String, int> _localDashboardTabs = <String, int>{
     'users': 0,
@@ -42,6 +42,12 @@ class AppRoutes {
     'managed': 1,
     'managed-accounts': 1,
     'comptes-administres': 1,
+    'video-review': 2,
+    'videos-a-valider': 2,
+    'videos-added': 3,
+    'videos-ajoutees': 3,
+    'videos-reported': 4,
+    'videos-signalees': 4,
   };
 
   @visibleForTesting

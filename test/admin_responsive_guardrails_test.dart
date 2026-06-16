@@ -71,6 +71,8 @@ void main() {
     final adminUi = File('lib/widgets/admin_ui.dart').readAsStringSync();
     final videosAdded =
         File('lib/dashboard/video_added_widget.dart').readAsStringSync();
+    final videosReview =
+        File('lib/dashboard/video_review_widget.dart').readAsStringSync();
     final videosReported =
         File('lib/dashboard/video_reported_widget.dart').readAsStringSync();
     final offers =
@@ -89,6 +91,9 @@ void main() {
 
     expect(videosAdded, contains('maxWidth: 640'));
     expect(videosAdded, contains('safePage'));
+    expect(videosReview, contains('maxWidth: 640'));
+    expect(videosReview, contains('safePage'));
+    expect(videosReview, contains('AdminDataTableCard'));
     expect(videosReported, contains('maxWidth: 640'));
     expect(videosReported, contains('safePage'));
 

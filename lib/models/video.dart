@@ -191,6 +191,8 @@ class Video {
     this.reportCount = 0,
     this.status = 'ready',
     this.moderationStatus = '',
+    this.visibility = '',
+    this.isPublic = false,
     this.optimized = false,
     this.sources = const [],
     this.playback,
@@ -210,6 +212,8 @@ class Video {
   int reportCount;
   String status;
   String moderationStatus;
+  String visibility;
+  bool isPublic;
   bool optimized;
   List<VideoSource> sources;
   VideoPlaybackContract? playback;
@@ -275,6 +279,8 @@ class Video {
           ? 'ready'
           : readString(map['status']),
       moderationStatus: readString(map['moderationStatus']),
+      visibility: readString(map['visibility']),
+      isPublic: map['isPublic'] == true,
       optimized: map['optimized'] == true,
       sources: mergedSources,
       playback: playback,
@@ -306,6 +312,8 @@ class Video {
       'reportCount': reportCount,
       'status': status,
       'moderationStatus': moderationStatus,
+      'visibility': visibility,
+      'isPublic': isPublic,
       'optimized': optimized,
       'sources': sources.map((source) => source.toMap()).toList(),
       if (playback != null) 'playback': playback!.toMap(),
@@ -345,5 +353,74 @@ class Video {
       return contract.hasMultipleMp4Sources;
     }
     return sources.where((source) => source.isMp4).length > 1;
+  }
+
+  String get normalizedModerationStatus {
+    final rawModeration = moderationStatus.trim().toLowerCase();
+    final rawStatus = status.trim().toLowerCase();
+
+    if (rawModeration == 'approved' ||
+        rawModeration == 'approve' ||
+        rawModeration == 'validee' ||
+        rawModeration == 'validée') {
+      return 'approved';
+    }
+    if (rawModeration == 'pending' ||
+        rawModeration == 'under_review' ||
+        rawModeration == 'review' ||
+        rawModeration == 'en_attente') {
+      return 'pending';
+    }
+    if (rawModeration == 'rejected' ||
+        rawModeration == 'reject' ||
+        rawModeration == 'refusee' ||
+        rawModeration == 'refusée') {
+      return 'rejected';
+    }
+    if (rawModeration == 'hidden' || rawModeration == 'removed') {
+      return rawModeration;
+    }
+    if (rawStatus == 'under_review' || rawStatus == 'processing') {
+      return 'pending';
+    }
+    if (rawStatus == 'ready') {
+      return 'approved';
+    }
+    if (rawStatus == 'hidden' ||
+        rawStatus == 'removed' ||
+        rawStatus == 'rejected') {
+      return rawStatus;
+    }
+    return rawModeration.isNotEmpty ? rawModeration : rawStatus;
+  }
+
+  bool get isPendingReview => normalizedModerationStatus == 'pending';
+
+  bool get isRejected => normalizedModerationStatus == 'rejected';
+
+  bool get isApprovedPublic {
+    return status.trim().toLowerCase() == 'ready' &&
+        (normalizedModerationStatus == 'approved' ||
+            visibility.trim().toLowerCase() == 'public' ||
+            isPublic);
+  }
+
+  String get moderationLabel {
+    switch (normalizedModerationStatus) {
+      case 'approved':
+        return 'Approuvee';
+      case 'pending':
+        return 'En attente';
+      case 'rejected':
+        return 'Refusee';
+      case 'hidden':
+        return 'Masquee';
+      case 'removed':
+        return 'Supprimee';
+      default:
+        return normalizedModerationStatus.isEmpty
+            ? 'Non defini'
+            : normalizedModerationStatus;
+    }
   }
 }

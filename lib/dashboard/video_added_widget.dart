@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:show_talent/models/user.dart';
+import 'package:show_talent/models/video.dart';
 import 'package:show_talent/screens/video_player.dart';
 
 import '../controller/video_controller.dart';
@@ -56,6 +57,22 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
           ),
         )
         .nom;
+  }
+
+  Color _statusColor(Video video) {
+    switch (video.normalizedModerationStatus) {
+      case 'approved':
+        return AdminTheme.success;
+      case 'pending':
+        return AdminTheme.warning;
+      case 'rejected':
+      case 'removed':
+        return AdminTheme.danger;
+      case 'hidden':
+        return AdminTheme.textMuted;
+      default:
+        return AdminTheme.cyan;
+    }
   }
 
   @override
@@ -163,6 +180,10 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                 allVideos.where((video) => video.reportCount > 0).length;
             final multiSourceCount =
                 allVideos.where((video) => video.hasMultipleMp4Sources).length;
+            final publicCount =
+                allVideos.where((video) => video.isApprovedPublic).length;
+            final pendingCount =
+                allVideos.where((video) => video.isPendingReview).length;
 
             return Column(
               children: [
@@ -195,6 +216,22 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
+                      label: 'Publiques',
+                      value: '$publicCount',
+                      icon: Icons.public_rounded,
+                      accentColor: AdminTheme.success,
+                      subtitle: 'Visibles recruteurs',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'En attente',
+                      value: '$pendingCount',
+                      icon: Icons.pending_actions_rounded,
+                      accentColor: AdminTheme.warning,
+                      subtitle: 'Revue admin',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
                       label: 'Sources prêtes',
                       value: '$multiSourceCount',
                       icon: Icons.dynamic_feed_outlined,
@@ -214,6 +251,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       DataColumn(label: Text('Aperçu')),
                       DataColumn(label: Text('Titre')),
                       DataColumn(label: Text('Ajoutée par')),
+                      DataColumn(label: Text('Statut')),
                       DataColumn(label: Text('Actions')),
                     ],
                     rows: List<DataRow>.generate(
@@ -254,6 +292,13 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                           ),
                           DataCell(
                             Text(_resolveUserName(displayedVideos[index].uid)),
+                          ),
+                          DataCell(
+                            AdminPill(
+                              label: displayedVideos[index].moderationLabel,
+                              icon: Icons.fact_check_outlined,
+                              color: _statusColor(displayedVideos[index]),
+                            ),
                           ),
                           DataCell(
                             _deletingVideoId == displayedVideos[index].id

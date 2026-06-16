@@ -143,14 +143,30 @@ class AdminContentService {
   Future<AdminActionResponse> setVideoStatus({
     required String videoId,
     required String status,
+    String reason = '',
   }) {
     return _callable(
       'adminSetVideoStatus',
       payload: <String, dynamic>{
         'videoId': videoId.trim(),
         'status': status.trim(),
+        if (reason.trim().isNotEmpty) 'reason': reason.trim(),
       },
       fallbackMessage: 'Mise à jour du statut vidéo impossible pour le moment.',
+    );
+  }
+
+  Future<AdminActionResponse> rejectVideo({
+    required String videoId,
+    String reason = '',
+  }) {
+    return _callable(
+      'adminRejectVideo',
+      payload: <String, dynamic>{
+        'videoId': videoId.trim(),
+        if (reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+      fallbackMessage: 'Refus de la video impossible pour le moment.',
     );
   }
 

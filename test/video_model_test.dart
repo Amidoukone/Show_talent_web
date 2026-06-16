@@ -70,5 +70,35 @@ void main() {
         'video-3',
       );
     });
+
+    test('moderation helpers classify pending and approved videos', () {
+      final pending = Video.fromMap({
+        'id': 'pending-video',
+        'uid': 'player-1',
+        'status': 'under_review',
+        'moderationStatus': 'pending',
+        'optimized': true,
+      });
+
+      expect(pending.normalizedModerationStatus, 'pending');
+      expect(pending.isPendingReview, isTrue);
+      expect(pending.isApprovedPublic, isFalse);
+      expect(pending.moderationLabel, 'En attente');
+
+      final approved = Video.fromMap({
+        'id': 'approved-video',
+        'uid': 'player-1',
+        'status': 'ready',
+        'moderationStatus': 'approved',
+        'visibility': 'public',
+        'isPublic': true,
+        'optimized': true,
+      });
+
+      expect(approved.normalizedModerationStatus, 'approved');
+      expect(approved.isPendingReview, isFalse);
+      expect(approved.isApprovedPublic, isTrue);
+      expect(approved.moderationLabel, 'Approuvee');
+    });
   });
 }

@@ -22,6 +22,7 @@ import 'statistiques_screen.dart';
 import 'user_management_widget.dart';
 import 'video_added_widget.dart';
 import 'video_reported_widget.dart';
+import 'video_review_widget.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   AdminDashboardScreen({
@@ -61,6 +62,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       subtitle:
           "Provisionnement et suivi des comptes créés par l'administration.",
       icon: Icons.manage_accounts_rounded,
+    ),
+    _DashboardItem(
+      title: 'Videos a valider',
+      subtitle: 'Validation avant publication publique.',
+      icon: Icons.fact_check_rounded,
     ),
     _DashboardItem(
       title: 'Vidéos ajoutées',
@@ -108,6 +114,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return [
       const UserManagementWidget(selectedRole: 'Tous'),
       const ManagedAccountsWidget(),
+      const VideoReviewWidget(),
       const VideoAddedWidget(),
       const VideoReportedWidget(),
       const OfferManagementWidget(),
@@ -507,6 +514,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
       final totalUsers = users.length;
       final totalVideos = videos.length;
+      final pendingVideos =
+          videos.where((video) => video.isPendingReview).length;
       final totalOffers = offers.length;
       final totalEvents = events.length;
       final totalContactIntakes = contactIntakes.length;
@@ -534,6 +543,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           icon: Icons.ondemand_video_rounded,
           progress: totalVideos == 0 ? 0 : 1,
           accentColor: AdminTheme.accentSoft,
+        ),
+        AdminMetricCard(
+          title: 'A valider',
+          value: '$pendingVideos',
+          subtitle: 'Videos en revue admin',
+          icon: Icons.fact_check_rounded,
+          progress: totalVideos == 0 ? 0 : pendingVideos / totalVideos,
+          accentColor: AdminTheme.warning,
         ),
         AdminMetricCard(
           title: 'Offres',

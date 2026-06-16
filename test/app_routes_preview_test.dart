@@ -37,6 +37,17 @@ void main() {
       expect(index, 1);
     });
 
+    test('opens video review dashboard tab outside production', () {
+      final index = AppRoutes.resolveDashboardInitialIndex(
+        environment: AppEnvironment.local,
+        uri: Uri.parse(
+          'http://localhost:8080/#/admin-dashboard?adminTab=video-review',
+        ),
+      );
+
+      expect(index, 2);
+    });
+
     test('keeps dashboard tab query ignored in production', () {
       final index = AppRoutes.resolveDashboardInitialIndex(
         environment: AppEnvironment.production,

@@ -75,6 +75,7 @@ void main() {
       'lib/dashboard/admin_signup.dart',
       'lib/dashboard/admin_dashboard_screen.dart',
       'lib/dashboard/managed_accounts_widget.dart',
+      'lib/dashboard/video_review_widget.dart',
       'lib/dashboard/video_added_widget.dart',
       'lib/dashboard/video_reported_widget.dart',
       'lib/dashboard/offer_management_widget.dart',

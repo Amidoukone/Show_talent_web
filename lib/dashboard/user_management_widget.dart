@@ -1,4 +1,4 @@
-﻿import 'package:cloud_functions/cloud_functions.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -70,6 +70,37 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   bool _isCompactLayout(BuildContext context) =>
       MediaQuery.sizeOf(context).width < 1120;
+
+  Widget _buildRoleFilterField() {
+    return AdminGlassPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      radius: 16,
+      accentColor: AdminTheme.cyan,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedRole,
+          isExpanded: true,
+          dropdownColor: AdminTheme.surfaceRaised,
+          iconEnabledColor: AdminTheme.textSecondary,
+          items: <String>[
+            'Tous',
+            ...adminProvisionedRoles,
+          ].map<DropdownMenuItem<String>>((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, overflow: TextOverflow.ellipsis),
+            );
+          }).toList(),
+          onChanged: (String? newValue) {
+            setState(() {
+              selectedRole = newValue;
+              currentPage = 0;
+            });
+          },
+        ),
+      ),
+    );
+  }
 
   void _clearFilters() {
     setState(() {
@@ -807,10 +838,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
-    final panelPadding = compact ? 16.0 : 22.0;
-    final spacing = compact ? 12.0 : 16.0;
-    final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 86.0 : 92.0;
+    final panelPadding = compact ? 16.0 : 20.0;
+    final spacing = compact ? 12.0 : 18.0;
+    final tableColumnSpacing = compact ? 16.0 : 20.0;
+    final headingRowHeight = compact ? 54.0 : 58.0;
+    final dataRowHeight = compact ? 78.0 : 84.0;
+    final hasFilters = searchQuery.trim().isNotEmpty || selectedRole != 'Tous';
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -823,31 +856,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             badge: _headerBadge,
             title: _headerTitle,
             subtitle: _headerSubtitle,
-            trailing: AdminGlassPanel(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              radius: 18,
-              accentColor: AdminTheme.cyan,
-              child: DropdownButton<String>(
-                value: selectedRole,
-                dropdownColor: AdminTheme.surfaceRaised,
-                underline: const SizedBox.shrink(),
-                items: <String>[
-                  'Tous',
-                  ...adminProvisionedRoles,
-                ].map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    selectedRole = newValue;
-                    currentPage = 0;
-                  });
-                },
-              ),
-            ),
           ),
           SizedBox(height: spacing),
           AdminInfoBanner(
@@ -856,19 +864,35 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             icon: Icons.rule_folder_outlined,
             tone: AdminBannerTone.warning,
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
-            child: AdminSearchField(
-              controller: _searchController,
-              hintText: _searchHint,
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                  currentPage = 0;
-                });
-              },
-            ),
+          SizedBox(height: spacing),
+          AdminFilterBar(
+            maxWidth: 1180,
+            breakpoint: 900,
+            spacing: compact ? 10 : 12,
+            flexes: const [5, 3, 2],
+            children: [
+              AdminSearchField(
+                controller: _searchController,
+                hintText: _searchHint,
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                    currentPage = 0;
+                  });
+                },
+              ),
+              _buildRoleFilterField(),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: hasFilters ? _clearFilters : null,
+                  icon: const Icon(Icons.filter_alt_off_rounded),
+                  label: const Text('Réinitialiser'),
+                ),
+              ),
+            ],
           ),
+          SizedBox(height: spacing),
           Obx(() {
             final filteredUsers = _userController.userList.where((user) {
               final matchesRole =
@@ -1022,7 +1046,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   compact: compact,
                   child: DataTable(
                     columnSpacing: tableColumnSpacing,
-                    horizontalMargin: compact ? 10 : 12,
+                    horizontalMargin: compact ? 8 : 10,
                     columns: const [
                       DataColumn(
                           label: Text('Nom', textAlign: TextAlign.center)),
@@ -1043,55 +1067,86 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       (index) => DataRow(
                         cells: [
                           DataCell(
-                            Row(
-                              children: [
-                                Icon(
-                                  _rowLeadingIcon,
-                                  color: _rowLeadingColor,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(displayedUsers[index].nom),
-                              ],
-                            ),
-                          ),
-                          DataCell(Text(displayedUsers[index].email)),
-                          DataCell(
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(displayedUsers[index].role),
-                                Text(
-                                  displayedUsers[index].profileLevelLabel,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AdminTheme.textSecondary,
+                            SizedBox(
+                              width: compact ? 170 : 190,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _rowLeadingIcon,
+                                    color: _rowLeadingColor,
+                                    size: 18,
                                   ),
-                                ),
-                                Text(
-                                  displayedUsers[index].profileTrustLabel,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: displayedUsers[index].profileVerified
-                                        ? AdminTheme.success
-                                        : displayedUsers[index]
-                                                .profileVerificationNeedsReview
-                                            ? AdminTheme.warning
-                                            : AdminTheme.textMuted,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                if (displayedUsers[index].createdByAdmin)
-                                  const Text(
-                                    'créé par l\'administration',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AdminTheme.accent,
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      displayedUsers[index].nom,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                              ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: compact ? 200 : 240,
+                              child: Text(
+                                displayedUsers[index].email,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: compact ? 190 : 220,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    displayedUsers[index].role,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    displayedUsers[index].profileLevelLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AdminTheme.textSecondary,
+                                    ),
+                                  ),
+                                  Text(
+                                    displayedUsers[index].profileTrustLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: displayedUsers[index]
+                                              .profileVerified
+                                          ? AdminTheme.success
+                                          : displayedUsers[index]
+                                                  .profileVerificationNeedsReview
+                                              ? AdminTheme.warning
+                                              : AdminTheme.textMuted,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (displayedUsers[index].createdByAdmin)
+                                    const Text(
+                                      'créé par l\'administration',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AdminTheme.accent,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                           DataCell(
@@ -1137,9 +1192,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       AdminTheme.surface.withValues(alpha: 0.14),
                     ),
                     dividerThickness: 1,
-                    dataRowMinHeight: rowHeight,
-                    dataRowMaxHeight: rowHeight,
-                    headingRowHeight: rowHeight,
+                    dataRowMinHeight: dataRowHeight,
+                    dataRowMaxHeight: dataRowHeight,
+                    headingRowHeight: headingRowHeight,
                   ),
                 ),
                 SizedBox(height: spacing),

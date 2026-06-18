@@ -19,7 +19,7 @@ class AdminTheme {
   static const Color textPrimary = Color(0xFFEDEDED);
   static const Color textSecondary = Color(0xFF9AA3AD);
   static const Color textMuted = Color(0xFF6E7A85);
-  static const double contentMaxWidth = 1440;
+  static const double contentMaxWidth = 1460;
   static const double readingMaxWidth = 1280;
 
   static const LinearGradient pageGradient = LinearGradient(
@@ -175,22 +175,22 @@ class AdminTheme {
         suffixIconColor: textSecondary,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 16,
+          vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: border.withValues(alpha: 0.8)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: border.withValues(alpha: 0.8)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: accent, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: danger, width: 1.2),
         ),
       ),
@@ -199,12 +199,13 @@ class AdminTheme {
           elevation: const WidgetStatePropertyAll(0),
           backgroundColor: const WidgetStatePropertyAll(accent),
           foregroundColor: const WidgetStatePropertyAll(background),
+          minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
@@ -215,15 +216,19 @@ class AdminTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
           foregroundColor: const WidgetStatePropertyAll(textPrimary),
+          backgroundColor: WidgetStatePropertyAll(
+            surfaceSoft.withValues(alpha: 0.2),
+          ),
           side: WidgetStatePropertyAll(
             BorderSide(color: accent.withValues(alpha: 0.32)),
           ),
+          minimumSize: const WidgetStatePropertyAll(Size(0, 46)),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
@@ -234,6 +239,14 @@ class AdminTheme {
       textButtonTheme: TextButtonThemeData(
         style: ButtonStyle(
           foregroundColor: const WidgetStatePropertyAll(accentSoft),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),

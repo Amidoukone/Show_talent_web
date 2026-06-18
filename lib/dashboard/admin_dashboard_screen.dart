@@ -167,7 +167,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     if (!accessResult.isAuthorized) {
-      Get.snackbar('Acc\u00e8s refus\u00e9', accessResult.message ?? 'Acc\u00e8s refus\u00e9.');
+      Get.snackbar('Acc\u00e8s refus\u00e9',
+          accessResult.message ?? 'Acc\u00e8s refus\u00e9.');
       Get.offAllNamed(AppRoutes.adminLogin);
       return;
     }
@@ -182,13 +183,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required bool selected,
   }) {
     return Container(
-      width: 40,
-      height: 40,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
         color: selected
             ? AdminTheme.accent
             : AdminTheme.surfaceSoft.withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: selected
               ? AdminTheme.accentSoft.withValues(alpha: 0.36)
@@ -211,13 +212,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
             child: extendedRail
                 ? Row(
                     children: [
                       const AdminBrandMark(
-                        size: 46,
-                        width: 86,
+                        size: 44,
+                        width: 84,
                         label: 'ADFOOT',
                       ),
                       const SizedBox(width: 12),
@@ -256,25 +257,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           Divider(
             color: AdminTheme.borderSoft.withValues(alpha: 0.6),
-            indent: 14,
-            endIndent: 14,
+            indent: 12,
+            endIndent: 12,
           ),
           Expanded(
             child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 16),
+              padding: const EdgeInsets.fromLTRB(8, 10, 8, 16),
               itemCount: _dashboardItems.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
                 final item = _dashboardItems[index];
                 final selected = index == _selectedIndex;
 
                 final navTile = Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: extendedRail ? 10 : 8,
-                    vertical: 9,
+                    horizontal: extendedRail ? 10 : 7,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: selected
                           ? AdminTheme.accent.withValues(alpha: 0.34)
@@ -349,7 +350,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                       onTap: () => _onItemTapped(index),
                       child: navTile,
                     ),
@@ -426,7 +427,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildDashboardHeader(_DashboardItem currentItem) {
     return AdminGlassPanel(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       highlight: true,
       accentColor: AdminTheme.cyan,
       child: LayoutBuilder(
@@ -443,6 +444,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             spacing: 10,
             runSpacing: 10,
             crossAxisAlignment: WrapCrossAlignment.center,
+            alignment: WrapAlignment.end,
             children: [
               OutlinedButton.icon(
                 onPressed: () => Get.toNamed(AppRoutes.statistics),
@@ -590,11 +592,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       return LayoutBuilder(
         builder: (context, constraints) {
           final mobileMetrics = constraints.maxWidth < 640;
-          final cardWidth = mobileMetrics
-              ? 236.0
-              : compact
-                  ? 248.0
-                  : 266.0;
+          const spacing = 12.0;
 
           if (mobileMetrics) {
             return SingleChildScrollView(
@@ -603,8 +601,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: cards
                     .map(
                       (card) => Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: SizedBox(width: cardWidth, child: card),
+                        padding: const EdgeInsets.only(right: spacing),
+                        child: SizedBox(width: 236, child: card),
                       ),
                     )
                     .toList(),
@@ -612,9 +610,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             );
           }
 
+          final columns = constraints.maxWidth >= 1240
+              ? 4
+              : constraints.maxWidth >= 880
+                  ? 3
+                  : 2;
+          final availableWidth =
+              constraints.maxWidth - (spacing * (columns - 1));
+          final cardWidth = availableWidth / columns;
+
           return Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: spacing,
+            runSpacing: spacing,
             children: cards
                 .map(
                   (card) => SizedBox(
@@ -692,7 +699,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           thumbVisibility: true,
           child: SingleChildScrollView(
             controller: _mainScrollController,
-            padding: const EdgeInsets.only(right: 4, bottom: 4),
+            padding: const EdgeInsets.only(right: 2, bottom: 8),
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: mainConstraints.maxHeight),
               child: AdminContentFrame(
@@ -735,7 +742,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       body: AdminAppBackground(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(
+          MediaQuery.sizeOf(context).width < 1160 ? 16 : 18,
+        ),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final currentItem = _dashboardItems[_selectedIndex];
@@ -754,10 +763,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: extendedRail ? 300 : 102,
+                  width: extendedRail ? 284 : 96,
                   child: _buildSidebar(extendedRail),
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 16),
                 Expanded(
                   child: _buildScrollableMainContent(
                     currentItem: currentItem,

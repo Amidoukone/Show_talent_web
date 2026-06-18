@@ -194,8 +194,8 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
-    final panelPadding = compact ? 16.0 : 22.0;
-    final spacing = compact ? 12.0 : 16.0;
+    final panelPadding = compact ? 16.0 : 20.0;
+    final spacing = compact ? 12.0 : 18.0;
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -438,7 +438,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: wide ? 760 : constraints.maxWidth,
+                    maxWidth: wide ? 860 : constraints.maxWidth,
                   ),
                   child: formSection,
                 ),

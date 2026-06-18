@@ -9,6 +9,7 @@ import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/admin_video_ui.dart';
 
 class VideoReviewWidget extends StatefulWidget {
   const VideoReviewWidget({super.key});
@@ -64,6 +65,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     if (!video.optimized) {
       return AdminTheme.warning;
     }
+
     switch (video.normalizedModerationStatus) {
       case 'approved':
         return AdminTheme.success;
@@ -82,7 +84,46 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     if (!video.optimized) {
       return 'Optimisation';
     }
-    return video.moderationLabel;
+    return 'Prête à publier';
+  }
+
+  String _secondaryLabel(Video video) {
+    final songName = video.songName.trim();
+    if (songName.isNotEmpty &&
+        songName.toLowerCase() != video.displayTitle.trim().toLowerCase()) {
+      return songName;
+    }
+    return 'Référence ${_compactVideoId(video.id)}';
+  }
+
+  String _compactVideoId(String id) {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) {
+      return 'inconnue';
+    }
+    return trimmed.length > 10 ? '${trimmed.substring(0, 10)}...' : trimmed;
+  }
+
+  List<AdminVideoMetaItem> _metadata(Video video) {
+    return [
+      AdminVideoMetaItem(
+        label: video.optimized ? 'Décision possible' : 'Traitement en cours',
+        icon:
+            video.optimized ? Icons.verified_outlined : Icons.autorenew_rounded,
+        color: _statusColor(video),
+      ),
+      AdminVideoMetaItem(
+        label: video.hasMultipleMp4Sources ? 'MP4 multi-source' : 'MP4 prêt',
+        icon: Icons.hd_rounded,
+        color: AdminTheme.cyan,
+      ),
+      if (video.reportCount > 0)
+        AdminVideoMetaItem(
+          label: '${video.reportCount} signalement(s)',
+          icon: Icons.flag_outlined,
+          color: AdminTheme.warning,
+        ),
+    ];
   }
 
   void _openVideo(Video video) {
@@ -90,7 +131,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     if (videoUrl.isEmpty) {
       showAdminFeedback(
         title: 'Lecture indisponible',
-        message: 'Aucune source MP4 exploitable pour cette video.',
+        message: 'Aucune source MP4 exploitable pour cette vidéo.',
         tone: AdminBannerTone.warning,
         position: SnackPosition.BOTTOM,
       );
@@ -110,7 +151,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     if (!video.optimized) {
       showAdminFeedback(
         title: 'Optimisation en cours',
-        message: 'Attendez la fin de l optimisation avant de publier.',
+        message: "Attendez la fin de l'optimisation avant de publier.",
         tone: AdminBannerTone.warning,
         position: SnackPosition.BOTTOM,
       );
@@ -125,8 +166,9 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     try {
       await videoController.approveVideo(video.id);
       showAdminFeedback(
-        title: 'Video approuvee',
-        message: 'La video est maintenant visible par les clubs et recruteurs.',
+        title: 'Vidéo approuvée',
+        message:
+            'La vidéo est maintenant visible par les clubs et les recruteurs.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -161,8 +203,8 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     try {
       await videoController.rejectVideo(video.id, reason: reason);
       showAdminFeedback(
-        title: 'Video refusee',
-        message: 'La video a ete supprimee et le joueur sera notifie.',
+        title: 'Vidéo refusée',
+        message: 'La vidéo a été supprimée et le joueur sera notifié.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -190,7 +232,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('Refuser la video'),
+            title: const Text('Refuser la vidéo'),
             content: SizedBox(
               width: 480,
               child: Column(
@@ -209,9 +251,9 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                     maxLines: 3,
                     maxLength: 500,
                     decoration: const InputDecoration(
-                      labelText: 'Motif envoye au joueur',
+                      labelText: 'Motif envoyé au joueur',
                       hintText:
-                          'Exemple : action peu visible, qualite insuffisante...',
+                          'Exemple : action peu visible, qualité insuffisante...',
                     ),
                   ),
                 ],
@@ -239,24 +281,22 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   }
 
   Widget _buildPreview(Video video, bool compact) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: compact ? 92 : 108,
-        height: compact ? 54 : 62,
-        color: AdminTheme.surfaceSoft,
-        child: Image.network(
-          video.thumbnail,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.video_library_outlined,
-              color: AdminTheme.warning,
-              size: 32,
-            );
-          },
-        ),
-      ),
+    return AdminVideoPreviewCard(
+      thumbnailUrl: video.thumbnail,
+      statusLabel: video.optimized ? 'Prête' : 'Traitement',
+      statusColor: _statusColor(video),
+      footerLabel: _compactVideoId(video.id),
+      footerIcon: Icons.videocam_outlined,
+      fallbackIcon: Icons.video_library_outlined,
+      compact: compact,
+    );
+  }
+
+  Widget _buildTitleCell(Video video) {
+    return AdminVideoTitleCell(
+      title: video.displayTitle,
+      subtitle: _secondaryLabel(video),
+      metadata: _metadata(video),
     );
   }
 
@@ -284,30 +324,24 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       spacing: 6,
       runSpacing: 6,
       children: [
-        Tooltip(
-          message: 'Regarder',
-          child: IconButton.filledTonal(
-            onPressed: () => _openVideo(video),
-            icon: const Icon(Icons.play_circle_outline_rounded),
-          ),
+        AdminVideoActionButton(
+          onPressed: () => _openVideo(video),
+          icon: Icons.play_circle_outline_rounded,
+          label: 'Prévisualiser',
+          tone: AdminVideoActionTone.info,
         ),
-        Tooltip(
-          message: video.optimized
-              ? 'Approuver et publier'
-              : 'Optimisation en cours',
-          child: IconButton.filledTonal(
-            onPressed: video.optimized ? () => _approveVideo(video) : null,
-            icon: const Icon(Icons.check_circle_outline_rounded),
-            color: AdminTheme.success,
-          ),
+        AdminVideoActionButton(
+          onPressed: video.optimized ? () => _approveVideo(video) : null,
+          icon: Icons.check_circle_outline_rounded,
+          label: 'Approuver',
+          tone: AdminVideoActionTone.success,
         ),
-        Tooltip(
-          message: 'Refuser et supprimer',
-          child: IconButton.filledTonal(
-            onPressed: () => _rejectVideo(video),
-            icon: const Icon(Icons.delete_outline_rounded),
-            color: AdminTheme.danger,
-          ),
+        AdminVideoActionButton(
+          onPressed: () => _rejectVideo(video),
+          icon: Icons.delete_outline_rounded,
+          label: 'Refuser',
+          tone: AdminVideoActionTone.danger,
+          outlined: true,
         ),
       ],
     );
@@ -319,7 +353,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     final panelPadding = compact ? 16.0 : 22.0;
     final spacing = compact ? 12.0 : 16.0;
     final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 76.0 : 82.0;
+    final rowHeight = compact ? 112.0 : 122.0;
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -330,15 +364,15 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         children: [
           const AdminSectionHeader(
             badge: 'Revue admin',
-            title: 'Videos a valider',
+            title: 'Vidéos à valider',
             subtitle:
-                'Validez uniquement les videos utiles aux clubs et recruteurs. Un refus supprime les fichiers et notifie le joueur.',
+                'Validez uniquement les vidéos utiles aux clubs et aux recruteurs. Un refus supprime les fichiers et notifie le joueur.',
           ),
           SizedBox(height: spacing),
           const AdminInfoBanner(
-            title: 'Controle avant publication',
+            title: 'Contrôle avant publication',
             message:
-                'Les joueurs peuvent soumettre leurs videos, mais aucune nouvelle video ne devient publique sans validation admin.',
+                "Les joueurs peuvent soumettre leurs vidéos, mais aucune nouvelle vidéo ne devient publique sans validation admin.",
             icon: Icons.fact_check_outlined,
             tone: AdminBannerTone.warning,
           ),
@@ -347,7 +381,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
             child: AdminSearchField(
               controller: _searchController,
               maxWidth: 640,
-              hintText: 'Rechercher par titre ou joueur',
+              hintText: 'Rechercher par titre, ID ou joueur',
               onChanged: (value) {
                 setState(() {
                   searchQuery = value.toLowerCase();
@@ -379,6 +413,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                 _resolveUserName(video.uid),
                 video.status,
                 video.moderationStatus,
+                video.id,
               ].any((value) => value.toLowerCase().contains(normalizedQuery));
             }).toList();
 
@@ -406,15 +441,15 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                       value: '${pendingVideos.length}',
                       icon: Icons.pending_actions_rounded,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'A traiter',
+                      subtitle: 'À traiter',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Pretes',
+                      label: 'Prêtes',
                       value: '$readyForDecision',
                       icon: Icons.verified_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Decision possible',
+                      subtitle: 'Décision possible',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -438,10 +473,10 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                 SizedBox(height: spacing),
                 if (filteredVideos.isEmpty)
                   AdminEmptyState(
-                    title: 'Aucune video en attente',
+                    title: 'Aucune vidéo en attente',
                     message: searchQuery.trim().isEmpty
                         ? 'La file de revue est vide.'
-                        : 'Aucune video en attente ne correspond a cette recherche.',
+                        : 'Aucune vidéo en attente ne correspond à cette recherche.',
                     icon: Icons.task_alt_rounded,
                     actionLabel: searchQuery.trim().isEmpty
                         ? 'Recharger la file'
@@ -468,10 +503,10 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                       columnSpacing: tableColumnSpacing,
                       horizontalMargin: compact ? 10 : 12,
                       columns: const [
-                        DataColumn(label: Text('Apercu')),
-                        DataColumn(label: Text('Titre')),
+                        DataColumn(label: Text('Aperçu')),
+                        DataColumn(label: Text('Contenu')),
                         DataColumn(label: Text('Joueur')),
-                        DataColumn(label: Text('Etat')),
+                        DataColumn(label: Text('État')),
                         DataColumn(label: Text('Actions')),
                       ],
                       rows: List<DataRow>.generate(
@@ -481,28 +516,13 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                           return DataRow(
                             cells: [
                               DataCell(_buildPreview(video, compact)),
-                              DataCell(
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 280,
-                                  ),
-                                  child: Text(
-                                    video.displayTitle,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      color: AdminTheme.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              DataCell(_buildTitleCell(video)),
                               DataCell(Text(_resolveUserName(video.uid))),
                               DataCell(
                                 AdminPill(
                                   label: _statusLabel(video),
                                   icon: video.optimized
-                                      ? Icons.pending_actions_rounded
+                                      ? Icons.verified_outlined
                                       : Icons.autorenew_rounded,
                                   color: _statusColor(video),
                                 ),

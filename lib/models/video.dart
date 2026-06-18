@@ -331,7 +331,7 @@ class Video {
     if (songName.trim().isNotEmpty) {
       return songName.trim();
     }
-    return id.trim().isNotEmpty ? id.trim() : 'Video sans titre';
+    return id.trim().isNotEmpty ? id.trim() : 'Vidéo sans titre';
   }
 
   String get effectiveUrl {
@@ -408,18 +408,18 @@ class Video {
   String get moderationLabel {
     switch (normalizedModerationStatus) {
       case 'approved':
-        return 'Approuvee';
+        return 'Approuvée';
       case 'pending':
         return 'En attente';
       case 'rejected':
-        return 'Refusee';
+        return 'Refusée';
       case 'hidden':
-        return 'Masquee';
+        return 'Masquée';
       case 'removed':
-        return 'Supprimee';
+        return 'Supprimée';
       default:
         return normalizedModerationStatus.isEmpty
-            ? 'Non defini'
+            ? 'Non défini'
             : normalizedModerationStatus;
     }
   }

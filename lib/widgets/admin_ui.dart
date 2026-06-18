@@ -85,6 +85,28 @@ class AdminGlassPanel extends StatelessWidget {
   }
 }
 
+class AdminContentFrame extends StatelessWidget {
+  const AdminContentFrame({
+    required this.child,
+    this.maxWidth = AdminTheme.readingMaxWidth,
+    super.key,
+  });
+
+  final Widget child;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: child,
+      ),
+    );
+  }
+}
+
 class AdminBrandMark extends StatelessWidget {
   const AdminBrandMark({
     this.size = 54,
@@ -173,12 +195,18 @@ class AdminSectionHeader extends StatelessWidget {
               ),
               const SizedBox(height: 14),
             ],
-            Text(title, style: titleStyle),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Text(title, style: titleStyle),
+            ),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
-              Text(
-                subtitle!,
-                style: textTheme.bodyMedium,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Text(
+                  subtitle!,
+                  style: textTheme.bodyMedium,
+                ),
               ),
             ],
           ],
@@ -282,15 +310,18 @@ class AdminInfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 640;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 16 : 18),
       decoration: BoxDecoration(
         color: _toneColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _toneColor.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Flex(
+        direction: compact ? Axis.vertical : Axis.horizontal,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -302,8 +333,9 @@ class AdminInfoBanner extends StatelessWidget {
             ),
             child: Icon(icon, color: _toneColor),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: compact ? 0 : 14, height: compact ? 12 : 0),
           Expanded(
+            flex: compact ? 0 : 1,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -359,57 +391,58 @@ class AdminMetricCard extends StatelessWidget {
       accentColor: accentColor,
       padding: const EdgeInsets.all(20),
       radius: 18,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 18, color: accentColor),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          color: AdminTheme.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 18),
-                Text(
-                  value,
+                child: Icon(icon, size: 18, color: accentColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
                   style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AdminTheme.textPrimary,
-                    letterSpacing: 0,
+                    color: AdminTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
                   ),
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle!,
-                    style: const TextStyle(
-                      color: AdminTheme.textMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ],
+              ),
+              _AdminRing(
+                color: accentColor,
+                progress: progress,
+                label: '$percent%',
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              color: AdminTheme.textPrimary,
+              letterSpacing: 0,
             ),
           ),
-          const SizedBox(width: 14),
-          _AdminRing(
-            color: accentColor,
-            progress: progress,
-            label: '$percent%',
-          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              subtitle!,
+              style: const TextStyle(
+                color: AdminTheme.textMuted,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -449,7 +482,10 @@ class AdminMiniStat extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: accentColor.withValues(alpha: 0.22),
+                ),
               ),
               child: Icon(icon, color: accentColor, size: 20),
             ),
@@ -620,14 +656,7 @@ class AdminSearchField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: Container(
-          margin: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AdminTheme.surfaceHighlight.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.tune_rounded, size: 18),
-        ),
+        suffixIcon: const Icon(Icons.search_rounded),
       ),
     );
 
@@ -707,7 +736,7 @@ class AdminFilterBar extends StatelessWidget {
 
 class AdminLoadingState extends StatelessWidget {
   const AdminLoadingState({
-    this.message = 'Chargement des données...',
+    this.message = 'Chargement des donn\u00e9es...',
     super.key,
   });
 
@@ -868,7 +897,7 @@ class AdminPaginationBar extends StatelessWidget {
     required this.totalPages,
     required this.onPrevious,
     required this.onNext,
-    this.previousLabel = 'Précédent',
+    this.previousLabel = 'Pr\u00e9c\u00e9dent',
     this.nextLabel = 'Suivant',
     super.key,
   });
@@ -985,17 +1014,17 @@ class _AdminRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 60,
-      height: 60,
+      width: 54,
+      height: 54,
       child: Stack(
         alignment: Alignment.center,
         children: [
           SizedBox(
-            width: 60,
-            height: 60,
+            width: 54,
+            height: 54,
             child: CircularProgressIndicator(
               value: progress.clamp(0, 1),
-              strokeWidth: 6,
+              strokeWidth: 5,
               backgroundColor: AdminTheme.borderSoft,
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),

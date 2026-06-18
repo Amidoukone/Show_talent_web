@@ -266,7 +266,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                         const AdminSectionHeader(
                           title: 'Signaux clés',
                           subtitle:
-                              'Quelques ratios utiles pour lire l’état de la plateforme.',
+                              "Quelques ratios utiles pour lire l'état de la plateforme.",
                         ),
                         const SizedBox(height: 18),
                         _SignalRow(
@@ -303,7 +303,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   const AdminInfoBanner(
                     title: 'Lecture opérationnelle',
                     message:
-                        'Ces indicateurs aident à suivre l’activité, la modération et les accès sensibles.',
+                        "Ces indicateurs aident à suivre l'activité, la modération et les accès sensibles.",
                     icon: Icons.auto_graph_rounded,
                     tone: AdminBannerTone.neutral,
                   ),

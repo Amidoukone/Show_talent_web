@@ -237,7 +237,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                   value: '$managedAccounts',
                   icon: Icons.manage_accounts_outlined,
                   accentColor: AdminTheme.success,
-                  subtitle: 'Créés ou suivis par admin',
+                  subtitle: "Créés ou suivis par l'administration",
                   minWidth: compact ? 180 : 220,
                 ),
                 AdminMiniStat(

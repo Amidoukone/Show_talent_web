@@ -1,4 +1,4 @@
-import 'package:cloud_functions/cloud_functions.dart';
+﻿import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -90,7 +90,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   String _verifyProfileActionLabel(AppUser user) {
     return user.profileVerificationNeedsReview
-        ? 'Revalider le profil'
+        ? 'Réexaminer le profil'
         : 'Certifier le profil';
   }
 
@@ -996,7 +996,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       value: '$readyForVerification',
                       icon: Icons.rule_folder_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Eligibles',
+                      subtitle: 'Éligibles',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -1085,7 +1085,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                                 ),
                                 if (displayedUsers[index].createdByAdmin)
                                   const Text(
-                                    'créé par admin',
+                                    'créé par l\'administration',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: AdminTheme.accent,
@@ -1238,7 +1238,7 @@ class _ProfileReviewContent extends StatelessWidget {
             if (user.profileVerificationNeedsReview)
               _ProfileReviewItem(
                 label: 'Action requise',
-                value: 'Revalidation Adfoot apres modification utilisateur',
+                value: 'Revalidation Adfoot après modification utilisateur',
               ),
             if (user.profileVerificationInvalidatedAt != null)
               _ProfileReviewItem(
@@ -1259,8 +1259,8 @@ class _ProfileReviewContent extends StatelessWidget {
             if (user.profileVerifiedAt != null)
               _ProfileReviewItem(
                 label: user.profileVerified
-                    ? 'Certifie le'
-                    : 'Derniere certification',
+                    ? 'Certifié le'
+                    : 'Dernière certification',
                 value: user.profileVerifiedAt!.toLocal().toString(),
               ),
             if (user.profileVerificationNote != null)

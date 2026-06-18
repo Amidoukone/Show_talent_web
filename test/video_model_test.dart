@@ -98,7 +98,7 @@ void main() {
       expect(approved.normalizedModerationStatus, 'approved');
       expect(approved.isPendingReview, isFalse);
       expect(approved.isApprovedPublic, isTrue);
-      expect(approved.moderationLabel, 'Approuvee');
+      expect(approved.moderationLabel, 'Approuvée');
     });
   });
 }

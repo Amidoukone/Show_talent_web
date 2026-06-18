@@ -166,7 +166,7 @@ class AdminContentService {
         'videoId': videoId.trim(),
         if (reason.trim().isNotEmpty) 'reason': reason.trim(),
       },
-      fallbackMessage: 'Refus de la video impossible pour le moment.',
+      fallbackMessage: 'Refus de la vidéo impossible pour le moment.',
     );
   }
 

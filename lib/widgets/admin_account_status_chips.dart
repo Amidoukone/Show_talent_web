@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/user.dart';
 import '../theme/admin_theme.dart';
@@ -23,7 +23,7 @@ class AdminAccountStatusChips extends StatelessWidget {
       ));
     } else if (user.profileVerificationNeedsReview) {
       statuses.add(const _StatusItem(
-        label: 'a revalider',
+        label: 'à revalider',
         backgroundColor: Color(0x33F4D27A),
         textColor: AdminTheme.warning,
       ));

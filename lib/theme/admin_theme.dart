@@ -7,6 +7,7 @@ class AdminTheme {
   static const Color surfaceRaised = Color(0xFF1A1F26);
   static const Color surfaceSoft = Color(0xFF202632);
   static const Color surfaceHighlight = Color(0xFF26313D);
+  static const Color surfaceOverlay = Color(0xFF18212B);
   static const Color border = Color(0xFF2E3A45);
   static const Color borderSoft = Color(0xFF202632);
   static const Color accent = Color(0xFF2ED573);
@@ -18,6 +19,8 @@ class AdminTheme {
   static const Color textPrimary = Color(0xFFEDEDED);
   static const Color textSecondary = Color(0xFF9AA3AD);
   static const Color textMuted = Color(0xFF6E7A85);
+  static const double contentMaxWidth = 1440;
+  static const double readingMaxWidth = 1280;
 
   static const LinearGradient pageGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -42,25 +45,25 @@ class AdminTheme {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          surfaceRaised.withValues(alpha: 0.96),
-          surface.withValues(alpha: 0.96),
+          surfaceRaised.withValues(alpha: 0.97),
+          surface.withValues(alpha: 0.95),
         ],
       ),
       border: Border.all(
         color: highlight
-            ? glow.withValues(alpha: 0.32)
-            : border.withValues(alpha: 0.86),
+            ? glow.withValues(alpha: 0.28)
+            : border.withValues(alpha: 0.82),
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.24),
-          blurRadius: 32,
-          offset: const Offset(0, 16),
+          color: Colors.black.withValues(alpha: 0.22),
+          blurRadius: 28,
+          offset: const Offset(0, 14),
         ),
         BoxShadow(
-          color: glow.withValues(alpha: highlight ? 0.14 : 0.06),
-          blurRadius: 22,
-          spreadRadius: 1,
+          color: glow.withValues(alpha: highlight ? 0.1 : 0.03),
+          blurRadius: 16,
+          spreadRadius: 0.5,
         ),
       ],
     );
@@ -171,8 +174,8 @@ class AdminTheme {
         prefixIconColor: textSecondary,
         suffixIconColor: textSecondary,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 18,
+          horizontal: 16,
+          vertical: 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -197,7 +200,7 @@ class AdminTheme {
           backgroundColor: const WidgetStatePropertyAll(accent),
           foregroundColor: const WidgetStatePropertyAll(background),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
@@ -216,7 +219,7 @@ class AdminTheme {
             BorderSide(color: accent.withValues(alpha: 0.32)),
           ),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
@@ -268,7 +271,7 @@ class AdminTheme {
         ),
         dataTextStyle: const TextStyle(
           color: textSecondary,
-          fontSize: 13,
+          fontSize: 13.5,
         ),
       ),
       popupMenuTheme: PopupMenuThemeData(

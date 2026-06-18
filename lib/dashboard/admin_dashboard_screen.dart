@@ -54,28 +54,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   static const List<_DashboardItem> _dashboardItems = [
     _DashboardItem(
       title: 'Utilisateurs',
-      subtitle: 'Gestion complète des profils, rôles et statuts.',
+      subtitle: 'Gestion compl\u00e8te des profils, r\u00f4les et statuts.',
       icon: Icons.groups_rounded,
     ),
     _DashboardItem(
-      title: 'Comptes administrés',
+      title: 'Comptes administr\u00e9s',
       subtitle:
-          "Provisionnement et suivi des comptes créés par l'administration.",
+          "Provisionnement et suivi des comptes cr\u00e9\u00e9s par l'administration.",
       icon: Icons.manage_accounts_rounded,
     ),
     _DashboardItem(
-      title: 'Videos a valider',
+      title: 'Vid\u00e9os \u00e0 valider',
       subtitle: 'Validation avant publication publique.',
       icon: Icons.fact_check_rounded,
     ),
     _DashboardItem(
-      title: 'Vidéos ajoutées',
-      subtitle: 'Lecture, tri et modération du catalogue vidéo.',
+      title: 'Vid\u00e9os ajout\u00e9es',
+      subtitle: 'Lecture, tri et mod\u00e9ration du catalogue vid\u00e9o.',
       icon: Icons.play_circle_outline_rounded,
     ),
     _DashboardItem(
-      title: 'Vidéos signalées',
-      subtitle: 'Traitement prioritaire des contenus remontés.',
+      title: 'Vid\u00e9os signal\u00e9es',
+      subtitle: 'Traitement prioritaire des contenus remont\u00e9s.',
       icon: Icons.report_gmailerrorred_rounded,
     ),
     _DashboardItem(
@@ -84,18 +84,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       icon: Icons.work_outline_rounded,
     ),
     _DashboardItem(
-      title: 'Événements',
-      subtitle: 'Suivi des événements, statuts et participants.',
+      title: '\u00c9v\u00e9nements',
+      subtitle: 'Suivi des \u00e9v\u00e9nements, statuts et participants.',
       icon: Icons.event_note_rounded,
     ),
     _DashboardItem(
       title: 'Mise en relation',
-      subtitle: 'Suivi des premiers contacts qualifiés.',
+      subtitle: 'Suivi des premiers contacts qualifi\u00e9s.',
       icon: Icons.support_agent_rounded,
     ),
     _DashboardItem(
       title: 'Statistiques',
-      subtitle: 'Lecture visuelle de l’activité et des ratios du portail.',
+      subtitle: "Lecture visuelle de l'activit\u00e9 et des ratios du portail.",
       icon: Icons.insights_rounded,
     ),
   ];
@@ -167,7 +167,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     if (!accessResult.isAuthorized) {
-      Get.snackbar('Accès refusé', accessResult.message ?? 'Accès refusé.');
+      Get.snackbar('Acc\u00e8s refus\u00e9', accessResult.message ?? 'Acc\u00e8s refus\u00e9.');
       Get.offAllNamed(AppRoutes.adminLogin);
       return;
     }
@@ -375,7 +375,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           AdminPill(
                             label: widget.previewMode
-                                ? 'Prévisualisation'
+                                ? 'Pr\u00e9visualisation'
                                 : 'Session',
                             icon: widget.previewMode
                                 ? Icons.visibility_outlined
@@ -401,8 +401,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(height: 2),
                           Text(
                             widget.previewMode
-                                ? 'Navigation de contrôle'
-                                : '$claimCount droit(s) validé(s)',
+                                ? 'Navigation de contr\u00f4le'
+                                : '$claimCount droit(s) valid\u00e9s',
                             style: const TextStyle(
                               color: AdminTheme.textSecondary,
                               fontSize: 12,
@@ -455,7 +455,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Get.offAllNamed(AppRoutes.adminLogin);
                 },
                 icon: const Icon(Icons.logout_rounded),
-                label: const Text('Déconnexion'),
+                label: const Text('D\u00e9connexion'),
               ),
             ],
           );
@@ -529,7 +529,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           progress: totalUsers == 0 ? 0 : 1,
         ),
         AdminMetricCard(
-          title: 'Comptes administrés',
+          title: 'Comptes administr\u00e9s',
           value: '$managedCount',
           subtitle: "Suivis par l'administration",
           icon: Icons.badge_rounded,
@@ -537,17 +537,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           accentColor: AdminTheme.cyan,
         ),
         AdminMetricCard(
-          title: 'Vidéos',
+          title: 'Vid\u00e9os',
           value: '$totalVideos',
-          subtitle: '$reportedCount remontées',
+          subtitle: '$reportedCount signalements',
           icon: Icons.ondemand_video_rounded,
           progress: totalVideos == 0 ? 0 : 1,
           accentColor: AdminTheme.accentSoft,
         ),
         AdminMetricCard(
-          title: 'A valider',
+          title: '\u00c0 valider',
           value: '$pendingVideos',
-          subtitle: 'Videos en revue admin',
+          subtitle: 'Vid\u00e9os en revue admin',
           icon: Icons.fact_check_rounded,
           progress: totalVideos == 0 ? 0 : pendingVideos / totalVideos,
           accentColor: AdminTheme.warning,
@@ -561,7 +561,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           accentColor: AdminTheme.cyan,
         ),
         AdminMetricCard(
-          title: 'Événements',
+          title: '\u00c9v\u00e9nements',
           value: '$totalEvents',
           subtitle: '$openEvents ouverts',
           icon: Icons.event_note_rounded,
@@ -569,9 +569,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           accentColor: AdminTheme.success,
         ),
         AdminMetricCard(
-          title: 'Accès suspendus',
+          title: 'Acc\u00e8s suspendus',
           value: '$authDisabledCount',
-          subtitle: 'Comptes temporairement bloqués',
+          subtitle: 'Comptes temporairement bloqu\u00e9s',
           icon: Icons.lock_person_rounded,
           progress: totalUsers == 0 ? 0 : authDisabledCount / totalUsers,
           accentColor: AdminTheme.warning,
@@ -695,19 +695,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.only(right: 4, bottom: 4),
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: mainConstraints.maxHeight),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildDashboardHeader(currentItem),
-                  const SizedBox(height: 14),
-                  if (compactLayout) ...[
-                    _buildCompactNavigation(),
-                    const SizedBox(height: 14),
+              child: AdminContentFrame(
+                maxWidth: compactLayout
+                    ? AdminTheme.readingMaxWidth
+                    : AdminTheme.contentMaxWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildDashboardHeader(currentItem),
+                    const SizedBox(height: 16),
+                    if (compactLayout) ...[
+                      _buildCompactNavigation(),
+                      const SizedBox(height: 16),
+                    ],
+                    _buildDashboardMetrics(compact: compactLayout),
+                    const SizedBox(height: 16),
+                    _buildDashboardBody(),
                   ],
-                  _buildDashboardMetrics(compact: compactLayout),
-                  const SizedBox(height: 14),
-                  _buildDashboardBody(),
-                ],
+                ),
               ),
             ),
           ),
@@ -730,7 +735,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       body: AdminAppBackground(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final currentItem = _dashboardItems[_selectedIndex];
@@ -752,7 +757,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   width: extendedRail ? 300 : 102,
                   child: _buildSidebar(extendedRail),
                 ),
-                const SizedBox(width: 18),
+                const SizedBox(width: 20),
                 Expanded(
                   child: _buildScrollableMainContent(
                     currentItem: currentItem,

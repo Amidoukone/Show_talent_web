@@ -234,7 +234,7 @@ class _ContactIntakeManagementWidgetState
   String _activityLabel(ContactIntake intake) {
     final days = _daysSinceLastActivity(intake);
     if (days == 0) {
-      return 'Mis à jour aujourd’hui';
+      return 'Mis à jour aujourd\'hui';
     }
     if (days == 1) {
       return 'Mis à jour hier';
@@ -263,7 +263,7 @@ class _ContactIntakeManagementWidgetState
               title: Text(
                 initialStatus == null
                     ? 'Mettre à jour le suivi agence'
-                    : 'Avancer l’opportunité',
+                    : 'Avancer l\'opportunité',
               ),
               content: SizedBox(
                 width: 560,
@@ -585,7 +585,7 @@ class _ContactIntakeManagementWidgetState
           const SizedBox(height: 4),
           Text(
             organization?.trim().isNotEmpty == true
-                ? '$roleLabel • ${organization!.trim()}'
+                ? '$roleLabel  -  ${organization!.trim()}'
                 : roleLabel,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1013,7 +1013,7 @@ class _ContactIntakeManagementWidgetState
               return AdminEmptyState(
                 title: 'Aucune mise en relation à suivre',
                 message:
-                    'Les premiers contacts qualifiés apparaîtront ici dès qu’un utilisateur lancera une mise en relation.',
+                    'Les premiers contacts qualifiés apparaîtront ici dès qu\'un utilisateur lancera une mise en relation.',
                 icon: Icons.support_agent_outlined,
                 actionLabel: 'Recharger',
                 actionIcon: Icons.refresh_rounded,

@@ -27,7 +27,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         normalized.contains('web-internal-error') ||
         normalized.contains('identity toolkit') ||
         normalized.contains('api key')) {
-      return "Le service d'authentification refuse la requête. Vérifiez que votre accès administrateur est actif avant de réessayer.";
+      return "Le service d'authentification refuse la requ\u00eate. V\u00e9rifiez que votre acc\u00e8s administrateur est actif avant de r\u00e9essayer.";
     }
 
     return error.message ?? "Erreur d'authentification : ${error.code}";
@@ -59,7 +59,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       );
 
       if (!accessResult.isAuthorized) {
-        Get.snackbar('Accès refusé', accessResult.message ?? 'Accès refusé.');
+        Get.snackbar('Acc\u00e8s refus\u00e9', accessResult.message ?? 'Acc\u00e8s refus\u00e9.');
         return;
       }
 
@@ -174,7 +174,7 @@ class _LoginShowcasePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const AdminPill(
-            label: 'Expérience admin',
+            label: 'Exp\u00e9rience admin',
             icon: Icons.shield_outlined,
           ),
           const SizedBox(height: 24),
@@ -205,7 +205,7 @@ class _LoginShowcasePanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            "Un espace centralisé pour suivre les comptes, les contenus, les offres, les événements et les mises en relation.",
+            "Un espace centralis\u00e9 pour suivre les comptes, les contenus, les offres, les \u00e9v\u00e9nements et les mises en relation.",
             style: TextStyle(
               color: AdminTheme.textSecondary,
               height: 1.6,
@@ -220,21 +220,21 @@ class _LoginShowcasePanel extends StatelessWidget {
               final cards = [
                 const _ShowcaseCard(
                   icon: Icons.people_alt_rounded,
-                  title: 'Comptes administrés',
-                  subtitle: 'Provisionnement et activation centralisés.',
+                  title: 'Comptes administr\u00e9s',
+                  subtitle: 'Provisionnement et activation centralis\u00e9s.',
                   accentColor: AdminTheme.accent,
                 ),
                 const _ShowcaseCard(
                   icon: Icons.play_circle_outline_rounded,
-                  title: 'Modération vidéo',
+                  title: 'Mod\u00e9ration vid\u00e9o',
                   subtitle: 'Lecture, suppression et suivi des signalements.',
                   accentColor: AdminTheme.cyan,
                 ),
                 const _ShowcaseCard(
                   icon: Icons.insights_rounded,
-                  title: 'Vue d’ensemble',
+                  title: "Vue d'ensemble",
                   subtitle:
-                      'Des cartes KPI et une lecture rapide de l’activité.',
+                      "Des cartes KPI et une lecture rapide de l'activit\u00e9.",
                   accentColor: AdminTheme.warning,
                 ),
               ];
@@ -251,32 +251,15 @@ class _LoginShowcasePanel extends StatelessWidget {
                 );
               }
 
-              return SizedBox(
-                height: 360,
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Transform.translate(
-                        offset: const Offset(-18, 10),
-                        child: cards[0],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: Transform.translate(
-                        offset: const Offset(24, 0),
-                        child: cards[1],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: Transform.translate(
-                        offset: const Offset(-8, -8),
-                        child: cards[2],
-                      ),
-                    ),
-                  ],
-                ),
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: cards[0]),
+                  const SizedBox(width: 14),
+                  Expanded(child: cards[1]),
+                  const SizedBox(width: 14),
+                  Expanded(child: cards[2]),
+                ],
               );
             },
           ),
@@ -315,7 +298,7 @@ class _LoginFormPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const AdminPill(
-            label: 'Connexion sécurisée',
+            label: 'Connexion s\u00e9curis\u00e9e',
             icon: Icons.lock_outline_rounded,
             color: AdminTheme.cyan,
           ),
@@ -331,7 +314,7 @@ class _LoginFormPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            "Connectez-vous avec un compte autorisé. Les droits sont vérifiés avant l'ouverture du tableau de bord.",
+            "Connectez-vous avec un compte autoris\u00e9. Les droits sont v\u00e9rifi\u00e9s avant l'ouverture du tableau de bord.",
             style: TextStyle(
               color: AdminTheme.textSecondary,
               height: 1.6,
@@ -408,9 +391,9 @@ class _LoginFormPanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           const AdminInfoBanner(
-            title: 'Contrôle d’accès',
+            title: "Contr\u00f4le d'acc\u00e8s",
             message:
-                "Les accès administrateur sont attribués par l'équipe habilitée. Le portail se concentre sur le pilotage opérationnel.",
+                "Les acc\u00e8s administrateur sont attribu\u00e9s par l'\u00e9quipe habilit\u00e9e. Le portail se concentre sur le pilotage op\u00e9rationnel.",
             icon: Icons.verified_user_outlined,
             tone: AdminBannerTone.info,
           ),
@@ -419,7 +402,7 @@ class _LoginFormPanel extends StatelessWidget {
             alignment: Alignment.center,
             child: TextButton(
               onPressed: () => Get.toNamed(AppRoutes.adminSignup),
-              child: const Text('Accès admin géré par la plateforme'),
+              child: const Text('Acc\u00e8s admin g\u00e9r\u00e9 par la plateforme'),
             ),
           ),
         ],

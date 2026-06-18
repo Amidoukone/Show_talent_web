@@ -60,7 +60,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
                 const SizedBox(width: 12),
                 const AdminPill(
-                  label: 'Lecture video',
+                  label: 'Lecture vidéo',
                   icon: Icons.play_circle_outline_rounded,
                 ),
               ],
@@ -92,7 +92,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               ),
                               const SizedBox(height: 14),
                               Text(
-                                'Impossible de charger la video.\n${widget.videoUrl}',
+                                'Impossible de charger la vidéo.\n${widget.videoUrl}',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: AdminTheme.textSecondary,
@@ -109,9 +109,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const AdminSectionHeader(
-                          title: 'Lecteur de moderation',
+                          title: 'Lecteur de modération',
                           subtitle:
-                              'Lecture plein panneau avec controle direct de la video selectionnee.',
+                              'Lecture plein écran avec contrôle direct de la vidéo sélectionnée.',
                         ),
                         const SizedBox(height: 18),
                         Expanded(

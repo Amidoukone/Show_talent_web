@@ -4,11 +4,12 @@ import 'package:show_talent/models/user.dart';
 import 'package:show_talent/models/video.dart';
 import 'package:show_talent/screens/video_player.dart';
 
-import '../controller/video_controller.dart';
 import '../controller/user_controller.dart';
+import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/admin_video_ui.dart';
 
 class VideoAddedWidget extends StatefulWidget {
   const VideoAddedWidget({super.key});
@@ -75,13 +76,133 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     }
   }
 
+  String _secondaryLabel(Video video) {
+    final songName = video.songName.trim();
+    if (songName.isNotEmpty &&
+        songName.toLowerCase() != video.displayTitle.trim().toLowerCase()) {
+      return songName;
+    }
+    return video.isApprovedPublic
+        ? 'Catalogue public'
+        : 'Statut ${video.moderationLabel.toLowerCase()}';
+  }
+
+  String _compactVideoId(String id) {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) {
+      return 'inconnue';
+    }
+    return trimmed.length > 10 ? '${trimmed.substring(0, 10)}...' : trimmed;
+  }
+
+  List<AdminVideoMetaItem> _metadata(Video video) {
+    return [
+      AdminVideoMetaItem(
+        label: video.moderationLabel,
+        icon: Icons.fact_check_outlined,
+        color: _statusColor(video),
+      ),
+      AdminVideoMetaItem(
+        label: video.isApprovedPublic ? 'Visible' : 'Non publique',
+        icon: video.isApprovedPublic
+            ? Icons.public_rounded
+            : Icons.lock_outline_rounded,
+        color:
+            video.isApprovedPublic ? AdminTheme.success : AdminTheme.textMuted,
+      ),
+      if (video.reportCount > 0)
+        AdminVideoMetaItem(
+          label: '${video.reportCount} signalement(s)',
+          icon: Icons.flag_outlined,
+          color: AdminTheme.warning,
+        ),
+      if (video.shareCount > 0)
+        AdminVideoMetaItem(
+          label: '${video.shareCount} partage(s)',
+          icon: Icons.share_outlined,
+          color: AdminTheme.cyan,
+        ),
+    ];
+  }
+
+  Widget _buildPreview(Video video, bool compact) {
+    return AdminVideoPreviewCard(
+      thumbnailUrl: video.thumbnail,
+      statusLabel: video.moderationLabel,
+      statusColor: _statusColor(video),
+      footerLabel: _compactVideoId(video.id),
+      footerIcon: Icons.ondemand_video_outlined,
+      fallbackIcon: Icons.video_library_outlined,
+      compact: compact,
+    );
+  }
+
+  Widget _buildTitleCell(Video video) {
+    return AdminVideoTitleCell(
+      title: video.displayTitle,
+      subtitle: _secondaryLabel(video),
+      metadata: _metadata(video),
+    );
+  }
+
+  void _openVideo(Video video) {
+    final videoUrl = video.effectiveUrl;
+    if (videoUrl.isEmpty) {
+      showAdminFeedback(
+        title: 'Lecture indisponible',
+        message: 'Aucune source MP4 exploitable pour cette vidéo.',
+        tone: AdminBannerTone.warning,
+        position: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    Get.to(
+      () => VideoPlayerScreen(
+        videoUrl: videoUrl,
+        userId: video.uid,
+        videoId: video.id,
+      ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context, Video video) {
+    if (_deletingVideoId == video.id) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        AdminVideoActionButton(
+          onPressed: () => _openVideo(video),
+          icon: Icons.play_circle_outline_rounded,
+          label: 'Lire',
+          tone: AdminVideoActionTone.info,
+        ),
+        AdminVideoActionButton(
+          onPressed: () => _confirmDelete(context, video.id),
+          icon: Icons.delete_outline_rounded,
+          label: 'Supprimer',
+          tone: AdminVideoActionTone.danger,
+          outlined: true,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
     final panelPadding = compact ? 16.0 : 22.0;
     final spacing = compact ? 12.0 : 16.0;
     final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 62.0 : 68.0;
+    final rowHeight = compact ? 112.0 : 122.0;
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -100,7 +221,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
           const AdminInfoBanner(
             title: 'Catalogue centralisé',
             message:
-                'Les aperçus, auteurs et actions de lecture sont regroupés pour une modération rapide.',
+                'Les aperçus, auteurs et états de diffusion sont regroupés pour une modération rapide.',
             icon: Icons.video_collection_outlined,
             tone: AdminBannerTone.info,
           ),
@@ -109,7 +230,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             child: AdminSearchField(
               controller: _searchController,
               maxWidth: 640,
-              hintText: 'Rechercher par titre',
+              hintText: 'Rechercher par titre, statut ou joueur',
               onChanged: (value) {
                 setState(() {
                   searchQuery = value.toLowerCase();
@@ -130,8 +251,10 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                 video.displayTitle,
                 video.songName,
                 video.uid,
+                _resolveUserName(video.uid),
                 video.status,
                 video.moderationStatus,
+                video.id,
               ].any((value) => value.toLowerCase().contains(normalizedQuery));
             }).toList();
 
@@ -236,7 +359,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                       value: '$multiSourceCount',
                       icon: Icons.dynamic_feed_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Lecture mobile',
+                      subtitle: 'Lecture multi-support',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
@@ -249,129 +372,31 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                     horizontalMargin: compact ? 10 : 12,
                     columns: const [
                       DataColumn(label: Text('Aperçu')),
-                      DataColumn(label: Text('Titre')),
+                      DataColumn(label: Text('Contenu')),
                       DataColumn(label: Text('Ajoutée par')),
                       DataColumn(label: Text('Statut')),
                       DataColumn(label: Text('Actions')),
                     ],
                     rows: List<DataRow>.generate(
                       displayedVideos.length,
-                      (index) => DataRow(
-                        cells: [
-                          DataCell(
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Container(
-                                width: compact ? 92 : 108,
-                                height: compact ? 54 : 62,
-                                color: AdminTheme.surfaceSoft,
-                                child: Image.network(
-                                  displayedVideos[index].thumbnail,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.video_library_outlined,
-                                      color: AdminTheme.accent,
-                                      size: 32,
-                                    );
-                                  },
-                                ),
+                      (index) {
+                        final video = displayedVideos[index];
+                        return DataRow(
+                          cells: [
+                            DataCell(_buildPreview(video, compact)),
+                            DataCell(_buildTitleCell(video)),
+                            DataCell(Text(_resolveUserName(video.uid))),
+                            DataCell(
+                              AdminPill(
+                                label: video.moderationLabel,
+                                icon: Icons.fact_check_outlined,
+                                color: _statusColor(video),
                               ),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              displayedVideos[index].displayTitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AdminTheme.textPrimary,
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            Text(_resolveUserName(displayedVideos[index].uid)),
-                          ),
-                          DataCell(
-                            AdminPill(
-                              label: displayedVideos[index].moderationLabel,
-                              icon: Icons.fact_check_outlined,
-                              color: _statusColor(displayedVideos[index]),
-                            ),
-                          ),
-                          DataCell(
-                            _deletingVideoId == displayedVideos[index].id
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : PopupMenuButton<String>(
-                                    tooltip: 'Actions vidéo',
-                                    onSelected: (value) {
-                                      if (value == 'view_video') {
-                                        final video = displayedVideos[index];
-                                        final videoUrl = video.effectiveUrl;
-                                        if (videoUrl.isEmpty) {
-                                          showAdminFeedback(
-                                            title: 'Lecture indisponible',
-                                            message:
-                                                'Aucune source MP4 exploitable pour cette vidéo.',
-                                            tone: AdminBannerTone.warning,
-                                            position: SnackPosition.BOTTOM,
-                                          );
-                                          return;
-                                        }
-
-                                        Get.to(
-                                          () => VideoPlayerScreen(
-                                            videoUrl: videoUrl,
-                                            userId: video.uid,
-                                            videoId: video.id,
-                                          ),
-                                        );
-                                      } else if (value == 'delete_video') {
-                                        _confirmDelete(
-                                          context,
-                                          displayedVideos[index].id,
-                                        );
-                                      }
-                                    },
-                                    itemBuilder: (context) => const [
-                                      PopupMenuItem(
-                                        value: 'view_video',
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                                Icons
-                                                    .play_circle_outline_rounded,
-                                                size: 18,
-                                                color: AdminTheme.cyan),
-                                            SizedBox(width: 8),
-                                            Text('Regarder la vidéo'),
-                                          ],
-                                        ),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'delete_video',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.delete_outline_rounded,
-                                                size: 18,
-                                                color: AdminTheme.danger),
-                                            SizedBox(width: 8),
-                                            Text('Supprimer la vidéo'),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ],
-                      ),
+                            DataCell(_buildActions(context, video)),
+                          ],
+                        );
+                      },
                     ),
                     headingRowColor: WidgetStateProperty.all(
                       AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
@@ -417,9 +442,10 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmation'),
-          content:
-              const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
+          title: const Text('Supprimer la vidéo'),
+          content: const Text(
+            'Cette action retire définitivement la vidéo du catalogue et de la modération.',
+          ),
           actions: [
             TextButton(
               onPressed: Get.back,
@@ -435,15 +461,15 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                 try {
                   await videoController.deleteVideo(videoId);
                   showAdminFeedback(
-                    title: 'Succès',
-                    message: 'Vidéo supprimée avec succès.',
+                    title: 'Vidéo supprimée',
+                    message: 'La vidéo a été retirée avec succès.',
                     tone: AdminBannerTone.success,
                     position: SnackPosition.BOTTOM,
                   );
                 } catch (error) {
                   showAdminFeedback(
-                    title: 'Erreur',
-                    message: 'Suppression impossible : $error',
+                    title: 'Suppression impossible',
+                    message: '$error',
                     tone: AdminBannerTone.danger,
                     position: SnackPosition.BOTTOM,
                   );

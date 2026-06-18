@@ -42,11 +42,10 @@ class ManagedAccountProvisionResult {
     final steps = <String>[];
 
     if (requiresEmailVerification) {
-      steps.add('Ouvrir d’abord le lien de validation d’e-mail.');
-      steps.add('Confirmer l’adresse e-mail avant la première connexion.');
+      steps.add("Ouvrir d'abord le lien de validation d'e-mail.");
+      steps.add("Confirmer l'adresse e-mail avant la première connexion.");
     } else {
-      steps.add(
-          'L’e-mail est déjà vérifié. La connexion peut se faire ensuite.');
+      steps.add("L'e-mail est déjà vérifié. La connexion peut se faire ensuite.");
     }
 
     if (hasPasswordSetupLink) {
@@ -59,9 +58,7 @@ class ManagedAccountProvisionResult {
     }
 
     if (email.isNotEmpty) {
-      steps.add(
-        'Se connecter enfin dans $appName avec l’adresse $email.',
-      );
+      steps.add('Se connecter enfin dans $appName avec l’adresse $email.');
     } else {
       steps.add('Se connecter enfin dans $appName avec l’adresse transmise.');
     }
@@ -169,7 +166,8 @@ class ManagedAccountProvisionResult {
         )
         ..add('')
         ..add(
-            '2. Ensuite, connectez-vous à l’application avec cette adresse :');
+          '2. Ensuite, connectez-vous à l’application avec cette adresse :',
+        );
     }
 
     lines
@@ -177,8 +175,8 @@ class ManagedAccountProvisionResult {
       ..add('')
       ..add(
         requiresEmailVerification
-            ? 'Important : commencez bien par la validation de l’e-mail, puis le mot de passe.'
-            : 'Aucune validation supplémentaire de l’e-mail n’est nécessaire.',
+            ? "Important : commencez bien par la validation de l’e-mail, puis le mot de passe."
+            : "Aucune validation supplémentaire de l’e-mail n’est nécessaire.",
       )
       ..add('')
       ..add('Cordialement,')

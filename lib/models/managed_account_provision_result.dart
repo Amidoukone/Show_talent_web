@@ -42,10 +42,10 @@ class ManagedAccountProvisionResult {
     final steps = <String>[];
 
     if (requiresEmailVerification) {
-      steps.add("Ouvrir d'abord le lien de validation d'e-mail.");
-      steps.add("Confirmer l'adresse e-mail avant la première connexion.");
+      steps.add("Ouvrir d’abord le lien de validation d’e-mail.");
+      steps.add("Confirmer l’adresse e-mail avant la première connexion.");
     } else {
-      steps.add("L'e-mail est déjà vérifié. La connexion peut se faire ensuite.");
+      steps.add("L’e-mail est déjà vérifié. La connexion peut se faire ensuite.");
     }
 
     if (hasPasswordSetupLink) {

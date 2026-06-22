@@ -103,10 +103,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedIndex = widget.initialIndex.clamp(
-      0,
-      _dashboardItems.length - 1,
-    );
+    _selectedIndex = widget.initialIndex.clamp(0, _dashboardItems.length - 1);
     _guardDashboardAccess();
   }
 
@@ -167,8 +164,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     if (!accessResult.isAuthorized) {
-      Get.snackbar('Acc\u00e8s refus\u00e9',
-          accessResult.message ?? 'Acc\u00e8s refus\u00e9.');
+      Get.snackbar(
+        'Acc\u00e8s refus\u00e9',
+        accessResult.message ?? 'Acc\u00e8s refus\u00e9.',
+      );
       Get.offAllNamed(AppRoutes.adminLogin);
       return;
     }
@@ -264,7 +263,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(8, 10, 8, 16),
               itemCount: _dashboardItems.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
                 final item = _dashboardItems[index];
                 final selected = index == _selectedIndex;
@@ -390,8 +389,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             widget.previewMode
                                 ? 'Revue locale'
                                 : adminUser?.nom.isNotEmpty == true
-                                    ? adminUser!.nom
-                                    : 'Compte admin',
+                                ? adminUser!.nom
+                                : 'Compte admin',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -465,11 +464,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           if (stacked) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                intro,
-                const SizedBox(height: 16),
-                actions,
-              ],
+              children: [intro, const SizedBox(height: 16), actions],
             );
           }
 
@@ -516,8 +511,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
       final totalUsers = users.length;
       final totalVideos = videos.length;
-      final pendingVideos =
-          videos.where((video) => video.isPendingReview).length;
+      final pendingVideos = videos
+          .where((video) => video.isPendingReview)
+          .length;
       final totalOffers = offers.length;
       final totalEvents = events.length;
       final totalContactIntakes = contactIntakes.length;
@@ -583,8 +579,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           value: '$totalContactIntakes',
           subtitle: '$newLeadCount nouveau(x) lead(s)',
           icon: Icons.support_agent_rounded,
-          progress:
-              totalContactIntakes == 0 ? 0 : newLeadCount / totalContactIntakes,
+          progress: totalContactIntakes == 0
+              ? 0
+              : newLeadCount / totalContactIntakes,
           accentColor: AdminTheme.accentSoft,
         ),
       ];
@@ -613,8 +610,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           final columns = constraints.maxWidth >= 1240
               ? 4
               : constraints.maxWidth >= 880
-                  ? 3
-                  : 2;
+              ? 3
+              : 2;
           final availableWidth =
               constraints.maxWidth - (spacing * (columns - 1));
           final cardWidth = availableWidth / columns;
@@ -623,12 +620,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             spacing: spacing,
             runSpacing: spacing,
             children: cards
-                .map(
-                  (card) => SizedBox(
-                    width: cardWidth,
-                    child: card,
-                  ),
-                )
+                .map((card) => SizedBox(width: cardWidth, child: card))
                 .toList(),
           );
         },
@@ -669,8 +661,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       : AdminTheme.border.withValues(alpha: 0.8),
                 ),
                 labelStyle: TextStyle(
-                  color:
-                      selected ? AdminTheme.background : AdminTheme.textPrimary,
+                  color: selected
+                      ? AdminTheme.background
+                      : AdminTheme.textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -733,9 +726,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (_isAuthorizing) {
       return const Scaffold(
         body: AdminAppBackground(
-          child: Center(
-            child: CircularProgressIndicator(),
-          ),
+          child: Center(child: CircularProgressIndicator()),
         ),
       );
     }

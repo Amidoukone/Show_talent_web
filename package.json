@@ -2,6 +2,9 @@
   "name": "show-talent-admin-tools",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "analyze": "flutter analyze --no-fatal-infos",
     "build:web:production": "flutter build web --release --dart-define=APP_ENV=production --dart-define=FIREBASE_PROJECT_ID=adfoot-production --dart-define=FIREBASE_FUNCTIONS_REGION=europe-west1",
@@ -16,7 +19,9 @@
     "test:release": "node scripts/run_admin_release_tests.mjs"
   },
   "dependencies": {
-    "firebase-admin": "^13.5.0",
-    "jose": "^4.15.4"
+    "firebase-admin": "^14.0.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

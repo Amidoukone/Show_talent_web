@@ -106,9 +106,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Confirmation'),
-          content: Text(
-            'Supprimer l’offre "${offre.titre}" ?',
-          ),
+          content: Text('Supprimer l’offre "${offre.titre}" ?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -159,23 +157,16 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
-    final statusItems = <String>[
-      'Tous',
-      ...OffreController.moderationStatuses,
-    ];
+    final statusItems = <String>['Tous', ...OffreController.moderationStatuses];
     final statusDropdown = DropdownButtonFormField<String>(
-      value: _selectedStatus,
+      initialValue: _selectedStatus,
       isExpanded: true,
-      decoration: const InputDecoration(
-        labelText: 'Statut',
-      ),
+      decoration: const InputDecoration(labelText: 'Statut'),
       items: statusItems
           .map(
             (status) => DropdownMenuItem(
               value: status,
-              child: Text(
-                status == 'Tous' ? status : _statusLabel(status),
-              ),
+              child: Text(status == 'Tous' ? status : _statusLabel(status)),
             ),
           )
           .toList(),
@@ -235,7 +226,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
               final status = Offre.normalizeStatus(offre.statut);
               final statusMatch =
                   _selectedStatus == 'Tous' || status == _selectedStatus;
-              final searchMatch = _searchQuery.isEmpty ||
+              final searchMatch =
+                  _searchQuery.isEmpty ||
                   [
                     offre.titre,
                     offre.description,
@@ -245,8 +237,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                     offre.niveau,
                     offre.posteRecherche,
                   ].whereType<String>().any(
-                        (value) => value.toLowerCase().contains(_searchQuery),
-                      );
+                    (value) => value.toLowerCase().contains(_searchQuery),
+                  );
               return statusMatch && searchMatch;
             }).toList();
 
@@ -256,15 +248,15 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                 ? totalPages - 1
                 : _currentPage.clamp(0, totalPages - 1);
             final startIndex = safePage * _rowsPerPage;
-            final endIndex =
-                (startIndex + _rowsPerPage).clamp(0, filtered.length);
+            final endIndex = (startIndex + _rowsPerPage).clamp(
+              0,
+              filtered.length,
+            );
             final displayed = filtered.sublist(startIndex, endIndex);
 
             if (_offreController.isLoading.value) {
               return const Center(
-                child: AdminLoadingState(
-                  message: 'Chargement des offres...',
-                ),
+                child: AdminLoadingState(message: 'Chargement des offres...'),
               );
             }
 
@@ -284,11 +276,13 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
 
             final openedCount = allOffres
                 .where(
-                    (offre) => Offre.normalizeStatus(offre.statut) == 'ouverte')
+                  (offre) => Offre.normalizeStatus(offre.statut) == 'ouverte',
+                )
                 .length;
             final archivedCount = allOffres
-                .where((offre) =>
-                    Offre.normalizeStatus(offre.statut) == 'archivee')
+                .where(
+                  (offre) => Offre.normalizeStatus(offre.statut) == 'archivee',
+                )
                 .length;
             final totalViews = allOffres.fold<int>(
               0,
@@ -350,163 +344,159 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                       DataColumn(label: Text('Statut')),
                       DataColumn(label: Text('Actions')),
                     ],
-                    rows: List<DataRow>.generate(
-                      displayed.length,
-                      (index) {
-                        final offre = displayed[index];
-                        final status = Offre.normalizeStatus(offre.statut);
-                        final color = _statusColor(status);
-                        final isActionInFlight = _actionOfferId == offre.id;
-                        final offerMeta = [
-                          offre.posteRecherche,
-                          offre.localisation,
-                          offre.niveau,
-                        ]
-                            .whereType<String>()
-                            .where((value) => value.trim().isNotEmpty)
-                            .join(' | ');
+                    rows: List<DataRow>.generate(displayed.length, (index) {
+                      final offre = displayed[index];
+                      final status = Offre.normalizeStatus(offre.statut);
+                      final color = _statusColor(status);
+                      final isActionInFlight = _actionOfferId == offre.id;
+                      final offerMeta =
+                          [
+                                offre.posteRecherche,
+                                offre.localisation,
+                                offre.niveau,
+                              ]
+                              .whereType<String>()
+                              .where((value) => value.trim().isNotEmpty)
+                              .join(' | ');
 
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 220),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 220),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    offre.titre,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AdminTheme.textPrimary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  if (offerMeta.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
                                     Text(
-                                      offre.titre,
+                                      offerMeta,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: AdminTheme.textPrimary,
-                                        fontWeight: FontWeight.w700,
+                                        color: AdminTheme.textSecondary,
+                                        fontSize: 11,
                                       ),
                                     ),
-                                    if (offerMeta.isNotEmpty) ...[
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        offerMeta,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: AdminTheme.textSecondary,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
                                   ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              offre.recruteur.nom.isEmpty
+                                  ? 'Inconnu'
+                                  : offre.recruteur.nom,
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              '${offre.dateDebut.day}/${offre.dateDebut.month}/${offre.dateDebut.year} - '
+                              '${offre.dateFin.day}/${offre.dateFin.month}/${offre.dateFin.year}',
+                            ),
+                          ),
+                          DataCell(Text('${offre.candidats.length}')),
+                          DataCell(
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.13),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: color.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                _statusLabel(status),
+                                style: TextStyle(
+                                  color: color,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
-                            DataCell(
-                              Text(
-                                offre.recruteur.nom.isEmpty
-                                    ? 'Inconnu'
-                                    : offre.recruteur.nom,
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                '${offre.dateDebut.day}/${offre.dateDebut.month}/${offre.dateDebut.year} - '
-                                '${offre.dateFin.day}/${offre.dateFin.month}/${offre.dateFin.year}',
-                              ),
-                            ),
-                            DataCell(Text('${offre.candidats.length}')),
-                            DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.13),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: color.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Text(
-                                  _statusLabel(status),
-                                  style: TextStyle(
-                                    color: color,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              isActionInFlight
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : PopupMenuButton<String>(
-                                      tooltip: 'Actions offre',
-                                      onSelected: (value) {
-                                        if (value.startsWith('status:')) {
-                                          final status = value.split(':').last;
-                                          _updateStatus(
-                                            offre: offre,
-                                            nextStatus: status,
-                                          );
-                                          return;
-                                        }
+                          ),
+                          DataCell(
+                            isActionInFlight
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : PopupMenuButton<String>(
+                                    tooltip: 'Actions offre',
+                                    onSelected: (value) {
+                                      if (value.startsWith('status:')) {
+                                        final status = value.split(':').last;
+                                        _updateStatus(
+                                          offre: offre,
+                                          nextStatus: status,
+                                        );
+                                        return;
+                                      }
 
-                                        if (value == 'delete') {
-                                          _confirmDelete(offre);
-                                        }
-                                      },
-                                      itemBuilder: (context) {
-                                        return [
-                                          ...OffreController.moderationStatuses
-                                              .map(
-                                            (status) => PopupMenuItem(
-                                              value: 'status:$status',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.flag_outlined,
-                                                    color: _statusColor(status),
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Statut : ${_statusLabel(status)}',
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          const PopupMenuDivider(),
-                                          const PopupMenuItem(
-                                            value: 'delete',
+                                      if (value == 'delete') {
+                                        _confirmDelete(offre);
+                                      }
+                                    },
+                                    itemBuilder: (context) {
+                                      return [
+                                        ...OffreController.moderationStatuses.map(
+                                          (status) => PopupMenuItem(
+                                            value: 'status:$status',
                                             child: Row(
                                               children: [
                                                 Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  color: AdminTheme.danger,
+                                                  Icons.flag_outlined,
+                                                  color: _statusColor(status),
                                                   size: 18,
                                                 ),
-                                                SizedBox(width: 8),
-                                                Text('Supprimer'),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Statut : ${_statusLabel(status)}',
+                                                ),
                                               ],
                                             ),
                                           ),
-                                        ];
-                                      },
-                                    ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+                                        ),
+                                        const PopupMenuDivider(),
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.delete_outline_rounded,
+                                                color: AdminTheme.danger,
+                                                size: 18,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text('Supprimer'),
+                                            ],
+                                          ),
+                                        ),
+                                      ];
+                                    },
+                                  ),
+                          ),
+                        ],
+                      );
+                    }),
                     headingRowColor: WidgetStateProperty.all(
                       AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
                     ),

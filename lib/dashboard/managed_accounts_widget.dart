@@ -121,10 +121,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
         tone: AdminBannerTone.success,
       );
 
-      await _showInviteResultDialog(
-        result,
-        recipientName: recipientName,
-      );
+      await _showInviteResultDialog(result, recipientName: recipientName);
     } on FirebaseFunctionsException catch (error) {
       if (!mounted) {
         return;
@@ -178,10 +175,10 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     final tone = backgroundColor == const Color(0xFFDFF3E4)
         ? AdminBannerTone.success
         : backgroundColor == const Color(0xFFFFF3CD)
-            ? AdminBannerTone.warning
-            : backgroundColor == const Color(0xFFF8D7DA)
-                ? AdminBannerTone.danger
-                : AdminBannerTone.info;
+        ? AdminBannerTone.warning
+        : backgroundColor == const Color(0xFFF8D7DA)
+        ? AdminBannerTone.danger
+        : AdminBannerTone.info;
 
     return AdminInfoBanner(
       title: title,
@@ -342,7 +339,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                             ),
                           ),
                           DropdownButtonFormField<String>(
-                            value: _selectedRole,
+                            initialValue: _selectedRole,
                             decoration: const InputDecoration(
                               labelText: 'Rôle du compte',
                               prefixIcon: Icon(Icons.badge_outlined),

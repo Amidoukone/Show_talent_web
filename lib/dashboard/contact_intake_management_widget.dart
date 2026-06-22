@@ -296,18 +296,21 @@ class _ContactIntakeManagementWidgetState
                             selected: selected,
                             showCheckmark: false,
                             selectedColor: color.withValues(alpha: 0.22),
-                            backgroundColor:
-                                AdminTheme.surfaceSoft.withValues(alpha: 0.48),
+                            backgroundColor: AdminTheme.surfaceSoft.withValues(
+                              alpha: 0.48,
+                            ),
                             side: BorderSide(
                               color: selected
                                   ? color.withValues(alpha: 0.72)
                                   : AdminTheme.border.withValues(alpha: 0.74),
                             ),
                             labelStyle: TextStyle(
-                              color:
-                                  selected ? color : AdminTheme.textSecondary,
-                              fontWeight:
-                                  selected ? FontWeight.w800 : FontWeight.w600,
+                              color: selected
+                                  ? color
+                                  : AdminTheme.textSecondary,
+                              fontWeight: selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
                             ),
                             onSelected: (_) {
                               setDialogState(() {
@@ -320,7 +323,7 @@ class _ContactIntakeManagementWidgetState
                       ),
                       const SizedBox(height: 14),
                       DropdownButtonFormField<String>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Statut de suivi',
@@ -388,10 +391,7 @@ class _ContactIntakeManagementWidgetState
                     }
 
                     Navigator.of(dialogContext).pop(
-                      _FollowUpUpdateDraft(
-                        status: selectedStatus,
-                        note: note,
-                      ),
+                      _FollowUpUpdateDraft(status: selectedStatus, note: note),
                     );
                   },
                   icon: const Icon(Icons.save_outlined),
@@ -452,7 +452,8 @@ class _ContactIntakeManagementWidgetState
   }
 
   Future<void> _deleteContactIntake(ContactIntake intake) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (dialogContext) {
             return AlertDialog(
@@ -649,10 +650,7 @@ class _ContactIntakeManagementWidgetState
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _PriorityPill(
-            label: _priorityLabel(intake),
-            color: color,
-          ),
+          _PriorityPill(label: _priorityLabel(intake), color: color),
           const SizedBox(height: 6),
           Text(
             _activityLabel(intake),
@@ -713,10 +711,7 @@ class _ContactIntakeManagementWidgetState
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _PriorityPill(
-            label: intake.participantFeedbackLabel,
-            color: color,
-          ),
+          _PriorityPill(label: intake.participantFeedbackLabel, color: color),
           const SizedBox(height: 6),
           Text(
             'Signalé par : $actor',
@@ -758,10 +753,7 @@ class _ContactIntakeManagementWidgetState
         }
 
         if (value == 'next_status' && nextStatus != null) {
-          _updateFollowUp(
-            intake,
-            initialStatus: nextStatus,
-          );
+          _updateFollowUp(intake, initialStatus: nextStatus);
           return;
         }
 
@@ -774,11 +766,7 @@ class _ContactIntakeManagementWidgetState
           value: 'follow_up',
           child: Row(
             children: [
-              Icon(
-                Icons.edit_note_rounded,
-                size: 18,
-                color: AdminTheme.cyan,
-              ),
+              Icon(Icons.edit_note_rounded, size: 18, color: AdminTheme.cyan),
               SizedBox(width: 8),
               Text('Mettre à jour le suivi'),
             ],
@@ -836,8 +824,9 @@ class _ContactIntakeManagementWidgetState
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stacked = constraints.maxWidth < 780;
-          final cardWidth =
-              stacked ? constraints.maxWidth : (compact ? 218.0 : 238.0);
+          final cardWidth = stacked
+              ? constraints.maxWidth
+              : (compact ? 218.0 : 238.0);
           final cards = _pipelineStages.map((stage) {
             final count = stageCounts[stage.status] ?? 0;
             return SizedBox(
@@ -852,8 +841,8 @@ class _ContactIntakeManagementWidgetState
                   setState(() {
                     _selectedFollowUpStatus =
                         _selectedFollowUpStatus == stage.status
-                            ? 'Tous'
-                            : stage.status;
+                        ? 'Tous'
+                        : stage.status;
                     _currentPage = 0;
                   });
                 },
@@ -883,11 +872,7 @@ class _ContactIntakeManagementWidgetState
               children: [
                 resetButton,
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: cards,
-                ),
+                Wrap(spacing: 10, runSpacing: 10, children: cards),
               ],
             );
           }
@@ -925,7 +910,7 @@ class _ContactIntakeManagementWidgetState
       ...ContactIntakeController.followUpStatuses,
     ];
     final statusDropdown = DropdownButtonFormField<String>(
-      value: _selectedFollowUpStatus,
+      initialValue: _selectedFollowUpStatus,
       isExpanded: true,
       decoration: const InputDecoration(labelText: 'Suivi'),
       items: statusItems
@@ -995,7 +980,8 @@ class _ContactIntakeManagementWidgetState
               final normalizedStatus = AgencyFollowUpStatus.normalize(
                 intake.agencyFollowUpStatus,
               );
-              final matchesStatus = _selectedFollowUpStatus == 'Tous' ||
+              final matchesStatus =
+                  _selectedFollowUpStatus == 'Tous' ||
                   normalizedStatus == _selectedFollowUpStatus;
               return matchesStatus && _matchesSearch(intake);
             }).toList();
@@ -1042,11 +1028,13 @@ class _ContactIntakeManagementWidgetState
                   signal == ParticipantFeedbackStatus.opportunitySerious;
             }).length;
             final issueSignalCount = allIntakes
-                .where((item) =>
-                    ParticipantFeedbackStatus.normalize(
-                      item.latestParticipantFeedbackStatus,
-                    ) ==
-                    ParticipantFeedbackStatus.issueReported)
+                .where(
+                  (item) =>
+                      ParticipantFeedbackStatus.normalize(
+                        item.latestParticipantFeedbackStatus,
+                      ) ==
+                      ParticipantFeedbackStatus.issueReported,
+                )
                 .length;
 
             final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
@@ -1176,128 +1164,128 @@ class _ContactIntakeManagementWidgetState
                       columnSpacing: compact ? 14 : 20,
                       horizontalMargin: compact ? 8 : 10,
                       columns: tableColumns,
-                      rows: List<DataRow>.generate(
-                        displayed.length,
-                        (index) {
-                          final intake = displayed[index];
-                          final isActionInFlight = _actionIntakeId == intake.id;
-                          final actionCell = DataCell(
-                            isActionInFlight
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : _buildActionMenuCell(intake),
-                          );
+                      rows: List<DataRow>.generate(displayed.length, (index) {
+                        final intake = displayed[index];
+                        final isActionInFlight = _actionIntakeId == intake.id;
+                        final actionCell = DataCell(
+                          isActionInFlight
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : _buildActionMenuCell(intake),
+                        );
 
-                          return DataRow(
-                            cells: compact
-                                ? <DataCell>[
-                                    DataCell(
-                                      ConstrainedBox(
-                                        constraints:
-                                            const BoxConstraints(maxWidth: 140),
-                                        child:
-                                            Text(_formatDate(intake.createdAt)),
+                        return DataRow(
+                          cells: compact
+                              ? <DataCell>[
+                                  DataCell(
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 140,
+                                      ),
+                                      child: Text(
+                                        _formatDate(intake.createdAt),
                                       ),
                                     ),
-                                    DataCell(
-                                      _buildActorCell(
-                                        name: intake.requesterDisplayName,
-                                        roleLabel: intake.requesterRoleLabel,
-                                        organization:
-                                            intake.requesterOrganization,
+                                  ),
+                                  DataCell(
+                                    _buildActorCell(
+                                      name: intake.requesterDisplayName,
+                                      roleLabel: intake.requesterRoleLabel,
+                                      organization:
+                                          intake.requesterOrganization,
+                                    ),
+                                  ),
+                                  DataCell(
+                                    _buildActorCell(
+                                      name: intake.targetDisplayName,
+                                      roleLabel: intake.targetRoleLabel,
+                                      organization: intake.targetOrganization,
+                                    ),
+                                  ),
+                                  DataCell(_buildFollowUpCell(intake)),
+                                  DataCell(_buildParticipantSignalCell(intake)),
+                                  DataCell(_buildPriorityCell(intake)),
+                                  actionCell,
+                                ]
+                              : <DataCell>[
+                                  DataCell(
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 150,
+                                      ),
+                                      child: Text(
+                                        _formatDate(intake.createdAt),
                                       ),
                                     ),
-                                    DataCell(
-                                      _buildActorCell(
-                                        name: intake.targetDisplayName,
-                                        roleLabel: intake.targetRoleLabel,
-                                        organization: intake.targetOrganization,
+                                  ),
+                                  DataCell(
+                                    _buildActorCell(
+                                      name: intake.requesterDisplayName,
+                                      roleLabel: intake.requesterRoleLabel,
+                                      organization:
+                                          intake.requesterOrganization,
+                                    ),
+                                  ),
+                                  DataCell(
+                                    _buildActorCell(
+                                      name: intake.targetDisplayName,
+                                      roleLabel: intake.targetRoleLabel,
+                                      organization: intake.targetOrganization,
+                                    ),
+                                  ),
+                                  DataCell(
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 160,
+                                      ),
+                                      child: Text(
+                                        intake.reasonLabel,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    DataCell(_buildFollowUpCell(intake)),
-                                    DataCell(
-                                      _buildParticipantSignalCell(intake),
-                                    ),
-                                    DataCell(_buildPriorityCell(intake)),
-                                    actionCell,
-                                  ]
-                                : <DataCell>[
-                                    DataCell(
-                                      ConstrainedBox(
-                                        constraints:
-                                            const BoxConstraints(maxWidth: 150),
-                                        child:
-                                            Text(_formatDate(intake.createdAt)),
+                                  ),
+                                  DataCell(
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 180,
+                                      ),
+                                      child: Text(
+                                        intake.contextTitle
+                                                    ?.trim()
+                                                    .isNotEmpty ==
+                                                true
+                                            ? '${intake.contextLabel} - ${intake.contextTitle!.trim()}'
+                                            : intake.contextLabel,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    DataCell(
-                                      _buildActorCell(
-                                        name: intake.requesterDisplayName,
-                                        roleLabel: intake.requesterRoleLabel,
-                                        organization:
-                                            intake.requesterOrganization,
+                                  ),
+                                  DataCell(_buildFollowUpCell(intake)),
+                                  DataCell(_buildParticipantSignalCell(intake)),
+                                  DataCell(_buildPriorityCell(intake)),
+                                  DataCell(
+                                    ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 260,
+                                      ),
+                                      child: Text(
+                                        intake.introMessage,
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    DataCell(
-                                      _buildActorCell(
-                                        name: intake.targetDisplayName,
-                                        roleLabel: intake.targetRoleLabel,
-                                        organization: intake.targetOrganization,
-                                      ),
-                                    ),
-                                    DataCell(
-                                      ConstrainedBox(
-                                        constraints:
-                                            const BoxConstraints(maxWidth: 160),
-                                        child: Text(
-                                          intake.reasonLabel,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                    DataCell(
-                                      ConstrainedBox(
-                                        constraints:
-                                            const BoxConstraints(maxWidth: 180),
-                                        child: Text(
-                                          intake.contextTitle
-                                                      ?.trim()
-                                                      .isNotEmpty ==
-                                                  true
-                                              ? '${intake.contextLabel} - ${intake.contextTitle!.trim()}'
-                                              : intake.contextLabel,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                    DataCell(_buildFollowUpCell(intake)),
-                                    DataCell(
-                                      _buildParticipantSignalCell(intake),
-                                    ),
-                                    DataCell(_buildPriorityCell(intake)),
-                                    DataCell(
-                                      ConstrainedBox(
-                                        constraints:
-                                            const BoxConstraints(maxWidth: 260),
-                                        child: Text(
-                                          intake.introMessage,
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                    actionCell,
-                                  ],
-                          );
-                        },
-                      ),
+                                  ),
+                                  actionCell,
+                                ],
+                        );
+                      }),
                       headingRowColor: WidgetStateProperty.all(
                         AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
                       ),
@@ -1445,10 +1433,7 @@ class _PipelineStageCard extends StatelessWidget {
 }
 
 class _PriorityPill extends StatelessWidget {
-  const _PriorityPill({
-    required this.label,
-    required this.color,
-  });
+  const _PriorityPill({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -1477,10 +1462,7 @@ class _PriorityPill extends StatelessWidget {
 }
 
 class _FollowUpUpdateDraft {
-  const _FollowUpUpdateDraft({
-    required this.status,
-    required this.note,
-  });
+  const _FollowUpUpdateDraft({required this.status, required this.note});
 
   final String status;
   final String note;

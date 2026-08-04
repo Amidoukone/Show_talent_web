@@ -133,8 +133,23 @@ class AppUser {
     this.cvUrl,
   });
 
-  factory AppUser.fromMap(Map<String, dynamic> map) {
-    return AppUser._fromMap(map, parseNestedCollections: true);
+  /// [privateContact] merges in users/{uid}/private/contact
+  /// (phone/email/authDisabledReason) and [adminNotes] merges in
+  /// users/{uid}/private/adminNotes (profileVerificationNote) — both moved
+  /// out of the main doc so a non-admin can't read them. Pass them only
+  /// when the caller actually fetched those docs (admin review dialog);
+  /// omit for list views built from the bulk users snapshot.
+  factory AppUser.fromMap(
+    Map<String, dynamic> map, {
+    Map<String, dynamic>? privateContact,
+    Map<String, dynamic>? adminNotes,
+  }) {
+    final merged = <String, dynamic>{
+      ...map,
+      ...?privateContact,
+      ...?adminNotes,
+    };
+    return AppUser._fromMap(merged, parseNestedCollections: true);
   }
 
   factory AppUser.fromEmbeddedMap(Map<String, dynamic> map) {

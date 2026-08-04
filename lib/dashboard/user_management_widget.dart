@@ -618,6 +618,18 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   Future<void> _showProfileReviewDialog(AppUser user) async {
+    // phone/email/authDisabledReason/profileVerificationNote were moved out
+    // of the bulk users snapshot into users/{uid}/private/contact and
+    // users/{uid}/private/adminNotes, so the review dialog needs an
+    // on-demand fetch to show them (admin claims grant access to both).
+    final enrichedUser = await _userController.fetchUserWithPrivateFields(
+      user,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -632,7 +644,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           content: SizedBox(
             width: 620,
             child: SingleChildScrollView(
-              child: _ProfileReviewContent(user: user),
+              child: _ProfileReviewContent(user: enrichedUser),
             ),
           ),
           actions: [
@@ -899,10 +911,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               final normalizedQuery = searchQuery.toLowerCase();
               final matchesSearch =
                   normalizedQuery.isEmpty ||
+                  // email/phone dropped: they no longer come back on the
+                  // bulk users snapshot (see UserController.fetchUsers),
+                  // only on the on-demand private-fields fetch used by the
+                  // profile review dialog.
                   [
                     user.nom,
-                    user.email,
-                    user.phone,
                     user.city,
                     user.region,
                     user.country,

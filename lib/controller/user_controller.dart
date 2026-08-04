@@ -24,6 +24,10 @@ class UserController extends GetxController {
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _privateContactSubscription;
+  final Map<String, Map<String, dynamic>> _privateContactByUid =
+      <String, Map<String, dynamic>>{};
 
   @override
   void onInit() {
@@ -75,6 +79,7 @@ class UserController extends GetxController {
         }
 
         _userList.assignAll(parsedUsers);
+        _applyPrivateContactCache();
       },
       onError: (Object error, StackTrace stackTrace) {
         debugPrint('Flux Firestore users indisponible : $error');
@@ -86,6 +91,63 @@ class UserController extends GetxController {
         _usersSubscription = null;
       },
     );
+
+    // email/phone moved out of the main users doc (see AppUser.fromMap
+    // comment) — the list view still needs them for the email column and
+    // search, so mirror users/{uid}/private/contact via a collectionGroup
+    // query. Admin claims grant read access to every doc it returns (see
+    // firestore.rules); non-admins can't reach this code path at all.
+    _privateContactSubscription ??= FirebaseFirestore.instance
+        .collectionGroup('private')
+        .snapshots()
+        .listen(
+      (snapshot) {
+        for (final change in snapshot.docChanges) {
+          if (change.doc.id != 'contact') {
+            continue;
+          }
+          final uid = change.doc.reference.parent.parent?.id;
+          if (uid == null) {
+            continue;
+          }
+          if (change.type == DocumentChangeType.removed) {
+            _privateContactByUid.remove(uid);
+          } else {
+            _privateContactByUid[uid] = change.doc.data() ?? <String, dynamic>{};
+          }
+        }
+        _applyPrivateContactCache();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Flux Firestore private/contact indisponible : $error');
+        debugPrintStack(stackTrace: stackTrace);
+        _privateContactSubscription = null;
+      },
+      onDone: () {
+        _privateContactSubscription = null;
+      },
+    );
+  }
+
+  void _applyPrivateContactCache() {
+    if (_privateContactByUid.isEmpty || _userList.isEmpty) {
+      return;
+    }
+    for (final user in _userList) {
+      final contact = _privateContactByUid[user.uid];
+      if (contact == null) {
+        continue;
+      }
+      final email = contact['email'];
+      if (email is String && email.trim().isNotEmpty) {
+        user.email = email.trim();
+      }
+      final phone = contact['phone'];
+      if (phone != null) {
+        user.phone = phone.toString();
+      }
+    }
+    _userList.refresh();
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
@@ -101,6 +163,9 @@ class UserController extends GetxController {
   Future<void> _stopUsersStream({bool clearUsers = false}) async {
     await _usersSubscription?.cancel();
     _usersSubscription = null;
+    await _privateContactSubscription?.cancel();
+    _privateContactSubscription = null;
+    _privateContactByUid.clear();
 
     if (clearUsers) {
       _userList.clear();
@@ -218,6 +283,28 @@ class UserController extends GetxController {
     }
 
     return AppUser.fromMap(normalized);
+  }
+
+  /// Fetches phone/email/authDisabledReason (users/{uid}/private/contact)
+  /// and profileVerificationNote (users/{uid}/private/adminNotes) for a
+  /// single user and returns a copy of [baseUser] enriched with them. Only
+  /// call this for the profile review dialog — the bulk [userList] from
+  /// [fetchUsers] deliberately doesn't include these fields anymore, and an
+  /// admin session is required to read either doc (see firestore.rules).
+  Future<AppUser> fetchUserWithPrivateFields(AppUser baseUser) async {
+    final usersRef = FirebaseFirestore.instance.collection('users').doc(
+          baseUser.uid,
+        );
+    final results = await Future.wait([
+      usersRef.collection('private').doc('contact').get(),
+      usersRef.collection('private').doc('adminNotes').get(),
+    ]);
+
+    return AppUser.fromMap(
+      baseUser.toMap(),
+      privateContact: results[0].data(),
+      adminNotes: results[1].data(),
+    );
   }
 
   void _seedVisualQaState() {
@@ -348,6 +435,7 @@ class UserController extends GetxController {
   void onClose() {
     _authSubscription?.cancel();
     _usersSubscription?.cancel();
+    _privateContactSubscription?.cancel();
     super.onClose();
   }
 }

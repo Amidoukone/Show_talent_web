@@ -262,8 +262,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
 
               return AdminEmptyState(
                 title: 'Aucune vidéo disponible',
-                message:
-                    'Le catalogue ne contient encore aucun élément correspondant à la recherche.',
+                message: hasSearch
+                    ? 'Aucun élément du catalogue ne correspond à cette recherche.'
+                    : 'Le catalogue ne contient encore aucune vidéo.',
                 icon: Icons.slow_motion_video_rounded,
                 actionLabel: hasSearch
                     ? 'Effacer la recherche'

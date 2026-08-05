@@ -34,6 +34,15 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
     super.dispose();
   }
 
+  void _clearFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedStatus = 'Tous';
+      _currentPage = 0;
+      _searchController.clear();
+    });
+  }
+
   String _statusLabel(String status) {
     switch (status) {
       case 'brouillon':
@@ -79,14 +88,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Statut mis à jour',
         message: 'Statut de l’offre mis à jour : ${_statusLabel(nextStatus)}.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Mise à jour impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
@@ -133,14 +142,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Offre supprimée',
         message: 'Offre supprimée.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Suppression impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
@@ -157,6 +166,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
+    final hasFilters =
+        _searchQuery.trim().isNotEmpty || _selectedStatus != 'Tous';
     final statusItems = <String>['Tous', ...OffreController.moderationStatuses];
     final statusDropdown = DropdownButtonFormField<String>(
       initialValue: _selectedStatus,
@@ -187,8 +198,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AdminFilterBar(
-            maxWidth: 820,
-            flexes: const [3, 2],
+            maxWidth: 900,
+            flexes: const [3, 2, 2],
             children: [
               AdminSearchField(
                 controller: _searchController,
@@ -201,6 +212,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                 },
               ),
               statusDropdown,
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: hasFilters ? _clearFilters : null,
+                  icon: const Icon(Icons.filter_alt_off_rounded),
+                  label: const Text('Réinitialiser'),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -246,16 +265,26 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
             }
 
             if (filtered.isEmpty) {
+              if (allOffres.isEmpty) {
+                return AdminEmptyState(
+                  title: 'Aucune offre à modérer',
+                  message: 'Aucune offre n\'a encore été créée.',
+                  icon: Icons.work_outline_rounded,
+                  actionLabel: 'Recharger',
+                  actionIcon: Icons.refresh_rounded,
+                  onAction: () {
+                    _offreController.getAllOffres();
+                  },
+                );
+              }
+
               return AdminEmptyState(
-                title: 'Aucune offre à modérer',
-                message:
-                    'Aucune offre ne correspond aux filtres appliqués pour le moment.',
-                icon: Icons.work_outline_rounded,
-                actionLabel: 'Recharger',
-                actionIcon: Icons.refresh_rounded,
-                onAction: () {
-                  _offreController.getAllOffres();
-                },
+                title: 'Aucune offre dans cette vue',
+                message: 'Aucune offre ne correspond aux filtres actuels.',
+                icon: Icons.filter_alt_off_outlined,
+                actionLabel: 'Réinitialiser',
+                actionIcon: Icons.filter_alt_off_rounded,
+                onAction: _clearFilters,
               );
             }
 

@@ -205,7 +205,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succès',
+        title: action.label,
         message: successMessage,
         tone: AdminBannerTone.success,
       );
@@ -215,7 +215,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Action impossible',
         message: error.message ?? 'Opération ${action.label} refusée.',
         tone: AdminBannerTone.danger,
       );
@@ -225,7 +225,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Action impossible',
         message: 'Opération impossible : $error',
         tone: AdminBannerTone.danger,
       );
@@ -412,7 +412,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Invitation renvoyée',
         message: 'Les liens d’invitation ont été régénérés pour ${user.email}.',
         tone: AdminBannerTone.success,
       );
@@ -423,7 +423,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Envoi impossible',
         message:
             error.message ??
             'Impossible de renvoyer les liens d’invitation pour ce compte.',
@@ -435,7 +435,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Envoi impossible',
         message: 'Impossible de renvoyer les liens d’invitation : $error',
         tone: AdminBannerTone.danger,
       );

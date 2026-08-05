@@ -429,7 +429,7 @@ class _ContactIntakeManagementWidgetState
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Suivi mis à jour',
         message:
             'Suivi mis à jour : ${AgencyFollowUpStatus.label(draft.status)}.',
         tone: AdminBannerTone.success,
@@ -437,7 +437,7 @@ class _ContactIntakeManagementWidgetState
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Mise à jour impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
@@ -524,7 +524,7 @@ class _ContactIntakeManagementWidgetState
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Suppression impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,

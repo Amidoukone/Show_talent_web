@@ -389,22 +389,6 @@ class _LoginFormPanel extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          const AdminInfoBanner(
-            title: "Contr\u00f4le d'acc\u00e8s",
-            message:
-                "Les acc\u00e8s administrateur sont attribu\u00e9s par l'\u00e9quipe habilit\u00e9e. Le portail se concentre sur le pilotage op\u00e9rationnel.",
-            icon: Icons.verified_user_outlined,
-            tone: AdminBannerTone.info,
-          ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.center,
-            child: TextButton(
-              onPressed: () => Get.toNamed(AppRoutes.adminSignup),
-              child: const Text('Acc\u00e8s admin g\u00e9r\u00e9 par la plateforme'),
-            ),
-          ),
         ],
       ),
     );

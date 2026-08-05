@@ -72,7 +72,6 @@ void main() {
     final offenders = <String>[];
     for (final path in const <String>[
       'lib/dashboard/admin_login.dart',
-      'lib/dashboard/admin_signup.dart',
       'lib/dashboard/admin_dashboard_screen.dart',
       'lib/dashboard/managed_accounts_widget.dart',
       'lib/dashboard/video_review_widget.dart',

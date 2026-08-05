@@ -235,8 +235,9 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
 
               return AdminEmptyState(
                 title: 'Aucune vidéo signalée',
-                message:
-                    'Aucune alerte de modération ne correspond actuellement à la recherche.',
+                message: hasSearch
+                    ? 'Aucun signalement ne correspond à cette recherche.'
+                    : 'Aucune vidéo signalée pour le moment.',
                 icon: Icons.mark_email_read_outlined,
                 actionLabel: hasSearch
                     ? 'Effacer la recherche'

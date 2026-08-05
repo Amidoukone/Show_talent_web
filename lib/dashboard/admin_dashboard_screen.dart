@@ -420,7 +420,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildDashboardHeader(_DashboardItem currentItem) {
+  Widget _buildDashboardHeader(
+    _DashboardItem currentItem, {
+    required bool isStatisticsTab,
+  }) {
     return AdminGlassPanel(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       highlight: true,
@@ -441,11 +444,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             alignment: WrapAlignment.end,
             children: [
-              OutlinedButton.icon(
-                onPressed: () => Get.toNamed(AppRoutes.statistics),
-                icon: const Icon(Icons.auto_graph_rounded),
-                label: const Text('Vue statistiques'),
-              ),
+              if (!isStatisticsTab)
+                OutlinedButton.icon(
+                  onPressed: () => Get.toNamed(AppRoutes.statistics),
+                  icon: const Icon(Icons.auto_graph_rounded),
+                  label: const Text('Vue statistiques'),
+                ),
               ElevatedButton.icon(
                 onPressed: () async {
                   await widget.authController.signOut();
@@ -551,7 +555,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildDashboardHeader(currentItem),
+                    _buildDashboardHeader(
+                      currentItem,
+                      isStatisticsTab:
+                          _selectedIndex == _dashboardItems.length - 1,
+                    ),
                     const SizedBox(height: 16),
                     if (compactLayout) ...[
                       _buildCompactNavigation(),

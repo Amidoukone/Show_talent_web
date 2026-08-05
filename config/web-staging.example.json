@@ -1,0 +1,8 @@
+{
+  "projectId": "adfoot-staging",
+  "apiKey": "REPLACE_WITH_FIREBASE_WEB_API_KEY",
+  "appId": "REPLACE_WITH_FIREBASE_WEB_APP_ID",
+  "authDomain": "adfoot-staging.firebaseapp.com",
+  "storageBucket": "REPLACE_WITH_FIREBASE_STORAGE_BUCKET",
+  "messagingSenderId": "REPLACE_WITH_FIREBASE_MESSAGING_SENDER_ID"
+}

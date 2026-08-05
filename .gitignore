@@ -66,6 +66,10 @@ android/app/google-services.json
 lib/firebase_options.dart
 ios/Runner/GoogleService-Info.plist
 
+# Local web build config (Firebase Web SDK values per environment)
+config/*.json
+!config/*.example.json
+
 # Keys / certificates
 *.pem
 *.key

@@ -41,11 +41,16 @@ Les fichiers suivants sont strictement locaux et ne doivent jamais etre pushes :
 - `lib/firebase_options.dart`
 - `.credentials/*`
 - `.env*`
+- `config/*.json` (sauf `config/*.example.json`)
 
 Templates disponibles dans le repo :
 
 - `android/app/google-services.example.json`
 - `lib/firebase_options.example.dart`
+- `config/web-staging.example.json` (config Firebase Web SDK staging, utilisee par
+  `scripts/build_web_staging.ps1` / `npm run build:web:staging`) : copier vers
+  `config/web-staging.json` et remplir avec `firebase apps:sdkconfig web <appId>
+  --project adfoot-staging`
 
 Configuration locale rapide (PowerShell) :
 

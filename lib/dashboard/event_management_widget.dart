@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controller/event_controller.dart';
 import '../models/event.dart';
 import '../theme/admin_theme.dart';
+import '../utils/admin_date_format.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 
@@ -420,8 +421,8 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                           ),
                           DataCell(
                             Text(
-                              '${event.dateDebut.day}/${event.dateDebut.month}/${event.dateDebut.year} - '
-                              '${event.dateFin.day}/${event.dateFin.month}/${event.dateFin.year}',
+                              '${formatAdminDate(event.dateDebut)} - '
+                              '${formatAdminDate(event.dateFin)}',
                             ),
                           ),
                           DataCell(

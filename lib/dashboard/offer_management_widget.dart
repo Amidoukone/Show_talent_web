@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controller/offre_controller.dart';
 import '../models/offre.dart';
 import '../theme/admin_theme.dart';
+import '../utils/admin_date_format.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 
@@ -420,8 +421,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                           ),
                           DataCell(
                             Text(
-                              '${offre.dateDebut.day}/${offre.dateDebut.month}/${offre.dateDebut.year} - '
-                              '${offre.dateFin.day}/${offre.dateFin.month}/${offre.dateFin.year}',
+                              '${formatAdminDate(offre.dateDebut)} - '
+                              '${formatAdminDate(offre.dateFin)}',
                             ),
                           ),
                           DataCell(Text('${offre.candidats.length}')),

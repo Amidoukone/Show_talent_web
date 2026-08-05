@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controller/contact_intake_controller.dart';
 import '../models/contact_intake.dart';
 import '../theme/admin_theme.dart';
+import '../utils/admin_date_format.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 
@@ -88,12 +89,7 @@ class _ContactIntakeManagementWidgetState
       return 'Date inconnue';
     }
 
-    final day = value.day.toString().padLeft(2, '0');
-    final month = value.month.toString().padLeft(2, '0');
-    final year = value.year.toString();
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '$day/$month/$year - $hour:$minute';
+    return formatAdminDateTime(value);
   }
 
   Color _followUpColor(String status) {

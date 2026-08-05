@@ -246,7 +246,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                 message: hasSearch
                     ? 'Aucun signalement ne correspond à cette recherche.'
                     : 'Aucune vidéo signalée pour le moment.',
-                icon: Icons.mark_email_read_outlined,
+                icon: Icons.report_off_outlined,
                 actionLabel: hasSearch
                     ? 'Effacer la recherche'
                     : 'Recharger les signalements',

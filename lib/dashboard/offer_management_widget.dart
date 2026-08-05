@@ -186,21 +186,6 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Modération des offres',
-            title: 'Gestion des offres',
-            subtitle:
-                'Supervisez les offres publiées avec filtres, statuts et actions rapides.',
-          ),
-          const SizedBox(height: 14),
-          const AdminInfoBanner(
-            title: 'Actions de modération',
-            message:
-                'Changez le statut ou retirez une offre depuis une vue claire et contrôlée.',
-            icon: Icons.gavel_rounded,
-            tone: AdminBannerTone.info,
-          ),
-          const SizedBox(height: 12),
           AdminFilterBar(
             maxWidth: 820,
             flexes: const [3, 2],

@@ -941,21 +941,6 @@ class _ContactIntakeManagementWidgetState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Mises en relation',
-            title: 'Mises en relation',
-            subtitle:
-                'Suivi des premiers contacts qualifiés et des retours utilisateurs.',
-          ),
-          const SizedBox(height: 14),
-          const AdminInfoBanner(
-            title: 'Suivi opérationnel',
-            message:
-                'Qualifiez, accompagnez ou clôturez chaque dossier depuis une vue unique.',
-            icon: Icons.support_agent_rounded,
-            tone: AdminBannerTone.info,
-          ),
-          const SizedBox(height: 12),
           AdminFilterBar(
             maxWidth: 900,
             flexes: const [3, 2],

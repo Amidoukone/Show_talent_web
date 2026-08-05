@@ -130,13 +130,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   Color get _rowLeadingColor => AdminTheme.cyan;
 
-  String get _headerBadge => 'Opérations utilisateurs';
-
-  String get _headerTitle => 'Gestion des utilisateurs';
-
-  String get _headerSubtitle =>
-      'Recherche, rôles, accès, profils certifiés et actions de suivi.';
-
   String get _bannerTitle => 'Gouvernance des profils';
 
   String get _bannerMessage =>
@@ -863,12 +856,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AdminSectionHeader(
-            badge: _headerBadge,
-            title: _headerTitle,
-            subtitle: _headerSubtitle,
-          ),
-          SizedBox(height: spacing),
           AdminInfoBanner(
             title: _bannerTitle,
             message: _bannerMessage,

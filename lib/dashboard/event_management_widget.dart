@@ -187,21 +187,6 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Modération des événements',
-            title: 'Gestion des événements',
-            subtitle:
-                'Supervisez les événements publiés avec filtres, statuts et actions rapides.',
-          ),
-          const SizedBox(height: 14),
-          const AdminInfoBanner(
-            title: 'Actions de modération',
-            message:
-                'Changez le statut ou retirez un événement depuis une vue claire et contrôlée.',
-            icon: Icons.event_note_rounded,
-            tone: AdminBannerTone.info,
-          ),
-          const SizedBox(height: 12),
           AdminFilterBar(
             maxWidth: 820,
             flexes: const [3, 2],

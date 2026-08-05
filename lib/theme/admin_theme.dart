@@ -18,7 +18,7 @@ class AdminTheme {
   static const Color success = Color(0xFF26C165);
   static const Color textPrimary = Color(0xFFEDEDED);
   static const Color textSecondary = Color(0xFF9AA3AD);
-  static const Color textMuted = Color(0xFF6E7A85);
+  static const Color textMuted = Color(0xFF8F99A3);
   static const double contentMaxWidth = 1460;
   static const double readingMaxWidth = 1280;
 

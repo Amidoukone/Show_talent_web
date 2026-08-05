@@ -184,20 +184,6 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'File de modération',
-            title: 'Vidéos signalées',
-            subtitle:
-                'Traitez en priorité les contenus remontés par les utilisateurs.',
-          ),
-          SizedBox(height: spacing),
-          const AdminInfoBanner(
-            title: 'Signalements à traiter',
-            message:
-                'Chaque vidéo signalée affiche son auteur, le volume de remontées et les actions disponibles.',
-            icon: Icons.report_gmailerrorred_outlined,
-            tone: AdminBannerTone.warning,
-          ),
           Padding(
             padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
             child: AdminSearchField(

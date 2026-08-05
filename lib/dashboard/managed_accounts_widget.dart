@@ -167,19 +167,11 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   }
 
   Widget _buildInfoBanner({
-    required Color backgroundColor,
+    required AdminBannerTone tone,
     required IconData icon,
     required String title,
     required String message,
   }) {
-    final tone = backgroundColor == const Color(0xFFDFF3E4)
-        ? AdminBannerTone.success
-        : backgroundColor == const Color(0xFFFFF3CD)
-        ? AdminBannerTone.warning
-        : backgroundColor == const Color(0xFFF8D7DA)
-        ? AdminBannerTone.danger
-        : AdminBannerTone.info;
-
     return AdminInfoBanner(
       title: title,
       message: message,
@@ -201,12 +193,6 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Provisionnement',
-            title: 'Provisionnement des comptes',
-            subtitle: "Création, mise à jour et remise des liens d'activation.",
-          ),
-          SizedBox(height: spacing),
           Obx(() {
             final managedAccounts = _userController.userList
                 .where(
@@ -252,7 +238,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
           Obx(() {
             if (_userController.hasRequiredAdminClaims) {
               return _buildInfoBanner(
-                backgroundColor: const Color(0xFFDFF3E4),
+                tone: AdminBannerTone.success,
                 icon: Icons.verified_user,
                 title: 'Droits administrateur vérifiés',
                 message:
@@ -261,21 +247,13 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
             }
 
             return _buildInfoBanner(
-              backgroundColor: const Color(0xFFFFF3CD),
+              tone: AdminBannerTone.warning,
               icon: Icons.warning_amber_rounded,
               title: 'Droits administrateur manquants',
               message:
                   'Reconnectez-vous avec un compte autorisé avant de provisionner.',
             );
           }),
-          SizedBox(height: spacing),
-          _buildInfoBanner(
-            backgroundColor: const Color(0xFFEAF4FF),
-            icon: Icons.security,
-            title: 'Provisionnement sécurisé',
-            message:
-                "La création et la mise à jour sont contrôlées avant activation du compte.",
-          ),
           SizedBox(height: spacing),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -388,7 +366,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                     ),
                     if (_errorMessage != null) ...[
                       _buildInfoBanner(
-                        backgroundColor: const Color(0xFFF8D7DA),
+                        tone: AdminBannerTone.danger,
                         icon: Icons.error_outline,
                         title: 'Provisionnement refusé',
                         message: _errorMessage!,

@@ -8,11 +8,7 @@ import '../controller/event_controller.dart';
 import '../controller/offre_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
-import '../models/contact_intake.dart';
-import '../models/event.dart';
-import '../models/offre.dart';
 import '../theme/admin_theme.dart';
-import '../utils/account_role_policy.dart';
 import '../widgets/admin_ui.dart';
 import 'contact_intake_management_widget.dart';
 import 'event_management_widget.dart';
@@ -481,153 +477,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildDashboardMetrics({required bool compact}) {
-    return Obx(() {
-      final users = widget.userController.userList;
-      final videos = widget.videoController.videoList;
-      final offers = widget.offreController.offres;
-      final events = widget.eventController.events;
-      final contactIntakes = widget.contactIntakeController.contactIntakes;
-      final managedCount = users
-          .where(
-            (user) => user.createdByAdmin || isManagedAccountRole(user.role),
-          )
-          .length;
-      final reportedCount = widget.videoController.getReportedVideos().length;
-      final authDisabledCount = users.where((user) => user.authDisabled).length;
-      final openOffers = offers
-          .where((offre) => Offre.normalizeStatus(offre.statut) == 'ouverte')
-          .length;
-      final openEvents = events
-          .where((event) => Event.normalizeStatus(event.statut) == 'ouvert')
-          .length;
-      final newLeadCount = contactIntakes
-          .where(
-            (intake) =>
-                AgencyFollowUpStatus.normalize(intake.agencyFollowUpStatus) ==
-                AgencyFollowUpStatus.newLead,
-          )
-          .length;
-
-      final totalUsers = users.length;
-      final totalVideos = videos.length;
-      final pendingVideos = videos
-          .where((video) => video.isPendingReview)
-          .length;
-      final totalOffers = offers.length;
-      final totalEvents = events.length;
-      final totalContactIntakes = contactIntakes.length;
-
-      final cards = [
-        AdminMetricCard(
-          title: 'Utilisateurs',
-          value: '$totalUsers',
-          subtitle: 'Profils du portail',
-          icon: Icons.groups_2_rounded,
-          progress: totalUsers == 0 ? 0 : 1,
-        ),
-        AdminMetricCard(
-          title: 'Comptes administr\u00e9s',
-          value: '$managedCount',
-          subtitle: "Suivis par l'administration",
-          icon: Icons.badge_rounded,
-          progress: totalUsers == 0 ? 0 : managedCount / totalUsers,
-          accentColor: AdminTheme.cyan,
-        ),
-        AdminMetricCard(
-          title: 'Vid\u00e9os',
-          value: '$totalVideos',
-          subtitle: '$reportedCount signalements',
-          icon: Icons.ondemand_video_rounded,
-          progress: totalVideos == 0 ? 0 : 1,
-          accentColor: AdminTheme.accentSoft,
-        ),
-        AdminMetricCard(
-          title: '\u00c0 valider',
-          value: '$pendingVideos',
-          subtitle: 'Vid\u00e9os en revue admin',
-          icon: Icons.fact_check_rounded,
-          progress: totalVideos == 0 ? 0 : pendingVideos / totalVideos,
-          accentColor: AdminTheme.warning,
-        ),
-        AdminMetricCard(
-          title: 'Offres',
-          value: '$totalOffers',
-          subtitle: '$openOffers ouvertes',
-          icon: Icons.work_outline_rounded,
-          progress: totalOffers == 0 ? 0 : openOffers / totalOffers,
-          accentColor: AdminTheme.cyan,
-        ),
-        AdminMetricCard(
-          title: '\u00c9v\u00e9nements',
-          value: '$totalEvents',
-          subtitle: '$openEvents ouverts',
-          icon: Icons.event_note_rounded,
-          progress: totalEvents == 0 ? 0 : openEvents / totalEvents,
-          accentColor: AdminTheme.success,
-        ),
-        AdminMetricCard(
-          title: 'Acc\u00e8s suspendus',
-          value: '$authDisabledCount',
-          subtitle: 'Comptes temporairement bloqu\u00e9s',
-          icon: Icons.lock_person_rounded,
-          progress: totalUsers == 0 ? 0 : authDisabledCount / totalUsers,
-          accentColor: AdminTheme.warning,
-        ),
-        AdminMetricCard(
-          title: 'Mises en relation',
-          value: '$totalContactIntakes',
-          subtitle: '$newLeadCount nouveau(x) lead(s)',
-          icon: Icons.support_agent_rounded,
-          progress: totalContactIntakes == 0
-              ? 0
-              : newLeadCount / totalContactIntakes,
-          accentColor: AdminTheme.accentSoft,
-        ),
-      ];
-
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final mobileMetrics = constraints.maxWidth < 640;
-          const spacing = 12.0;
-
-          if (mobileMetrics) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: cards
-                    .map(
-                      (card) => Padding(
-                        padding: const EdgeInsets.only(right: spacing),
-                        child: SizedBox(width: 236, child: card),
-                      ),
-                    )
-                    .toList(),
-              ),
-            );
-          }
-
-          final columns = constraints.maxWidth >= 1240
-              ? 4
-              : constraints.maxWidth >= 880
-              ? 3
-              : 2;
-          final availableWidth =
-              constraints.maxWidth - (spacing * (columns - 1));
-          final cardWidth = availableWidth / columns;
-
-          return Wrap(
-            spacing: spacing,
-            runSpacing: spacing,
-            children: cards
-                .map((card) => SizedBox(width: cardWidth, child: card))
-                .toList(),
-          );
-        },
-      );
-    });
-  }
-
   Widget _buildCompactNavigation() {
     return AdminGlassPanel(
       padding: const EdgeInsets.all(12),
@@ -708,8 +557,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       _buildCompactNavigation(),
                       const SizedBox(height: 16),
                     ],
-                    _buildDashboardMetrics(compact: compactLayout),
-                    const SizedBox(height: 16),
                     _buildDashboardBody(),
                   ],
                 ),

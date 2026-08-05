@@ -211,20 +211,6 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Catalogue vidéo',
-            title: 'Gestion des vidéos',
-            subtitle:
-                'Consultez les contenus publiés, lancez la lecture et retirez les vidéos non conformes.',
-          ),
-          SizedBox(height: spacing),
-          const AdminInfoBanner(
-            title: 'Catalogue centralisé',
-            message:
-                'Les aperçus, auteurs et états de diffusion sont regroupés pour une modération rapide.',
-            icon: Icons.video_collection_outlined,
-            tone: AdminBannerTone.info,
-          ),
           Padding(
             padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
             child: AdminSearchField(

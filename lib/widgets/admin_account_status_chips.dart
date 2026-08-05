@@ -18,13 +18,11 @@ class AdminAccountStatusChips extends StatelessWidget {
     if (user.profileVerified) {
       statuses.add(const _StatusItem(
         label: 'profil certifié',
-        backgroundColor: Color(0x3367F1AB),
         textColor: AdminTheme.success,
       ));
     } else if (user.profileVerificationNeedsReview) {
       statuses.add(const _StatusItem(
         label: 'à revalider',
-        backgroundColor: Color(0x33F4D27A),
         textColor: AdminTheme.warning,
       ));
     }
@@ -32,7 +30,6 @@ class AdminAccountStatusChips extends StatelessWidget {
     if (user.authDisabled) {
       statuses.add(const _StatusItem(
         label: 'auth désactivée',
-        backgroundColor: Color(0x33F4D27A),
         textColor: AdminTheme.warning,
       ));
     }
@@ -40,16 +37,12 @@ class AdminAccountStatusChips extends StatelessWidget {
     if (!user.isEffectivelyActiveAccount) {
       statuses.add(const _StatusItem(
         label: 'inactif',
-        backgroundColor: Color(0x334A655C),
         textColor: AdminTheme.textMuted,
       ));
     }
 
     statuses.add(_StatusItem(
       label: user.isEffectivelyActiveAccount ? 'actif' : 'accès limité',
-      backgroundColor: user.isEffectivelyActiveAccount
-          ? const Color(0x3367F1AB)
-          : const Color(0x334A655C),
       textColor: user.isEffectivelyActiveAccount
           ? AdminTheme.success
           : AdminTheme.textMuted,
@@ -62,7 +55,7 @@ class AdminAccountStatusChips extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: status.backgroundColor,
+            color: status.textColor.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: status.textColor.withValues(alpha: 0.18),
@@ -85,11 +78,9 @@ class AdminAccountStatusChips extends StatelessWidget {
 class _StatusItem {
   const _StatusItem({
     required this.label,
-    required this.backgroundColor,
     required this.textColor,
   });
 
   final String label;
-  final Color backgroundColor;
   final Color textColor;
 }

@@ -362,20 +362,6 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Revue admin',
-            title: 'Vidéos à valider',
-            subtitle:
-                'Validez uniquement les vidéos utiles aux clubs et aux recruteurs. Un refus supprime les fichiers et notifie le joueur.',
-          ),
-          SizedBox(height: spacing),
-          const AdminInfoBanner(
-            title: 'Contrôle avant publication',
-            message:
-                "Les joueurs peuvent soumettre leurs vidéos, mais aucune nouvelle vidéo ne devient publique sans validation admin.",
-            icon: Icons.fact_check_outlined,
-            tone: AdminBannerTone.warning,
-          ),
           Padding(
             padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
             child: AdminSearchField(

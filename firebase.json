@@ -1,1 +1,79 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"adfoot-production","appId":"1:975666203662:android:b83dd7a29d1dcd5932005f","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"adfoot-production","configurations":{"android":"1:975666203662:android:b83dd7a29d1dcd5932005f","ios":"1:975666203662:ios:5b190f523fd66f8632005f","macos":"1:975666203662:ios:5b190f523fd66f8632005f","web":"1:975666203662:web:75e8ffc66e6340bf32005f","windows":"1:975666203662:web:75e8ffc66e6340bf32005f"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "adfoot-production",
+          "appId": "1:975666203662:android:b83dd7a29d1dcd5932005f",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "adfoot-production",
+          "configurations": {
+            "android": "1:975666203662:android:b83dd7a29d1dcd5932005f",
+            "ios": "1:975666203662:ios:5b190f523fd66f8632005f",
+            "macos": "1:975666203662:ios:5b190f523fd66f8632005f",
+            "web": "1:975666203662:web:75e8ffc66e6340bf32005f",
+            "windows": "1:975666203662:web:75e8ffc66e6340bf32005f"
+          }
+        }
+      }
+    }
+  },
+  "hosting": [
+    {
+      "target": "admin-production",
+      "public": "build/web",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "admin-staging",
+      "public": "build/web",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

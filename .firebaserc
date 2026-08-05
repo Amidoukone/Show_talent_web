@@ -1,0 +1,24 @@
+{
+  "projects": {
+    "default": "adfoot-production",
+    "production": "adfoot-production",
+    "staging": "adfoot-staging"
+  },
+  "targets": {
+    "adfoot-production": {
+      "hosting": {
+        "admin-production": [
+          "adfoot-admin"
+        ]
+      }
+    },
+    "adfoot-staging": {
+      "hosting": {
+        "admin-staging": [
+          "adfoot-admin-staging"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

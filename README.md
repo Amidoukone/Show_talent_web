@@ -159,6 +159,49 @@ Build web production :
 npm.cmd run build:web:production
 ```
 
+## App Check (portail admin)
+
+App Check est integre cote client mais desactive par defaut : aucun
+comportement existant ne change tant que les deux dart-define suivants ne
+sont pas fournis au build :
+
+- `APP_CHECK_ENABLED=true`
+- `APP_CHECK_WEB_RECAPTCHA_SITE_KEY=<cle du fournisseur reCAPTCHA v3>`
+
+Etape manuelle prealable (console Firebase, non scriptable) : dans
+Firebase Console > App Check, enregistrer un fournisseur reCAPTCHA v3 pour
+l app Web `1:975666203662:web:75e8ffc66e6340bf32005f` (projet
+`adfoot-production`) et recuperer la cle de site associee.
+
+Important : activer App Check cote client ne suffit pas a proteger les
+callables admin. L enforcement (`enforceAppCheck`) est defini cote Cloud
+Functions, dans le depot mobile (`functions/src/admin_account_support.ts`),
+et doit rester desactive pour les callables admin tant que le token envoye
+par ce portail n a pas ete valide en staging. Voir le suivi dedie avant de
+modifier ce fichier.
+
+## Firebase Hosting (portail admin)
+
+Deux sites Hosting dedies existent, distincts des sites marketing mobile
+(`adfoot-production` / `adfoot-staging`, a ne jamais toucher depuis ce
+depot) :
+
+- staging : site `adfoot-admin-staging` (projet `adfoot-staging`),
+  target `admin-staging`
+- production : site `adfoot-admin` (projet `adfoot-production`),
+  target `admin-production`
+
+Deploiement :
+
+```powershell
+npm.cmd run deploy:web:staging
+npm.cmd run deploy:web:production
+```
+
+`deploy:web:production` relance `release:check` avant de builder et
+deployer. Toujours valider visuellement le staging avant de lancer le
+deploiement production.
+
 Le script `contract:mobile` cherche par defaut le depot mobile dans :
 
 ```text

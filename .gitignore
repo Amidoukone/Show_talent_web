@@ -34,6 +34,10 @@ migrate_working_dir/
 # Node.js dependencies
 node_modules/
 
+# Firebase Hosting deploy artifacts
+.firebase/
+firebase-debug.log*
+
 # Symbolication related
 app.*.symbols
 

@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
+import '../services/app_check_service.dart';
 import 'app_environment.dart';
 
 class FirebaseBootstrap {
@@ -19,6 +20,7 @@ class FirebaseBootstrap {
           )
         : Firebase.app();
 
+    await AppCheckService.initialize();
     await configureEmulatorsIfNeeded();
 
     if (kDebugMode) {

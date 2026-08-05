@@ -18,6 +18,8 @@ class UserController extends GetxController {
   final RxList<AppUser> _userList = <AppUser>[].obs;
   List<AppUser> get userList => _userList;
 
+  final RxBool isLoading = true.obs;
+
   final RxList<String> _grantedAdminClaims = <String>[].obs;
   List<String> get grantedAdminClaims => _grantedAdminClaims;
   bool get hasRequiredAdminClaims => _grantedAdminClaims.isNotEmpty;
@@ -50,6 +52,7 @@ class UserController extends GetxController {
     }
 
     if (FirebaseAuth.instance.currentUser == null) {
+      isLoading.value = false;
       return;
     }
 
@@ -57,6 +60,7 @@ class UserController extends GetxController {
       return;
     }
 
+    isLoading.value = true;
     _usersSubscription =
         FirebaseFirestore.instance.collection('users').snapshots().listen(
       (snapshot) {
@@ -80,12 +84,14 @@ class UserController extends GetxController {
 
         _userList.assignAll(parsedUsers);
         _applyPrivateContactCache();
+        isLoading.value = false;
       },
       onError: (Object error, StackTrace stackTrace) {
         debugPrint('Flux Firestore users indisponible : $error');
         debugPrintStack(stackTrace: stackTrace);
         _userList.clear();
         _usersSubscription = null;
+        isLoading.value = false;
       },
       onDone: () {
         _usersSubscription = null;
@@ -169,6 +175,7 @@ class UserController extends GetxController {
 
     if (clearUsers) {
       _userList.clear();
+      isLoading.value = false;
     }
   }
 
@@ -429,6 +436,7 @@ class UserController extends GetxController {
         authDisabledReason: 'Revue administrative',
       ),
     ]);
+    isLoading.value = false;
   }
 
   @override

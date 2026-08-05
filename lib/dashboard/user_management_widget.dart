@@ -929,6 +929,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             );
             final displayedUsers = filteredUsers.sublist(startIndex, endIndex);
 
+            if (_userController.isLoading.value) {
+              return const Center(
+                child: AdminLoadingState(
+                  message: 'Chargement des utilisateurs...',
+                ),
+              );
+            }
+
             if (filteredUsers.isEmpty) {
               final hasFilters =
                   searchQuery.trim().isNotEmpty || selectedRole != 'Tous';

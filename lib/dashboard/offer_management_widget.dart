@@ -114,7 +114,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmation'),
+          title: const Text('Supprimer l’offre'),
           content: Text('Supprimer l’offre "${offre.titre}" ?'),
           actions: [
             TextButton(
@@ -122,6 +122,10 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
               child: const Text('Annuler'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminTheme.danger,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Supprimer'),
             ),

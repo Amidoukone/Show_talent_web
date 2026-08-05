@@ -120,9 +120,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   accentColor: AdminTheme.accentSoft,
                 ),
                 AdminMetricCard(
-                  title: 'Alertes modération',
+                  title: 'Accès suspendus',
                   value: '$authDisabledUsers',
-                  subtitle: 'Accès suspendus',
+                  subtitle: 'Comptes temporairement bloqués',
                   icon: Icons.lock_person_rounded,
                   progress: disabledRate,
                   accentColor: AdminTheme.warning,

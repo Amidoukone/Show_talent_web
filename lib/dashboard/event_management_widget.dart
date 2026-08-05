@@ -115,7 +115,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmation'),
+          title: const Text('Supprimer l’événement'),
           content: Text('Supprimer l’événement "${event.titre}" ?'),
           actions: [
             TextButton(
@@ -123,6 +123,10 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
               child: const Text('Annuler'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminTheme.danger,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Supprimer'),
             ),

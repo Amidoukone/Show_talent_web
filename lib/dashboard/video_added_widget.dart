@@ -257,6 +257,14 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             final displayedVideos =
                 filteredVideos.sublist(startIndex, endIndex);
 
+            if (videoController.isLoading.value) {
+              return const Center(
+                child: AdminLoadingState(
+                  message: 'Chargement des vidéos...',
+                ),
+              );
+            }
+
             if (filteredVideos.isEmpty) {
               final hasSearch = searchQuery.trim().isNotEmpty;
 
@@ -302,7 +310,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                   runSpacing: compact ? 10 : 12,
                   children: [
                     AdminMiniStat(
-                      label: 'Catalogue visible',
+                      label: 'Vidéos visibles',
                       value: '${filteredVideos.length}',
                       icon: Icons.video_collection_outlined,
                       accentColor: AdminTheme.cyan,
@@ -439,6 +447,10 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
               child: const Text('Annuler'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminTheme.danger,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () async {
                 Navigator.of(context).pop();
                 setState(() {

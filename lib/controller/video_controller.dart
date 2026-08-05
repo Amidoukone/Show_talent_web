@@ -17,12 +17,14 @@ class VideoController extends GetxController {
   final bool _visualQaMode;
 
   var videoList = <Video>[].obs;
+  final RxBool isLoading = true.obs;
 
   @override
   void onInit() {
     super.onInit();
     if (_visualQaMode) {
       videoList.clear();
+      isLoading.value = false;
       return;
     }
 
@@ -30,6 +32,7 @@ class VideoController extends GetxController {
   }
 
   void fetchVideos() {
+    isLoading.value = true;
     FirebaseFirestore.instance.collection('videos').snapshots().listen((
       snapshot,
     ) {
@@ -49,9 +52,11 @@ class VideoController extends GetxController {
             .whereType<Video>()
             .toList(),
       );
+      isLoading.value = false;
     }, onError: (Object error) {
       debugPrint('Flux Firestore vidéos indisponible : $error');
       videoList.clear();
+      isLoading.value = false;
     });
   }
 

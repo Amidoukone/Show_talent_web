@@ -265,6 +265,10 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                 child: const Text('Annuler'),
               ),
               ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AdminTheme.danger,
+                  foregroundColor: AdminTheme.background,
+                ),
                 onPressed: () {
                   Navigator.of(context).pop(controller.text.trim());
                 },
@@ -416,6 +420,14 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
             final displayedVideos =
                 filteredVideos.sublist(startIndex, endIndex);
 
+            if (videoController.isLoading.value) {
+              return const Center(
+                child: AdminLoadingState(
+                  message: 'Chargement des vidéos...',
+                ),
+              );
+            }
+
             return Column(
               children: [
                 Wrap(
@@ -492,7 +504,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                         DataColumn(label: Text('Aperçu')),
                         DataColumn(label: Text('Contenu')),
                         DataColumn(label: Text('Joueur')),
-                        DataColumn(label: Text('État')),
+                        DataColumn(label: Text('Statut')),
                         DataColumn(label: Text('Actions')),
                       ],
                       rows: List<DataRow>.generate(

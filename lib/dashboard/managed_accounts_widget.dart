@@ -194,6 +194,12 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Obx(() {
+            if (_userController.isLoading.value) {
+              return const AdminLoadingState(
+                message: 'Chargement des comptes...',
+              );
+            }
+
             final managedAccounts = _userController.userList
                 .where(
                   (user) =>

@@ -230,6 +230,14 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             final displayedVideos =
                 filteredVideos.sublist(startIndex, endIndex);
 
+            if (videoController.isLoading.value) {
+              return const Center(
+                child: AdminLoadingState(
+                  message: 'Chargement des signalements...',
+                ),
+              );
+            }
+
             if (filteredVideos.isEmpty) {
               final hasSearch = searchQuery.trim().isNotEmpty;
 
@@ -384,6 +392,10 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
               child: const Text('Annuler'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminTheme.danger,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () async {
                 Navigator.of(context).pop();
                 setState(() {

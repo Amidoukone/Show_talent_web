@@ -11,7 +11,6 @@ void main() {
           File('lib/config/app_page_bindings.dart').readAsStringSync();
 
       expect(dashboard, contains('ContactIntakeManagementWidget'));
-      expect(dashboard, contains('contactIntakeController'));
       expect(dashboard, contains('Mise en relation'));
       expect(bindings, contains('ContactIntakeController'));
     });

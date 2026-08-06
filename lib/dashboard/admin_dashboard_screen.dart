@@ -3,9 +3,6 @@ import 'package:get/get.dart';
 
 import '../config/app_routes.dart';
 import '../controller/auth_controller.dart';
-import '../controller/contact_intake_controller.dart';
-import '../controller/event_controller.dart';
-import '../controller/offre_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
@@ -33,10 +30,6 @@ class AdminDashboardScreen extends StatefulWidget {
   final AuthController authController = Get.find<AuthController>();
   final UserController userController = Get.find<UserController>();
   final VideoController videoController = Get.find<VideoController>();
-  final OffreController offreController = Get.find<OffreController>();
-  final EventController eventController = Get.find<EventController>();
-  final ContactIntakeController contactIntakeController =
-      Get.find<ContactIntakeController>();
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -151,7 +144,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     final accessResult = await widget.authController.validateCurrentSession(
-      forceRefresh: true,
       signOutOnFailure: true,
     );
 

@@ -2,6 +2,7 @@
 
 import '../models/user.dart';
 import '../theme/admin_theme.dart';
+import 'admin_ui.dart';
 
 class AdminAccountStatusChips extends StatelessWidget {
   const AdminAccountStatusChips({
@@ -52,24 +53,7 @@ class AdminAccountStatusChips extends StatelessWidget {
       spacing: 6,
       runSpacing: 6,
       children: statuses.map((status) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: status.textColor.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: status.textColor.withValues(alpha: 0.18),
-            ),
-          ),
-          child: Text(
-            status.label,
-            style: TextStyle(
-              fontSize: 12,
-              color: status.textColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        );
+        return AdminPill(label: status.label, color: status.textColor);
       }).toList(),
     );
   }

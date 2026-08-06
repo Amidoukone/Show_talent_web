@@ -21,6 +21,9 @@ class AdminTheme {
   static const Color textMuted = Color(0xFF8F99A3);
   static const double contentMaxWidth = 1460;
   static const double readingMaxWidth = 1280;
+  static const double breakpointCompact = 1120;
+  static const double breakpointShellCompact = 1160;
+  static const double breakpointExtendedRail = 1420;
 
   static const LinearGradient pageGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -334,6 +337,14 @@ class AdminTheme {
         color: borderSoft.withValues(alpha: 0.7),
         thickness: 0.6,
         space: 0,
+      ),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: Border(
+          right: BorderSide(color: border.withValues(alpha: 0.82)),
+        ),
       ),
     );
   }

@@ -50,7 +50,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   }
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   @override
   void dispose() {

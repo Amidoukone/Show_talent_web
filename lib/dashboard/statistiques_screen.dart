@@ -8,51 +8,27 @@ import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
 import '../widgets/admin_ui.dart';
 
-class StatisticsScreen extends StatelessWidget {
-  StatisticsScreen({super.key});
-
-  final UserController userController = Get.find<UserController>();
-  final VideoController videoController = Get.find<VideoController>();
-
-  @override
-  Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 720;
-
-    return Scaffold(
-      body: AdminAppBackground(
-        padding: EdgeInsets.all(compact ? 16 : 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1380),
-            child: SingleChildScrollView(
-              child: StatisticsOverviewPanel(
-                userController: userController,
-                videoController: videoController,
-                showStandaloneHeader: true,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class StatisticsOverviewPanel extends StatelessWidget {
   const StatisticsOverviewPanel({
     required this.userController,
     required this.videoController,
-    this.showStandaloneHeader = false,
     super.key,
   });
 
   final UserController userController;
   final VideoController videoController;
-  final bool showStandaloneHeader;
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      if (userController.isLoading.value || videoController.isLoading.value) {
+        return const Center(
+          child: AdminLoadingState(
+            message: 'Chargement des statistiques...',
+          ),
+        );
+      }
+
       final users = userController.userList;
       final videos = videoController.videoList;
       final reportedVideos = videoController.getReportedVideos();
@@ -77,20 +53,6 @@ class StatisticsOverviewPanel extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (showStandaloneHeader) ...[
-            AdminGlassPanel(
-              padding: const EdgeInsets.all(26),
-              highlight: true,
-              accentColor: AdminTheme.accent,
-              child: const AdminSectionHeader(
-                badge: 'Pilotage',
-                title: 'Tableau de statistiques',
-                subtitle:
-                    "Vue consolidée sur les utilisateurs, la modération et les comptes créés par l'administration.",
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
           LayoutBuilder(
             builder: (context, constraints) {
               final cardWidth =

@@ -36,7 +36,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
   }
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   String _resolveUserName(String uid) {
     return userController.userList
@@ -107,8 +107,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
         icon: video.isApprovedPublic
             ? Icons.public_rounded
             : Icons.lock_outline_rounded,
-        color:
-            video.isApprovedPublic ? AdminTheme.success : AdminTheme.textMuted,
+        color: video.isApprovedPublic
+            ? AdminTheme.success
+            : AdminTheme.textMuted,
       ),
       if (video.reportCount > 0)
         AdminVideoMetaItem(
@@ -196,6 +197,20 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     );
   }
 
+  Widget _buildVideoCard(BuildContext context, Video video) {
+    return AdminDataCard(
+      leading: _buildPreview(video, true),
+      title: _buildTitleCell(video),
+      fields: [
+        AdminDataCardField(
+          label: 'Ajoutée par',
+          value: Text(_resolveUserName(video.uid)),
+        ),
+      ],
+      actions: _buildActions(context, video),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
@@ -254,14 +269,14 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
               0,
               filteredVideos.length,
             );
-            final displayedVideos =
-                filteredVideos.sublist(startIndex, endIndex);
+            final displayedVideos = filteredVideos.sublist(
+              startIndex,
+              endIndex,
+            );
 
             if (videoController.isLoading.value) {
               return const Center(
-                child: AdminLoadingState(
-                  message: 'Chargement des vidéos...',
-                ),
+                child: AdminLoadingState(message: 'Chargement des vidéos...'),
               );
             }
 
@@ -294,14 +309,18 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
               );
             }
 
-            final reportedCount =
-                allVideos.where((video) => video.reportCount > 0).length;
-            final multiSourceCount =
-                allVideos.where((video) => video.hasMultipleMp4Sources).length;
-            final publicCount =
-                allVideos.where((video) => video.isApprovedPublic).length;
-            final pendingCount =
-                allVideos.where((video) => video.isPendingReview).length;
+            final reportedCount = allVideos
+                .where((video) => video.reportCount > 0)
+                .length;
+            final multiSourceCount = allVideos
+                .where((video) => video.hasMultipleMp4Sources)
+                .length;
+            final publicCount = allVideos
+                .where((video) => video.isApprovedPublic)
+                .length;
+            final pendingCount = allVideos
+                .where((video) => video.isPendingReview)
+                .length;
 
             return Column(
               children: [
@@ -360,21 +379,32 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                   ],
                 ),
                 SizedBox(height: spacing),
-                AdminDataTableCard(
-                  compact: compact,
-                  child: DataTable(
-                    columnSpacing: tableColumnSpacing,
-                    horizontalMargin: compact ? 10 : 12,
-                    columns: const [
-                      DataColumn(label: Text('Aperçu')),
-                      DataColumn(label: Text('Contenu')),
-                      DataColumn(label: Text('Ajoutée par')),
-                      DataColumn(label: Text('Statut')),
-                      DataColumn(label: Text('Actions')),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final video in displayedVideos) ...[
+                        _buildVideoCard(context, video),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    rows: List<DataRow>.generate(
-                      displayedVideos.length,
-                      (index) {
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: tableColumnSpacing,
+                      horizontalMargin: compact ? 10 : 12,
+                      columns: const [
+                        DataColumn(label: Text('Aperçu')),
+                        DataColumn(label: Text('Contenu')),
+                        DataColumn(label: Text('Ajoutée par')),
+                        DataColumn(label: Text('Statut')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: List<DataRow>.generate(displayedVideos.length, (
+                        index,
+                      ) {
                         final video = displayedVideos[index];
                         return DataRow(
                           cells: [
@@ -391,20 +421,19 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                             DataCell(_buildActions(context, video)),
                           ],
                         );
-                      },
+                      }),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                      ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: rowHeight,
+                      dataRowMaxHeight: rowHeight,
+                      headingRowHeight: compact ? 50 : 54,
                     ),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                    ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: rowHeight,
-                    dataRowMaxHeight: rowHeight,
-                    headingRowHeight: compact ? 50 : 54,
                   ),
-                ),
                 SizedBox(height: spacing),
                 AdminPaginationBar(
                   currentPage: safePage,
@@ -442,10 +471,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             'Cette action retire définitivement la vidéo du catalogue et de la modération.',
           ),
           actions: [
-            TextButton(
-              onPressed: Get.back,
-              child: const Text('Annuler'),
-            ),
+            TextButton(onPressed: Get.back, child: const Text('Annuler')),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AdminTheme.danger,

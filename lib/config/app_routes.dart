@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 
 import '../dashboard/admin_dashboard_screen.dart';
 import '../dashboard/admin_login.dart';
-import '../dashboard/statistiques_screen.dart';
 import 'app_environment.dart';
 import 'app_page_bindings.dart';
 
@@ -12,7 +11,6 @@ class AppRoutes {
 
   static const String adminLogin = '/admin-login';
   static const String adminDashboard = '/admin-dashboard';
-  static const String statistics = '/statistics';
 
   static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[
     GetPage(name: adminLogin, page: () => const AdminLoginScreen()),
@@ -22,11 +20,6 @@ class AppRoutes {
         previewMode: resolveDashboardPreviewMode(),
         initialIndex: resolveDashboardInitialIndex(),
       ),
-      binding: AdminDashboardBinding(),
-    ),
-    GetPage(
-      name: statistics,
-      page: () => StatisticsScreen(),
       binding: AdminDashboardBinding(),
     ),
   ];

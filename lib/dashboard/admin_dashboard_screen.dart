@@ -199,6 +199,164 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Widget _buildNavTile({
+    required int index,
+    required bool extendedRail,
+    required VoidCallback onTap,
+  }) {
+    final item = _dashboardItems[index];
+    final selected = index == _selectedIndex;
+
+    final navTile = Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: extendedRail ? 10 : 7,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: selected
+              ? AdminTheme.accent.withValues(alpha: 0.34)
+              : AdminTheme.borderSoft.withValues(alpha: 0.68),
+        ),
+        gradient: selected
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AdminTheme.accent.withValues(alpha: 0.28),
+                  AdminTheme.cyan.withValues(alpha: 0.12),
+                ],
+              )
+            : null,
+        color: selected ? null : AdminTheme.surface.withValues(alpha: 0.22),
+      ),
+      child: extendedRail
+          ? Row(
+              children: [
+                _buildSidebarIconBubble(icon: item.icon, selected: selected),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected
+                              ? AdminTheme.textPrimary
+                              : AdminTheme.textSecondary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected
+                              ? AdminTheme.accentSoft
+                              : AdminTheme.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : Center(
+              child: _buildSidebarIconBubble(
+                icon: item.icon,
+                selected: selected,
+              ),
+            ),
+    );
+
+    return Tooltip(
+      message: item.title,
+      waitDuration: const Duration(milliseconds: 350),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: navTile,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      width: 300,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Row(
+                children: [
+                  const AdminBrandMark(size: 44, width: 84),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Adfoot',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: AdminTheme.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Espace admin',
+                          style: TextStyle(
+                            color: AdminTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(
+              color: AdminTheme.borderSoft.withValues(alpha: 0.6),
+              indent: 12,
+              endIndent: 12,
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(8, 10, 8, 16),
+                itemCount: _dashboardItems.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 6),
+                itemBuilder: (context, index) {
+                  return _buildNavTile(
+                    index: index,
+                    extendedRail: true,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _onItemTapped(index);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSidebar(bool extendedRail) {
     return AdminGlassPanel(
       padding: EdgeInsets.zero,
@@ -259,95 +417,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               itemCount: _dashboardItems.length,
               separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
-                final item = _dashboardItems[index];
-                final selected = index == _selectedIndex;
-
-                final navTile = Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: extendedRail ? 10 : 7,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: selected
-                          ? AdminTheme.accent.withValues(alpha: 0.34)
-                          : AdminTheme.borderSoft.withValues(alpha: 0.68),
-                    ),
-                    gradient: selected
-                        ? LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              AdminTheme.accent.withValues(alpha: 0.28),
-                              AdminTheme.cyan.withValues(alpha: 0.12),
-                            ],
-                          )
-                        : null,
-                    color: selected
-                        ? null
-                        : AdminTheme.surface.withValues(alpha: 0.22),
-                  ),
-                  child: extendedRail
-                      ? Row(
-                          children: [
-                            _buildSidebarIconBubble(
-                              icon: item.icon,
-                              selected: selected,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: selected
-                                          ? AdminTheme.textPrimary
-                                          : AdminTheme.textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    item.subtitle,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: selected
-                                          ? AdminTheme.accentSoft
-                                          : AdminTheme.textMuted,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      : Center(
-                          child: _buildSidebarIconBubble(
-                            icon: item.icon,
-                            selected: selected,
-                          ),
-                        ),
-                );
-
-                return Tooltip(
-                  message: item.title,
-                  waitDuration: const Duration(milliseconds: 350),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => _onItemTapped(index),
-                      child: navTile,
-                    ),
-                  ),
+                return _buildNavTile(
+                  index: index,
+                  extendedRail: extendedRail,
+                  onTap: () => _onItemTapped(index),
                 );
               },
             ),
@@ -444,7 +517,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               if (!isStatisticsTab)
                 OutlinedButton.icon(
-                  onPressed: () => Get.toNamed(AppRoutes.statistics),
+                  onPressed: () =>
+                      _onItemTapped(_dashboardItems.length - 1),
                   icon: const Icon(Icons.auto_graph_rounded),
                   label: const Text('Vue statistiques'),
                 ),
@@ -475,52 +549,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildCompactNavigation() {
-    return AdminGlassPanel(
-      padding: const EdgeInsets.all(12),
-      accentColor: AdminTheme.accentSoft,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: List.generate(_dashboardItems.length, (index) {
-            final item = _dashboardItems[index];
-            final selected = index == _selectedIndex;
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: ChoiceChip(
-                label: Text(item.title),
-                avatar: Icon(
-                  item.icon,
-                  size: 18,
-                  color: selected
-                      ? AdminTheme.background
-                      : AdminTheme.textSecondary,
-                ),
-                selected: selected,
-                onSelected: (_) => _onItemTapped(index),
-                showCheckmark: false,
-                selectedColor: AdminTheme.accent.withValues(alpha: 0.86),
-                backgroundColor: AdminTheme.surfaceSoft.withValues(alpha: 0.42),
-                side: BorderSide(
-                  color: selected
-                      ? AdminTheme.accentSoft.withValues(alpha: 0.36)
-                      : AdminTheme.border.withValues(alpha: 0.8),
-                ),
-                labelStyle: TextStyle(
-                  color: selected
-                      ? AdminTheme.background
-                      : AdminTheme.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            );
-          }),
-        ),
       ),
     );
   }
@@ -559,10 +587,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           _selectedIndex == _dashboardItems.length - 1,
                     ),
                     const SizedBox(height: 16),
-                    if (compactLayout) ...[
-                      _buildCompactNavigation(),
-                      const SizedBox(height: 16),
-                    ],
                     _buildDashboardBody(),
                   ],
                 ),
@@ -584,15 +608,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
 
+    final compactShell =
+        MediaQuery.sizeOf(context).width < AdminTheme.breakpointShellCompact;
+
     return Scaffold(
+      appBar: compactShell
+          ? AppBar(
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  AdminBrandMark(size: 32, width: 32),
+                  SizedBox(width: 10),
+                  Text(
+                    'Adfoot Admin',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AdminTheme.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : null,
+      drawer: compactShell ? _buildDrawer(context) : null,
       body: AdminAppBackground(
-        padding: EdgeInsets.all(
-          MediaQuery.sizeOf(context).width < 1160 ? 16 : 18,
-        ),
+        padding: EdgeInsets.all(compactShell ? 16 : 18),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final currentItem = _dashboardItems[_selectedIndex];
-            final compactLayout = constraints.maxWidth < 1160;
+            final compactLayout =
+                constraints.maxWidth < AdminTheme.breakpointShellCompact;
 
             if (compactLayout) {
               return _buildScrollableMainContent(
@@ -601,7 +647,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               );
             }
 
-            final extendedRail = constraints.maxWidth >= 1420;
+            final extendedRail =
+                constraints.maxWidth >= AdminTheme.breakpointExtendedRail;
 
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,

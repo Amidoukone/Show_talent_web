@@ -69,7 +69,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   Widget _buildRoleFilterField() {
     return AdminGlassPanel(
@@ -164,7 +164,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     required String title,
     required String message,
     required String confirmLabel,
-    Color confirmColor = Colors.red,
+    Color confirmColor = AdminTheme.danger,
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -177,9 +177,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Annuler'),
             ),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: confirmColor,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: confirmColor),
               child: Text(confirmLabel),
             ),
           ],
@@ -615,9 +618,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     // of the bulk users snapshot into users/{uid}/private/contact and
     // users/{uid}/private/adminNotes, so the review dialog needs an
     // on-demand fetch to show them (admin claims grant access to both).
-    final enrichedUser = await _userController.fetchUserWithPrivateFields(
-      user,
-    );
+    final enrichedUser = await _userController.fetchUserWithPrivateFields(user);
 
     if (!mounted) {
       return;
@@ -839,6 +840,86 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     }
   }
 
+  Widget _buildActionCell(AppUser user) {
+    if (_actionInFlightUid == user.uid) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 8),
+          Text(_actionInFlightLabel ?? 'Traitement...'),
+        ],
+      );
+    }
+
+    return PopupMenuButton<String>(
+      tooltip: 'Actions utilisateur',
+      onSelected: (value) => _handleActionSelection(value, user),
+      itemBuilder: (context) => _buildActionMenuItems(user),
+    );
+  }
+
+  Widget _buildUserCard(AppUser user) {
+    return AdminDataCard(
+      leading: Icon(_rowLeadingIcon, color: _rowLeadingColor, size: 22),
+      title: Text(
+        user.nom,
+        style: const TextStyle(
+          color: AdminTheme.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: Text(
+        user.email,
+        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 12),
+      ),
+      fields: [
+        AdminDataCardField(
+          label: 'Rôle',
+          value: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(user.role),
+              Text(
+                user.profileLevelLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AdminTheme.textSecondary,
+                ),
+              ),
+              Text(
+                user.profileTrustLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: user.profileVerified
+                      ? AdminTheme.success
+                      : user.profileVerificationNeedsReview
+                      ? AdminTheme.warning
+                      : AdminTheme.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (user.createdByAdmin)
+                const Text(
+                  'créé par l\'administration',
+                  style: TextStyle(fontSize: 12, color: AdminTheme.accent),
+                ),
+            ],
+          ),
+        ),
+        AdminDataCardField(
+          label: 'Statut',
+          value: AdminAccountStatusChips(user: user),
+        ),
+      ],
+      actions: _buildActionCell(user),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
@@ -1054,165 +1135,148 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   ],
                 ),
                 SizedBox(height: spacing),
-                AdminDataTableCard(
-                  compact: compact,
-                  child: DataTable(
-                    columnSpacing: tableColumnSpacing,
-                    horizontalMargin: compact ? 8 : 10,
-                    columns: const [
-                      DataColumn(
-                        label: Text('Nom', textAlign: TextAlign.center),
-                      ),
-                      DataColumn(
-                        label: Text('Email', textAlign: TextAlign.center),
-                      ),
-                      DataColumn(
-                        label: Text('Rôle', textAlign: TextAlign.center),
-                      ),
-                      DataColumn(
-                        label: Text('Statut', textAlign: TextAlign.center),
-                      ),
-                      DataColumn(
-                        label: Text('Actions', textAlign: TextAlign.center),
-                      ),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final user in displayedUsers) ...[
+                        _buildUserCard(user),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    rows: List<DataRow>.generate(
-                      displayedUsers.length,
-                      (index) => DataRow(
-                        cells: [
-                          DataCell(
-                            SizedBox(
-                              width: compact ? 170 : 190,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _rowLeadingIcon,
-                                    color: _rowLeadingColor,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      displayedUsers[index].nom,
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: tableColumnSpacing,
+                      horizontalMargin: compact ? 8 : 10,
+                      columns: const [
+                        DataColumn(
+                          label: Text('Nom', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Email', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Rôle', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Statut', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Actions', textAlign: TextAlign.center),
+                        ),
+                      ],
+                      rows: List<DataRow>.generate(
+                        displayedUsers.length,
+                        (index) => DataRow(
+                          cells: [
+                            DataCell(
+                              SizedBox(
+                                width: compact ? 170 : 190,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _rowLeadingIcon,
+                                      color: _rowLeadingColor,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        displayedUsers[index].nom,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              SizedBox(
+                                width: compact ? 200 : 240,
+                                child: Text(
+                                  displayedUsers[index].email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              SizedBox(
+                                width: compact ? 190 : 220,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayedUsers[index].role,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            SizedBox(
-                              width: compact ? 200 : 240,
-                              child: Text(
-                                displayedUsers[index].email,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            SizedBox(
-                              width: compact ? 190 : 220,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    displayedUsers[index].role,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    displayedUsers[index].profileLevelLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AdminTheme.textSecondary,
+                                    Text(
+                                      displayedUsers[index].profileLevelLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AdminTheme.textSecondary,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    displayedUsers[index].profileTrustLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color:
-                                          displayedUsers[index].profileVerified
-                                          ? AdminTheme.success
-                                          : displayedUsers[index]
-                                                .profileVerificationNeedsReview
-                                          ? AdminTheme.warning
-                                          : AdminTheme.textMuted,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (displayedUsers[index].createdByAdmin)
-                                    const Text(
-                                      'créé par l\'administration',
+                                    Text(
+                                      displayedUsers[index].profileTrustLabel,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AdminTheme.accent,
+                                        color:
+                                            displayedUsers[index]
+                                                .profileVerified
+                                            ? AdminTheme.success
+                                            : displayedUsers[index]
+                                                  .profileVerificationNeedsReview
+                                            ? AdminTheme.warning
+                                            : AdminTheme.textMuted,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                ],
+                                    if (displayedUsers[index].createdByAdmin)
+                                      const Text(
+                                        'créé par l\'administration',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AdminTheme.accent,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          DataCell(
-                            AdminAccountStatusChips(
-                              user: displayedUsers[index],
+                            DataCell(
+                              AdminAccountStatusChips(
+                                user: displayedUsers[index],
+                              ),
                             ),
-                          ),
-                          DataCell(
-                            _actionInFlightUid == displayedUsers[index].uid
-                                ? Row(
-                                    children: [
-                                      const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _actionInFlightLabel ?? 'Traitement...',
-                                      ),
-                                    ],
-                                  )
-                                : PopupMenuButton<String>(
-                                    tooltip: 'Actions utilisateur',
-                                    onSelected: (value) =>
-                                        _handleActionSelection(
-                                          value,
-                                          displayedUsers[index],
-                                        ),
-                                    itemBuilder: (context) =>
-                                        _buildActionMenuItems(
-                                          displayedUsers[index],
-                                        ),
-                                  ),
-                          ),
-                        ],
+                            DataCell(_buildActionCell(displayedUsers[index])),
+                          ],
+                        ),
                       ),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                      ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: dataRowHeight,
+                      dataRowMaxHeight: dataRowHeight,
+                      headingRowHeight: headingRowHeight,
                     ),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                    ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: dataRowHeight,
-                    dataRowMaxHeight: dataRowHeight,
-                    headingRowHeight: headingRowHeight,
                   ),
-                ),
                 SizedBox(height: spacing),
                 AdminPaginationBar(
                   currentPage: currentPage,

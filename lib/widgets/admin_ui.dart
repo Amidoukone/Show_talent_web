@@ -271,12 +271,16 @@ class AdminPill extends StatelessWidget {
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 8),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -876,6 +880,107 @@ class AdminEmptyState extends StatelessWidget {
               icon: Icon(actionIcon, size: 18),
               label: Text(actionLabel!),
             ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class AdminDataCardField {
+  const AdminDataCardField({required this.label, required this.value});
+
+  final String label;
+  final Widget value;
+}
+
+/// A single-record card used in place of a table row on narrow viewports.
+/// Pairs with [AdminDataTableCard]: pages show the [DataTable] on wide
+/// screens and a list of these cards below the compact breakpoint, so
+/// nothing requires horizontal scrolling on a phone.
+class AdminDataCard extends StatelessWidget {
+  const AdminDataCard({
+    required this.title,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.fields = const [],
+    this.actions,
+    this.accentColor = AdminTheme.accent,
+    super.key,
+  });
+
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? leading;
+  final Widget? trailing;
+  final List<AdminDataCardField> fields;
+  final Widget? actions;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return AdminGlassPanel(
+      padding: const EdgeInsets.all(16),
+      radius: 18,
+      accentColor: accentColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (leading != null) ...[leading!, const SizedBox(width: 12)],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    title,
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      subtitle!,
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 10),
+                trailing!,
+              ],
+            ],
+          ),
+          if (fields.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(
+              color: AdminTheme.borderSoft.withValues(alpha: 0.6),
+              height: 1,
+            ),
+            const SizedBox(height: 12),
+            for (final field in fields)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 116,
+                      child: Text(
+                        field.label,
+                        style: const TextStyle(
+                          color: AdminTheme.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: field.value),
+                  ],
+                ),
+              ),
+          ],
+          if (actions != null) ...[
+            const SizedBox(height: 4),
+            Align(alignment: Alignment.centerRight, child: actions!),
           ],
         ],
       ),

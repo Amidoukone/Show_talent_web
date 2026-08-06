@@ -37,7 +37,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   }
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   String _resolveUserName(String uid) {
     return userController.userList
@@ -108,8 +108,9 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     return [
       AdminVideoMetaItem(
         label: video.optimized ? 'Décision possible' : 'Traitement en cours',
-        icon:
-            video.optimized ? Icons.verified_outlined : Icons.autorenew_rounded,
+        icon: video.optimized
+            ? Icons.verified_outlined
+            : Icons.autorenew_rounded,
         color: _statusColor(video),
       ),
       AdminVideoMetaItem(
@@ -351,6 +352,20 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     );
   }
 
+  Widget _buildVideoCard(Video video) {
+    return AdminDataCard(
+      leading: _buildPreview(video, true),
+      title: _buildTitleCell(video),
+      fields: [
+        AdminDataCardField(
+          label: 'Joueur',
+          value: Text(_resolveUserName(video.uid)),
+        ),
+      ],
+      actions: _buildActions(video),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
@@ -382,13 +397,16 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
           ),
           Obx(() {
             final allVideos = videoController.getAllVideos();
-            final pendingVideos =
-                allVideos.where((video) => video.isPendingReview).toList();
-            final readyForDecision =
-                pendingVideos.where((video) => video.optimized).length;
+            final pendingVideos = allVideos
+                .where((video) => video.isPendingReview)
+                .toList();
+            final readyForDecision = pendingVideos
+                .where((video) => video.optimized)
+                .length;
             final processingCount = pendingVideos.length - readyForDecision;
-            final publishedCount =
-                allVideos.where((video) => video.isApprovedPublic).length;
+            final publishedCount = allVideos
+                .where((video) => video.isApprovedPublic)
+                .length;
 
             final filteredVideos = pendingVideos.where((video) {
               final normalizedQuery = searchQuery.trim().toLowerCase();
@@ -417,14 +435,14 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
               0,
               filteredVideos.length,
             );
-            final displayedVideos =
-                filteredVideos.sublist(startIndex, endIndex);
+            final displayedVideos = filteredVideos.sublist(
+              startIndex,
+              endIndex,
+            );
 
             if (videoController.isLoading.value) {
               return const Center(
-                child: AdminLoadingState(
-                  message: 'Chargement des vidéos...',
-                ),
+                child: AdminLoadingState(message: 'Chargement des vidéos...'),
               );
             }
 
@@ -494,7 +512,36 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                       }
                     },
                   )
-                else ...[
+                else if (compact) ...[
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final video in displayedVideos) ...[
+                        _buildVideoCard(video),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  ),
+                  SizedBox(height: spacing),
+                  AdminPaginationBar(
+                    currentPage: safePage,
+                    totalPages: totalPages,
+                    onPrevious: safePage > 0
+                        ? () {
+                            setState(() {
+                              currentPage = safePage - 1;
+                            });
+                          }
+                        : null,
+                    onNext: safePage < totalPages - 1
+                        ? () {
+                            setState(() {
+                              currentPage = safePage + 1;
+                            });
+                          }
+                        : null,
+                  ),
+                ] else ...[
                   AdminDataTableCard(
                     compact: compact,
                     child: DataTable(
@@ -507,29 +554,28 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                         DataColumn(label: Text('Statut')),
                         DataColumn(label: Text('Actions')),
                       ],
-                      rows: List<DataRow>.generate(
-                        displayedVideos.length,
-                        (index) {
-                          final video = displayedVideos[index];
-                          return DataRow(
-                            cells: [
-                              DataCell(_buildPreview(video, compact)),
-                              DataCell(_buildTitleCell(video)),
-                              DataCell(Text(_resolveUserName(video.uid))),
-                              DataCell(
-                                AdminPill(
-                                  label: _statusLabel(video),
-                                  icon: video.optimized
-                                      ? Icons.verified_outlined
-                                      : Icons.autorenew_rounded,
-                                  color: _statusColor(video),
-                                ),
+                      rows: List<DataRow>.generate(displayedVideos.length, (
+                        index,
+                      ) {
+                        final video = displayedVideos[index];
+                        return DataRow(
+                          cells: [
+                            DataCell(_buildPreview(video, compact)),
+                            DataCell(_buildTitleCell(video)),
+                            DataCell(Text(_resolveUserName(video.uid))),
+                            DataCell(
+                              AdminPill(
+                                label: _statusLabel(video),
+                                icon: video.optimized
+                                    ? Icons.verified_outlined
+                                    : Icons.autorenew_rounded,
+                                color: _statusColor(video),
                               ),
-                              DataCell(_buildActions(video)),
-                            ],
-                          );
-                        },
-                      ),
+                            ),
+                            DataCell(_buildActions(video)),
+                          ],
+                        );
+                      }),
                       headingRowColor: WidgetStateProperty.all(
                         AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
                       ),

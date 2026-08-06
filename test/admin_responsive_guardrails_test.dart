@@ -43,6 +43,7 @@ void main() {
     final videoController = VideoController(
       adminContentService: AdminContentService.visualQa(),
     );
+    videoController.isLoading.value = false;
 
     await tester.pumpWidget(
       GetMaterialApp(

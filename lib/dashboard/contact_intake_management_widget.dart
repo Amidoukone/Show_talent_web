@@ -76,7 +76,7 @@ class _ContactIntakeManagementWidgetState
   String? _actionIntakeId;
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1260;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   @override
   void dispose() {
@@ -604,22 +604,7 @@ class _ContactIntakeManagementWidgetState
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.13),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: color.withValues(alpha: 0.28)),
-            ),
-            child: Text(
-              intake.followUpLabel,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
-          ),
+          AdminPill(label: intake.followUpLabel, color: color),
           if (intake.hasAgencyNote) ...[
             const SizedBox(height: 6),
             Text(
@@ -646,7 +631,7 @@ class _ContactIntakeManagementWidgetState
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _PriorityPill(label: _priorityLabel(intake), color: color),
+          AdminPill(label: _priorityLabel(intake), color: color),
           const SizedBox(height: 6),
           Text(
             _activityLabel(intake),
@@ -707,7 +692,7 @@ class _ContactIntakeManagementWidgetState
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _PriorityPill(label: intake.participantFeedbackLabel, color: color),
+          AdminPill(label: intake.participantFeedbackLabel, color: color),
           const SizedBox(height: 6),
           Text(
             'Signalé par : $actor',
@@ -734,6 +719,58 @@ class _ContactIntakeManagementWidgetState
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildActionCell(ContactIntake intake) {
+    final isActionInFlight = _actionIntakeId == intake.id;
+    if (isActionInFlight) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    return _buildActionMenuCell(intake);
+  }
+
+  Widget _buildIntakeCard(ContactIntake intake) {
+    return AdminDataCard(
+      title: Text(
+        'Créé le ${_formatDate(intake.createdAt)}',
+        style: const TextStyle(
+          color: AdminTheme.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      fields: [
+        AdminDataCardField(
+          label: 'Demandeur',
+          value: _buildActorCell(
+            name: intake.requesterDisplayName,
+            roleLabel: intake.requesterRoleLabel,
+            organization: intake.requesterOrganization,
+          ),
+        ),
+        AdminDataCardField(
+          label: 'Cible',
+          value: _buildActorCell(
+            name: intake.targetDisplayName,
+            roleLabel: intake.targetRoleLabel,
+            organization: intake.targetOrganization,
+          ),
+        ),
+        AdminDataCardField(label: 'Suivi', value: _buildFollowUpCell(intake)),
+        AdminDataCardField(
+          label: 'Retour utilisateur',
+          value: _buildParticipantSignalCell(intake),
+        ),
+        AdminDataCardField(
+          label: 'Priorité',
+          value: _buildPriorityCell(intake),
+        ),
+      ],
+      actions: _buildActionCell(intake),
     );
   }
 
@@ -1138,6 +1175,16 @@ class _ContactIntakeManagementWidgetState
                       });
                     },
                   )
+                else if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final intake in displayed) ...[
+                        _buildIntakeCard(intake),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  )
                 else
                   AdminDataTableCard(
                     compact: compact,
@@ -1407,35 +1454,6 @@ class _PipelineStageCard extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PriorityPill extends StatelessWidget {
-  const _PriorityPill({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
         ),
       ),
     );

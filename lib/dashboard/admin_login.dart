@@ -82,188 +82,23 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       body: SafeArea(
         child: AdminAppBackground(
           padding: EdgeInsets.all(compactViewport ? 16 : 24),
-          child: LayoutBuilder(
-            builder: (context, viewportConstraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: (viewportConstraints.maxHeight - 16).clamp(
-                      0.0,
-                      double.infinity,
-                    ),
-                  ),
-                  child: Center(
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1220),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 980 &&
-                                viewportConstraints.maxHeight >= 760;
-
-                            final showcaseSection = const _LoginShowcasePanel();
-                            final formSection = _LoginFormPanel(
-                              emailController: _emailController,
-                              passwordController: _passwordController,
-                              obscurePassword: _obscurePassword,
-                              onToggleObscurePassword: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                              onSubmit: _loginAdmin,
-                            );
-
-                            return isWide
-                                ? Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Expanded(
-                                        flex: 12,
-                                        child: _LoginShowcasePanel(),
-                                      ),
-                                      const SizedBox(width: 24),
-                                      Expanded(flex: 10, child: formSection),
-                                    ],
-                                  )
-                                : Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      formSection,
-                                      const SizedBox(height: 24),
-                                      showcaseSection,
-                                    ],
-                                  );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LoginShowcasePanel extends StatelessWidget {
-  const _LoginShowcasePanel();
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final viewportSize = MediaQuery.sizeOf(context);
-    final compact = viewportSize.width < 600;
-    final viewportHeight = viewportSize.height;
-
-    return AdminGlassPanel(
-      width: compact ? viewportSize.width - 32 : double.infinity,
-      padding: const EdgeInsets.all(28),
-      highlight: true,
-      accentColor: AdminTheme.accent,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AdminPill(
-            label: 'Exp\u00e9rience admin',
-            icon: Icons.shield_outlined,
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              const AdminBrandMark(),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Adfoot',
-                    style: textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    "Portail d'administration",
-                    style: TextStyle(color: AdminTheme.textSecondary),
-                  ),
-                ],
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: _LoginFormPanel(
+                emailController: _emailController,
+                passwordController: _passwordController,
+                obscurePassword: _obscurePassword,
+                onToggleObscurePassword: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+                onSubmit: _loginAdmin,
               ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Text(
-            'Pilotez la plateforme avec une interface claire, sobre et fiable.',
-            style: textTheme.displaySmall,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Un espace centralis\u00e9 pour suivre les comptes, les contenus, les offres, les \u00e9v\u00e9nements et les mises en relation.",
-            style: TextStyle(
-              color: AdminTheme.textSecondary,
-              height: 1.6,
             ),
           ),
-          const SizedBox(height: 30),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final useCompactCards =
-                  constraints.maxWidth < 560 || viewportHeight < 820;
-
-              final cards = [
-                const _ShowcaseCard(
-                  icon: Icons.people_alt_rounded,
-                  title: 'Comptes administr\u00e9s',
-                  subtitle: 'Provisionnement et activation centralis\u00e9s.',
-                  accentColor: AdminTheme.accent,
-                ),
-                const _ShowcaseCard(
-                  icon: Icons.play_circle_outline_rounded,
-                  title: 'Mod\u00e9ration vid\u00e9o',
-                  subtitle: 'Lecture, suppression et suivi des signalements.',
-                  accentColor: AdminTheme.cyan,
-                ),
-                const _ShowcaseCard(
-                  icon: Icons.insights_rounded,
-                  title: "Vue d'ensemble",
-                  subtitle:
-                      "Des cartes KPI et une lecture rapide de l'activit\u00e9.",
-                  accentColor: AdminTheme.warning,
-                ),
-              ];
-
-              if (useCompactCards) {
-                return Column(
-                  children: [
-                    cards[0],
-                    const SizedBox(height: 14),
-                    cards[1],
-                    const SizedBox(height: 14),
-                    cards[2],
-                  ],
-                );
-              }
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 14),
-                  Expanded(child: cards[1]),
-                  const SizedBox(width: 14),
-                  Expanded(child: cards[2]),
-                ],
-              );
-            },
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -290,165 +125,60 @@ class _LoginFormPanel extends StatelessWidget {
     final compact = viewportWidth < 600;
 
     return AdminGlassPanel(
-      width: compact ? viewportWidth - 32 : double.infinity,
+      width: compact ? viewportWidth - 32 : 440,
       padding: EdgeInsets.all(compact ? 20 : 28),
       highlight: true,
       accentColor: AdminTheme.cyan,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: AdminFormColumn(
+        maxWidth: 440,
         children: [
-          const AdminPill(
-            label: 'Connexion s\u00e9curis\u00e9e',
-            icon: Icons.lock_outline_rounded,
-            color: AdminTheme.cyan,
+          const Align(
+            alignment: Alignment.center,
+            child: AdminBrandMark(size: 64),
           ),
-          const SizedBox(height: 22),
-          const Text(
-            'Connexion admin',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              color: AdminTheme.textPrimary,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            "Connectez-vous avec un compte autoris\u00e9. Les droits sont v\u00e9rifi\u00e9s avant l'ouverture du tableau de bord.",
-            style: TextStyle(
-              color: AdminTheme.textSecondary,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 26),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AdminTheme.surfaceSoft.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: AdminTheme.border.withValues(alpha: 0.85),
+          const Align(
+            alignment: Alignment.center,
+            child: Text(
+              'Connexion admin',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: AdminTheme.textPrimary,
+                letterSpacing: 0,
               ),
             ),
-            child: AdminFormColumn(
-              maxWidth: 440,
-              children: [
-                Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AdminTheme.accent.withValues(alpha: 0.1),
-                      border: Border.all(
-                        color: AdminTheme.accent.withValues(alpha: 0.24),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.admin_panel_settings_rounded,
-                      color: AdminTheme.accent,
-                      size: 34,
-                    ),
-                  ),
-                ),
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Adresse e-mail',
-                    prefixIcon: Icon(Icons.mail_outline_rounded),
-                  ),
-                ),
-                TextField(
-                  controller: passwordController,
-                  obscureText: obscurePassword,
-                  onSubmitted: (_) => onSubmit(),
-                  decoration: InputDecoration(
-                    labelText: 'Mot de passe',
-                    prefixIcon: const Icon(Icons.lock_outline_rounded),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                      onPressed: onToggleObscurePassword,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: onSubmit,
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('Ouvrir le tableau de bord'),
-                  ),
-                ),
-              ],
+          ),
+          TextField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Adresse e-mail',
+              prefixIcon: Icon(Icons.mail_outline_rounded),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ShowcaseCard extends StatelessWidget {
-  const _ShowcaseCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.accentColor,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return AdminGlassPanel(
-      padding: const EdgeInsets.all(20),
-      accentColor: accentColor,
-      highlight: true,
-      radius: 26,
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: accentColor.withValues(alpha: 0.12),
+          TextField(
+            controller: passwordController,
+            obscureText: obscurePassword,
+            onSubmitted: (_) => onSubmit(),
+            decoration: InputDecoration(
+              labelText: 'Mot de passe',
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+                onPressed: onToggleObscurePassword,
+              ),
             ),
-            child: Icon(icon, color: accentColor),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AdminTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AdminTheme.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-              ],
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onSubmit,
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('Ouvrir le tableau de bord'),
             ),
           ),
         ],

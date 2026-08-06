@@ -27,7 +27,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
   String? _actionEventId;
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   @override
   void dispose() {
@@ -167,6 +167,117 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
         _actionEventId = null;
       });
     }
+  }
+
+  Widget _buildActionMenu(Event event, bool isActionInFlight) {
+    if (isActionInFlight) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return PopupMenuButton<String>(
+      tooltip: 'Actions événement',
+      onSelected: (value) {
+        if (value.startsWith('status:')) {
+          final status = value.split(':').last;
+          _updateStatus(event: event, nextStatus: status);
+          return;
+        }
+
+        if (value == 'delete') {
+          _confirmDelete(event);
+        }
+      },
+      itemBuilder: (context) {
+        return [
+          ...EventController.moderationStatuses.map(
+            (status) => PopupMenuItem(
+              value: 'status:$status',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    color: _statusColor(status),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Statut : ${_statusLabel(status)}'),
+                ],
+              ),
+            ),
+          ),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.delete_outline_rounded,
+                  color: AdminTheme.danger,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Text('Supprimer'),
+              ],
+            ),
+          ),
+        ];
+      },
+    );
+  }
+
+  Widget _buildEventCard(Event event) {
+    final status = Event.normalizeStatus(event.statut);
+    final color = _statusColor(status);
+    final isActionInFlight = _actionEventId == event.id;
+    final tagsLabel = event.tags
+        ?.where((value) => value.trim().isNotEmpty)
+        .take(3)
+        .join(' | ');
+    final capacityLabel = event.capaciteMax == null
+        ? '${event.participants.length}'
+        : '${event.participants.length}/${event.capaciteMax} places';
+
+    return AdminDataCard(
+      title: Text(
+        event.titre,
+        style: const TextStyle(
+          color: AdminTheme.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: tagsLabel?.isNotEmpty == true
+          ? Text(
+              tagsLabel!,
+              style: const TextStyle(
+                color: AdminTheme.textSecondary,
+                fontSize: 12,
+              ),
+            )
+          : null,
+      trailing: AdminPill(label: _statusLabel(status), color: color),
+      fields: [
+        AdminDataCardField(
+          label: 'Organisateur',
+          value: Text(
+            event.organisateur.nom.isEmpty ? 'Inconnu' : event.organisateur.nom,
+          ),
+        ),
+        AdminDataCardField(
+          label: 'Période',
+          value: Text(
+            '${formatAdminDate(event.dateDebut)} - '
+            '${formatAdminDate(event.dateFin)}',
+          ),
+        ),
+        AdminDataCardField(label: 'Lieu', value: Text(event.lieu)),
+        AdminDataCardField(label: 'Participants', value: Text(capacityLabel)),
+      ],
+      actions: _buildActionMenu(event, isActionInFlight),
+    );
   }
 
   @override
@@ -351,211 +462,146 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                AdminDataTableCard(
-                  compact: compact,
-                  child: DataTable(
-                    columnSpacing: compact ? 14 : 22,
-                    horizontalMargin: compact ? 8 : 10,
-                    columns: const [
-                      DataColumn(label: Text('Titre')),
-                      DataColumn(label: Text('Organisateur')),
-                      DataColumn(label: Text('Période')),
-                      DataColumn(label: Text('Lieu')),
-                      DataColumn(label: Text('Participants')),
-                      DataColumn(label: Text('Statut')),
-                      DataColumn(label: Text('Actions')),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final event in displayed) ...[
+                        _buildEventCard(event),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    rows: List<DataRow>.generate(displayed.length, (index) {
-                      final event = displayed[index];
-                      final status = Event.normalizeStatus(event.statut);
-                      final color = _statusColor(status);
-                      final isActionInFlight = _actionEventId == event.id;
-                      final tagsLabel = event.tags
-                          ?.where((value) => value.trim().isNotEmpty)
-                          .take(3)
-                          .join(' | ');
-                      final capacityLabel = event.capaciteMax == null
-                          ? ''
-                          : '${event.participants.length}/${event.capaciteMax} places';
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: compact ? 14 : 22,
+                      horizontalMargin: compact ? 8 : 10,
+                      columns: const [
+                        DataColumn(label: Text('Titre')),
+                        DataColumn(label: Text('Organisateur')),
+                        DataColumn(label: Text('Période')),
+                        DataColumn(label: Text('Lieu')),
+                        DataColumn(label: Text('Participants')),
+                        DataColumn(label: Text('Statut')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: List<DataRow>.generate(displayed.length, (index) {
+                        final event = displayed[index];
+                        final status = Event.normalizeStatus(event.statut);
+                        final color = _statusColor(status);
+                        final isActionInFlight = _actionEventId == event.id;
+                        final tagsLabel = event.tags
+                            ?.where((value) => value.trim().isNotEmpty)
+                            .take(3)
+                            .join(' | ');
+                        final capacityLabel = event.capaciteMax == null
+                            ? ''
+                            : '${event.participants.length}/${event.capaciteMax} places';
 
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 220),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    event.titre,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AdminTheme.textPrimary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  if (tagsLabel?.isNotEmpty == true) ...[
-                                    const SizedBox(height: 3),
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 220,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      tagsLabel!,
+                                      event.titre,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: AdminTheme.textSecondary,
-                                        fontSize: 11,
+                                        color: AdminTheme.textPrimary,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
+                                    if (tagsLabel?.isNotEmpty == true) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        tagsLabel!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AdminTheme.textSecondary,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              event.organisateur.nom.isEmpty
-                                  ? 'Inconnu'
-                                  : event.organisateur.nom,
+                            DataCell(
+                              Text(
+                                event.organisateur.nom.isEmpty
+                                    ? 'Inconnu'
+                                    : event.organisateur.nom,
+                              ),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              '${formatAdminDate(event.dateDebut)} - '
-                              '${formatAdminDate(event.dateFin)}',
+                            DataCell(
+                              Text(
+                                '${formatAdminDate(event.dateDebut)} - '
+                                '${formatAdminDate(event.dateFin)}',
+                              ),
                             ),
-                          ),
-                          DataCell(
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 180),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    event.lieu,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (capacityLabel.isNotEmpty) ...[
-                                    const SizedBox(height: 3),
+                            DataCell(
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 180,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      capacityLabel,
+                                      event.lieu,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: AdminTheme.textSecondary,
-                                        fontSize: 11,
+                                    ),
+                                    if (capacityLabel.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        capacityLabel,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AdminTheme.textSecondary,
+                                          fontSize: 11,
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ],
-                                ],
-                              ),
-                            ),
-                          ),
-                          DataCell(Text('${event.participants.length}')),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.13),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: color.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Text(
-                                _statusLabel(status),
-                                style: TextStyle(
-                                  color: color,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
                                 ),
                               ),
                             ),
-                          ),
-                          DataCell(
-                            isActionInFlight
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : PopupMenuButton<String>(
-                                    tooltip: 'Actions événement',
-                                    onSelected: (value) {
-                                      if (value.startsWith('status:')) {
-                                        final status = value.split(':').last;
-                                        _updateStatus(
-                                          event: event,
-                                          nextStatus: status,
-                                        );
-                                        return;
-                                      }
-
-                                      if (value == 'delete') {
-                                        _confirmDelete(event);
-                                      }
-                                    },
-                                    itemBuilder: (context) {
-                                      return [
-                                        ...EventController.moderationStatuses.map(
-                                          (status) => PopupMenuItem(
-                                            value: 'status:$status',
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.flag_outlined,
-                                                  color: _statusColor(status),
-                                                  size: 18,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'Statut : ${_statusLabel(status)}',
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const PopupMenuDivider(),
-                                        const PopupMenuItem(
-                                          value: 'delete',
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.delete_outline_rounded,
-                                                color: AdminTheme.danger,
-                                                size: 18,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text('Supprimer'),
-                                            ],
-                                          ),
-                                        ),
-                                      ];
-                                    },
-                                  ),
-                          ),
-                        ],
-                      );
-                    }),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                            DataCell(Text('${event.participants.length}')),
+                            DataCell(
+                              AdminPill(
+                                label: _statusLabel(status),
+                                color: color,
+                              ),
+                            ),
+                            DataCell(_buildActionMenu(event, isActionInFlight)),
+                          ],
+                        );
+                      }),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                      ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: compact ? 62 : 68,
+                      dataRowMaxHeight: compact ? 62 : 68,
+                      headingRowHeight: compact ? 50 : 54,
                     ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: compact ? 62 : 68,
-                    dataRowMaxHeight: compact ? 62 : 68,
-                    headingRowHeight: compact ? 50 : 54,
                   ),
-                ),
                 const SizedBox(height: 12),
                 AdminPaginationBar(
                   currentPage: safePage,

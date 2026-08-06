@@ -214,7 +214,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const AdminBrandMark(
                         size: 44,
                         width: 84,
-                        label: 'ADFOOT',
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
@@ -246,7 +245,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: const AdminBrandMark(
                       size: 50,
                       width: 74,
-                      label: 'ADFOOT',
                     ),
                   ),
           ),

@@ -111,13 +111,11 @@ class AdminBrandMark extends StatelessWidget {
   const AdminBrandMark({
     this.size = 54,
     this.width,
-    this.label = 'AD',
     super.key,
   });
 
   final double size;
   final double? width;
-  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -138,17 +136,11 @@ class AdminBrandMark extends StatelessWidget {
           color: AdminTheme.accentSoft.withValues(alpha: 0.34),
         ),
       ),
-      child: Center(
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: AdminTheme.background,
-            fontSize: label.length > 2 ? size * 0.22 : size * 0.32,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0,
-          ),
+      child: Padding(
+        padding: EdgeInsets.all(size * 0.16),
+        child: Image.asset(
+          'assets/logo_icon_white.png',
+          fit: BoxFit.contain,
         ),
       ),
     );

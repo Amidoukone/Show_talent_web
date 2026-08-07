@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  flutter:
+    name: Flutter analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      # lib/firebase_options.dart is gitignored (real Firebase Web config,
+      # generated locally via FlutterFire CLI -- see README "Secrets and
+      # Firebase config"). The example file has valid placeholder values,
+      # which is all static analysis and the guardrail/unit tests need.
+      - run: cp lib/firebase_options.example.dart lib/firebase_options.dart
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+
+  # Requires a one-time setup: create a fine-grained GitHub PAT with read
+  # access to both Amidoukone/Show_talent_web and Amidoukone/Show-Talent,
+  # then add it as a repo secret named ADFOOT_CROSS_REPO_TOKEN in *both*
+  # repos. Until that secret exists, this job is skipped (not failed) so it
+  # doesn't block CI for everyone in the meantime.
+  cross-repo-contract:
+    name: Admin/mobile contract (cross-repo)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.ADFOOT_CROSS_REPO_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: admin
+      - uses: actions/checkout@v4
+        with:
+          repository: Amidoukone/Show-Talent
+          token: ${{ secrets.ADFOOT_CROSS_REPO_TOKEN }}
+          path: mobile
+      - shell: pwsh
+        working-directory: admin
+        run: ./scripts/check_mobile_contract.ps1 -MobileRepoPath ../mobile

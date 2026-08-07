@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "adfoot-production",
+    "default": "adfoot-staging",
     "production": "adfoot-production",
     "staging": "adfoot-staging"
   },

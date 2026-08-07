@@ -103,6 +103,11 @@ class UserController extends GetxController {
     // search, so mirror users/{uid}/private/contact via a collectionGroup
     // query. Admin claims grant read access to every doc it returns (see
     // firestore.rules); non-admins can't reach this code path at all.
+    //
+    // This query has no where()/orderBy() on purpose: firestore.indexes.json
+    // (mobile repo) has no COLLECTION_GROUP entry for `private`. Adding a
+    // filter or sort here WILL be rejected by Firestore in production until
+    // a matching COLLECTION_GROUP index is added there first.
     _privateContactSubscription ??= FirebaseFirestore.instance
         .collectionGroup('private')
         .snapshots()

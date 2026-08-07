@@ -96,6 +96,117 @@ const AdminCallableActionDescriptor updateManagedAccountProfileAction =
   isConnectedInUi: true,
 );
 
+const AdminCallableActionDescriptor setOfferStatusAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_set_offer_status',
+  label: "Changer le statut d'une offre",
+  callableName: 'adminSetOfferStatus',
+  summary: "Publie, suspend ou archive une offre.",
+  uiSurfaces: ['OfferManagementWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor deleteOfferAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_delete_offer',
+  label: 'Supprimer une offre',
+  callableName: 'adminDeleteOffer',
+  summary: "Supprime définitivement une offre.",
+  uiSurfaces: ['OfferManagementWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor setEventStatusAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_set_event_status',
+  label: "Changer le statut d'un événement",
+  callableName: 'adminSetEventStatus',
+  summary: "Publie, suspend ou archive un événement.",
+  uiSurfaces: ['EventManagementWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor deleteEventAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_delete_event',
+  label: 'Supprimer un événement',
+  callableName: 'adminDeleteEvent',
+  summary: "Supprime définitivement un événement.",
+  uiSurfaces: ['EventManagementWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor setVideoStatusAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_set_video_status',
+  label: 'Changer le statut d’une vidéo',
+  callableName: 'adminSetVideoStatus',
+  summary: "Approuve, remet en attente ou republie une vidéo modérée.",
+  uiSurfaces: ['VideoReviewWidget', 'VideoAddedWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor rejectVideoAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_reject_video',
+  label: 'Rejeter une vidéo',
+  callableName: 'adminRejectVideo',
+  summary: "Rejette une vidéo signalée ou en revue, avec motif optionnel.",
+  uiSurfaces: ['VideoReviewWidget', 'VideoReportedWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor deleteVideoAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_delete_video',
+  label: 'Supprimer une vidéo',
+  callableName: 'adminDeleteVideo',
+  summary: "Supprime définitivement une vidéo et ses fichiers de stockage.",
+  uiSurfaces: ['VideoReviewWidget', 'VideoReportedWidget', 'VideoAddedWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor setContactIntakeFollowUpAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_set_contact_intake_follow_up',
+  label: 'Mettre à jour le suivi agence',
+  callableName: 'adminSetContactIntakeFollowUp',
+  summary: "Met à jour le statut de suivi agence d'une mise en relation.",
+  uiSurfaces: ['ContactIntakeManagementWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor deleteContactIntakeAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_delete_contact_intake',
+  label: 'Supprimer une mise en relation',
+  callableName: 'adminDeleteContactIntake',
+  summary: "Supprime définitivement une demande de mise en relation.",
+  uiSurfaces: ['ContactIntakeManagementWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor deleteContactIntakeConversationAction =
+    AdminCallableActionDescriptor(
+  id: 'admin_delete_contact_intake_conversation',
+  label: 'Supprimer la conversation associée',
+  callableName: 'adminDeleteContactIntakeConversation',
+  summary:
+      "Supprime la conversation liée à une mise en relation, sans supprimer la demande.",
+  uiSurfaces: ['ContactIntakeManagementWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
 const List<AdminCallableActionDescriptor> adminCallableActions = [
   provisionManagedAccountAction,
   deleteManagedAccountAction,
@@ -104,6 +215,16 @@ const List<AdminCallableActionDescriptor> adminCallableActions = [
   disableManagedAccountAuthAction,
   enableManagedAccountAuthAction,
   updateManagedAccountProfileAction,
+  setOfferStatusAction,
+  deleteOfferAction,
+  setEventStatusAction,
+  deleteEventAction,
+  setVideoStatusAction,
+  rejectVideoAction,
+  deleteVideoAction,
+  setContactIntakeFollowUpAction,
+  deleteContactIntakeAction,
+  deleteContactIntakeConversationAction,
 ];
 
 List<AdminCallableActionDescriptor> get connectedAdminCallableActions {

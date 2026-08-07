@@ -154,8 +154,8 @@ void main() {
     expect(user.profileLevelLabel, 'Profil complet');
     expect(user.profileVerified, isTrue);
     expect(user.isProfileTrusted, isTrue);
-    expect(user.profileTrustLabel, 'Profil certifie');
-    expect(user.profileVerificationStatusLabel, 'Verifie par admin');
+    expect(user.profileTrustLabel, 'Profil certifié');
+    expect(user.profileVerificationStatusLabel, 'Vérifié par admin');
     expect(user.profileVerifiedAt?.toUtc(), DateTime.utc(2026, 6, 1));
     expect(user.profileVerifiedBy, 'admin-1');
     expect(user.profileVerificationNote, 'Profil contrôlé');
@@ -194,8 +194,8 @@ void main() {
 
     expect(user.profileVerificationNeedsReview, isTrue);
     expect(user.isProfileTrusted, isFalse);
-    expect(user.profileTrustLabel, 'A revalider');
-    expect(user.profileVerificationStatusLabel, 'Verification a refaire');
+    expect(user.profileTrustLabel, 'À revalider');
+    expect(user.profileVerificationStatusLabel, 'Vérification à refaire');
     expect(
       user.toMap()['profileVerificationInvalidationReason'],
       'profile_updated_by_user',

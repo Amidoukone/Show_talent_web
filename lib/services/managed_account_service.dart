@@ -14,7 +14,7 @@ class ManagedAccountService {
     FirebaseFunctions? functions,
     ManagedAccountCallableExecutor? callableExecutor,
   })  : _functions = functions ??
-            (callableExecutor == null
+            (callableExecutor == null && !AppEnvironmentConfig.visualQaMode
                 ? FirebaseFunctions.instanceFor(
                     region: AppEnvironmentConfig.functionsRegion,
                   )

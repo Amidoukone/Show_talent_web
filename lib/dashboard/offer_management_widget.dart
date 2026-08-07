@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controller/offre_controller.dart';
 import '../models/offre.dart';
 import '../theme/admin_theme.dart';
+import '../utils/admin_date_format.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 
@@ -26,12 +27,21 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
   String? _actionOfferId;
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedStatus = 'Tous';
+      _currentPage = 0;
+      _searchController.clear();
+    });
   }
 
   String _statusLabel(String status) {
@@ -41,9 +51,9 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       case 'ouverte':
         return 'Ouverte';
       case 'fermee':
-        return 'Fermee';
+        return 'Fermée';
       case 'archivee':
-        return 'Archivee';
+        return 'Archivée';
       default:
         return status;
     }
@@ -79,14 +89,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Statut mis à jour',
         message: 'Statut de l’offre mis à jour : ${_statusLabel(nextStatus)}.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Mise à jour impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
@@ -105,16 +115,18 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmation'),
-          content: Text(
-            'Supprimer l’offre "${offre.titre}" ?',
-          ),
+          title: const Text('Supprimer l’offre'),
+          content: Text('Supprimer l’offre "${offre.titre}" ?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Annuler'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminTheme.danger,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Supprimer'),
             ),
@@ -135,14 +147,14 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Offre supprimée',
         message: 'Offre supprimée.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Suppression impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
@@ -156,9 +168,143 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
     }
   }
 
+  Widget _buildActionMenu(Offre offre, bool isActionInFlight) {
+    if (isActionInFlight) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return PopupMenuButton<String>(
+      tooltip: 'Actions offre',
+      onSelected: (value) {
+        if (value.startsWith('status:')) {
+          final status = value.split(':').last;
+          _updateStatus(offre: offre, nextStatus: status);
+          return;
+        }
+
+        if (value == 'delete') {
+          _confirmDelete(offre);
+        }
+      },
+      itemBuilder: (context) {
+        return [
+          ...OffreController.moderationStatuses.map(
+            (status) => PopupMenuItem(
+              value: 'status:$status',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    color: _statusColor(status),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Statut : ${_statusLabel(status)}'),
+                ],
+              ),
+            ),
+          ),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.delete_outline_rounded,
+                  color: AdminTheme.danger,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Text('Supprimer'),
+              ],
+            ),
+          ),
+        ];
+      },
+    );
+  }
+
+  Widget _buildOfferCard(Offre offre) {
+    final status = Offre.normalizeStatus(offre.statut);
+    final color = _statusColor(status);
+    final isActionInFlight = _actionOfferId == offre.id;
+    final offerMeta = [
+      offre.posteRecherche,
+      offre.localisation,
+      offre.niveau,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' | ');
+
+    return AdminDataCard(
+      title: Text(
+        offre.titre,
+        style: const TextStyle(
+          color: AdminTheme.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: offerMeta.isNotEmpty
+          ? Text(
+              offerMeta,
+              style: const TextStyle(
+                color: AdminTheme.textSecondary,
+                fontSize: 12,
+              ),
+            )
+          : null,
+      trailing: AdminPill(label: _statusLabel(status), color: color),
+      fields: [
+        AdminDataCardField(
+          label: 'Recruteur',
+          value: Text(
+            offre.recruteur.nom.isEmpty ? 'Inconnu' : offre.recruteur.nom,
+          ),
+        ),
+        AdminDataCardField(
+          label: 'Période',
+          value: Text(
+            '${formatAdminDate(offre.dateDebut)} - '
+            '${formatAdminDate(offre.dateFin)}',
+          ),
+        ),
+        AdminDataCardField(
+          label: 'Candidats',
+          value: Text('${offre.candidats.length}'),
+        ),
+      ],
+      actions: _buildActionMenu(offre, isActionInFlight),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
+    final hasFilters =
+        _searchQuery.trim().isNotEmpty || _selectedStatus != 'Tous';
+    final statusItems = <String>['Tous', ...OffreController.moderationStatuses];
+    final statusDropdown = DropdownButtonFormField<String>(
+      initialValue: _selectedStatus,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Statut'),
+      items: statusItems
+          .map(
+            (status) => DropdownMenuItem(
+              value: status,
+              child: Text(status == 'Tous' ? status : _statusLabel(status)),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _selectedStatus = value;
+          _currentPage = 0;
+        });
+      },
+    );
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(compact ? 16 : 22),
@@ -167,96 +313,30 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Modération des offres',
-            title: 'Gestion des offres',
-            subtitle:
-                'Supervision des offres avec statuts admin et suppression via backend partagé.',
-          ),
-          const SizedBox(height: 14),
-          const AdminInfoBanner(
-            title: 'Mutation protégée',
-            message:
-                'Les changements de statut et suppressions passent uniquement par les callables admin.',
-            icon: Icons.gavel_rounded,
-            tone: AdminBannerTone.info,
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 760;
-              final statusItems = <String>[
-                'Tous',
-                ...OffreController.moderationStatuses,
-              ];
-
-              final statusDropdown = DropdownButtonFormField<String>(
-                value: _selectedStatus,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Statut',
-                ),
-                items: statusItems
-                    .map(
-                      (status) => DropdownMenuItem(
-                        value: status,
-                        child: Text(
-                          status == 'Tous' ? status : _statusLabel(status),
-                        ),
-                      ),
-                    )
-                    .toList(),
+          AdminFilterBar(
+            maxWidth: 900,
+            flexes: const [3, 2, 2],
+            children: [
+              AdminSearchField(
+                controller: _searchController,
+                hintText: 'Rechercher une offre',
                 onChanged: (value) {
-                  if (value == null) return;
                   setState(() {
-                    _selectedStatus = value;
+                    _searchQuery = value.trim().toLowerCase();
                     _currentPage = 0;
                   });
                 },
-              );
-
-              if (stacked) {
-                return Column(
-                  children: [
-                    AdminSearchField(
-                      controller: _searchController,
-                      hintText: 'Rechercher une offre',
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value.trim().toLowerCase();
-                          _currentPage = 0;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    statusDropdown,
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: AdminSearchField(
-                      controller: _searchController,
-                      hintText: 'Rechercher une offre',
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value.trim().toLowerCase();
-                          _currentPage = 0;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: statusDropdown,
-                  ),
-                ],
-              );
-            },
+              ),
+              statusDropdown,
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: hasFilters ? _clearFilters : null,
+                  icon: const Icon(Icons.filter_alt_off_rounded),
+                  label: const Text('Réinitialiser'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Obx(() {
@@ -266,7 +346,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
               final status = Offre.normalizeStatus(offre.statut);
               final statusMatch =
                   _selectedStatus == 'Tous' || status == _selectedStatus;
-              final searchMatch = _searchQuery.isEmpty ||
+              final searchMatch =
+                  _searchQuery.isEmpty ||
                   [
                     offre.titre,
                     offre.description,
@@ -276,47 +357,62 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                     offre.niveau,
                     offre.posteRecherche,
                   ].whereType<String>().any(
-                        (value) => value.toLowerCase().contains(_searchQuery),
-                      );
+                    (value) => value.toLowerCase().contains(_searchQuery),
+                  );
               return statusMatch && searchMatch;
             }).toList();
 
-            final totalPages = (filtered.length / _rowsPerPage).ceil();
-            final startIndex = _currentPage * _rowsPerPage;
-            final endIndex =
-                (startIndex + _rowsPerPage).clamp(0, filtered.length);
+            final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
+            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+            final safePage = _currentPage >= totalPages
+                ? totalPages - 1
+                : _currentPage.clamp(0, totalPages - 1);
+            final startIndex = safePage * _rowsPerPage;
+            final endIndex = (startIndex + _rowsPerPage).clamp(
+              0,
+              filtered.length,
+            );
             final displayed = filtered.sublist(startIndex, endIndex);
 
             if (_offreController.isLoading.value) {
               return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(28),
-                  child: CircularProgressIndicator(),
-                ),
+                child: AdminLoadingState(message: 'Chargement des offres...'),
               );
             }
 
             if (filtered.isEmpty) {
+              if (allOffres.isEmpty) {
+                return AdminEmptyState(
+                  title: 'Aucune offre à modérer',
+                  message: 'Aucune offre n\'a encore été créée.',
+                  icon: Icons.work_outline_rounded,
+                  actionLabel: 'Recharger',
+                  actionIcon: Icons.refresh_rounded,
+                  onAction: () {
+                    _offreController.getAllOffres();
+                  },
+                );
+              }
+
               return AdminEmptyState(
-                title: 'Aucune offre a moderer',
-                message:
-                    'Aucune offre ne correspond aux filtres appliqués pour le moment.',
-                icon: Icons.work_outline_rounded,
-                actionLabel: 'Recharger',
-                actionIcon: Icons.refresh_rounded,
-                onAction: () {
-                  _offreController.getAllOffres();
-                },
+                title: 'Aucune offre dans cette vue',
+                message: 'Aucune offre ne correspond aux filtres actuels.',
+                icon: Icons.filter_alt_off_outlined,
+                actionLabel: 'Réinitialiser',
+                actionIcon: Icons.filter_alt_off_rounded,
+                onAction: _clearFilters,
               );
             }
 
             final openedCount = allOffres
                 .where(
-                    (offre) => Offre.normalizeStatus(offre.statut) == 'ouverte')
+                  (offre) => Offre.normalizeStatus(offre.statut) == 'ouverte',
+                )
                 .length;
             final archivedCount = allOffres
-                .where((offre) =>
-                    Offre.normalizeStatus(offre.statut) == 'archivee')
+                .where(
+                  (offre) => Offre.normalizeStatus(offre.statut) == 'archivee',
+                )
                 .length;
             final totalViews = allOffres.fold<int>(
               0,
@@ -343,7 +439,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                       value: '$openedCount',
                       icon: Icons.work_history_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Catalogue global',
+                      subtitle: 'Catalogue',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -351,55 +447,66 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                       value: '$archivedCount',
                       icon: Icons.archive_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'Catalogue global',
+                      subtitle: 'Catalogue',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Vues offres',
+                      label: 'Vues',
                       value: '$totalViews',
                       icon: Icons.visibility_outlined,
                       accentColor: AdminTheme.accentSoft,
-                      subtitle: 'Champ mobile vues',
+                      subtitle: 'Côté application',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                AdminDataTableCard(
-                  compact: compact,
-                  child: DataTable(
-                    columnSpacing: compact ? 14 : 22,
-                    horizontalMargin: compact ? 8 : 10,
-                    columns: const [
-                      DataColumn(label: Text('Titre')),
-                      DataColumn(label: Text('Recruteur')),
-                      DataColumn(label: Text('Periode')),
-                      DataColumn(label: Text('Candidats')),
-                      DataColumn(label: Text('Statut')),
-                      DataColumn(label: Text('Actions')),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final offre in displayed) ...[
+                        _buildOfferCard(offre),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    rows: List<DataRow>.generate(
-                      displayed.length,
-                      (index) {
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: compact ? 14 : 22,
+                      horizontalMargin: compact ? 8 : 10,
+                      columns: const [
+                        DataColumn(label: Text('Titre')),
+                        DataColumn(label: Text('Recruteur')),
+                        DataColumn(label: Text('Période')),
+                        DataColumn(label: Text('Candidats')),
+                        DataColumn(label: Text('Statut')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: List<DataRow>.generate(displayed.length, (index) {
                         final offre = displayed[index];
                         final status = Offre.normalizeStatus(offre.statut);
                         final color = _statusColor(status);
                         final isActionInFlight = _actionOfferId == offre.id;
-                        final offerMeta = [
-                          offre.posteRecherche,
-                          offre.localisation,
-                          offre.niveau,
-                        ]
-                            .whereType<String>()
-                            .where((value) => value.trim().isNotEmpty)
-                            .join(' | ');
+                        final offerMeta =
+                            [
+                                  offre.posteRecherche,
+                                  offre.localisation,
+                                  offre.niveau,
+                                ]
+                                .whereType<String>()
+                                .where((value) => value.trim().isNotEmpty)
+                                .join(' | ');
 
                         return DataRow(
                           cells: [
                             DataCell(
                               ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 220),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 220,
+                                ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,130 +545,48 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                             ),
                             DataCell(
                               Text(
-                                '${offre.dateDebut.day}/${offre.dateDebut.month}/${offre.dateDebut.year} - '
-                                '${offre.dateFin.day}/${offre.dateFin.month}/${offre.dateFin.year}',
+                                '${formatAdminDate(offre.dateDebut)} - '
+                                '${formatAdminDate(offre.dateFin)}',
                               ),
                             ),
                             DataCell(Text('${offre.candidats.length}')),
                             DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.13),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: color.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Text(
-                                  _statusLabel(status),
-                                  style: TextStyle(
-                                    color: color,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                              AdminPill(
+                                label: _statusLabel(status),
+                                color: color,
                               ),
                             ),
-                            DataCell(
-                              isActionInFlight
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : PopupMenuButton<String>(
-                                      tooltip: 'Actions offre',
-                                      onSelected: (value) {
-                                        if (value.startsWith('status:')) {
-                                          final status = value.split(':').last;
-                                          _updateStatus(
-                                            offre: offre,
-                                            nextStatus: status,
-                                          );
-                                          return;
-                                        }
-
-                                        if (value == 'delete') {
-                                          _confirmDelete(offre);
-                                        }
-                                      },
-                                      itemBuilder: (context) {
-                                        return [
-                                          ...OffreController.moderationStatuses
-                                              .map(
-                                            (status) => PopupMenuItem(
-                                              value: 'status:$status',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.flag_outlined,
-                                                    color: _statusColor(status),
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Statut : ${_statusLabel(status)}',
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          const PopupMenuDivider(),
-                                          const PopupMenuItem(
-                                            value: 'delete',
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  color: AdminTheme.danger,
-                                                  size: 18,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Text('Supprimer'),
-                                              ],
-                                            ),
-                                          ),
-                                        ];
-                                      },
-                                    ),
-                            ),
+                            DataCell(_buildActionMenu(offre, isActionInFlight)),
                           ],
                         );
-                      },
+                      }),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                      ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: compact ? 62 : 68,
+                      dataRowMaxHeight: compact ? 62 : 68,
+                      headingRowHeight: compact ? 50 : 54,
                     ),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                    ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: compact ? 62 : 68,
-                    dataRowMaxHeight: compact ? 62 : 68,
-                    headingRowHeight: compact ? 50 : 54,
                   ),
-                ),
                 const SizedBox(height: 12),
                 AdminPaginationBar(
-                  currentPage: _currentPage,
+                  currentPage: safePage,
                   totalPages: totalPages,
-                  onPrevious: _currentPage > 0
+                  onPrevious: safePage > 0
                       ? () {
                           setState(() {
-                            _currentPage -= 1;
+                            _currentPage = safePage - 1;
                           });
                         }
                       : null,
-                  onNext: _currentPage < totalPages - 1
+                  onNext: safePage < totalPages - 1
                       ? () {
                           setState(() {
-                            _currentPage += 1;
+                            _currentPage = safePage + 1;
                           });
                         }
                       : null,

@@ -31,6 +31,7 @@ Documents de reference associes :
 - [docs/prd-runbook-exploitation-inter-depots.md](docs/prd-runbook-exploitation-inter-depots.md)
 - [docs/runbook-production-admin-mobile.md](docs/runbook-production-admin-mobile.md)
 - [docs/admin-offer-event-delete-deploy-smoketest.md](docs/admin-offer-event-delete-deploy-smoketest.md)
+- [docs/admin-offer-event-rollout-plan.md](docs/admin-offer-event-rollout-plan.md)
 
 ## Secrets and Firebase config
 
@@ -41,11 +42,16 @@ Les fichiers suivants sont strictement locaux et ne doivent jamais etre pushes :
 - `lib/firebase_options.dart`
 - `.credentials/*`
 - `.env*`
+- `config/*.json` (sauf `config/*.example.json`)
 
 Templates disponibles dans le repo :
 
 - `android/app/google-services.example.json`
 - `lib/firebase_options.example.dart`
+- `config/web-staging.example.json` (config Firebase Web SDK staging, utilisee par
+  `scripts/build_web_staging.ps1` / `npm run build:web:staging`) : copier vers
+  `config/web-staging.json` et remplir avec `firebase apps:sdkconfig web <appId>
+  --project adfoot-staging`
 
 Configuration locale rapide (PowerShell) :
 
@@ -115,6 +121,8 @@ Le portail admin :
 
 Toutes les operations sensibles passent par les callables backend partagees :
 
+Gestion de comptes (voir `lib/services/managed_account_service.dart`) :
+
 - `provisionManagedAccount`
 - `deleteManagedAccount`
 - `changeManagedAccountRole`
@@ -122,6 +130,25 @@ Toutes les operations sensibles passent par les callables backend partagees :
 - `disableManagedAccountAuth`
 - `enableManagedAccountAuth`
 - `updateManagedAccountProfile`
+
+Moderation de contenu (voir `lib/services/admin_content_service.dart` et
+[docs/admin-offer-event-rollout-plan.md](docs/admin-offer-event-rollout-plan.md)) :
+
+- `adminSetOfferStatus`
+- `adminDeleteOffer`
+- `adminSetEventStatus`
+- `adminDeleteEvent`
+- `adminSetVideoStatus`
+- `adminRejectVideo`
+- `adminDeleteVideo`
+- `adminSetContactIntakeFollowUp`
+- `adminDeleteContactIntake`
+- `adminDeleteContactIntakeConversation`
+
+Ces 17 callables sont catalogues dans
+`lib/utils/admin_callable_action_catalog.dart` et doivent rester en phase
+avec `functions/src/index.ts` cote depot mobile (verifie par
+`npm run contract:mobile`).
 
 Le portail admin doit appeler ces fonctions via :
 
@@ -135,6 +162,14 @@ Le portail admin est maintenant multi-environnement :
 - `lib/config/firebase_bootstrap.dart` initialise Firebase avec cet environnement
 - l ecran de provisionnement affiche clairement l environnement actif, le `projectId` cible et la region Functions
 - utiliser `APP_ENV`, `FIREBASE_PROJECT_ID` et `FIREBASE_FUNCTIONS_REGION` via `--dart-define` pour viser le bon projet
+
+Le projet Firebase par defaut de la CLI (`.firebaserc` -> `default`) est
+`adfoot-staging`, pas `adfoot-production` -- aligne avec le depot mobile.
+Une commande `firebase` lancee sans `--project` explicite touche donc
+toujours staging en premier lieu ; viser la production demande
+`--project production` (ou `adfoot-production`) explicitement. C'est un
+changement volontaire par rapport a l'ancien defaut (production) pour
+reduire le risque d'executer une commande sur le mauvais projet par erreur.
 
 ## Production release checks
 
@@ -158,6 +193,49 @@ Build web production :
 ```powershell
 npm.cmd run build:web:production
 ```
+
+## App Check (portail admin)
+
+App Check est integre cote client mais desactive par defaut : aucun
+comportement existant ne change tant que les deux dart-define suivants ne
+sont pas fournis au build :
+
+- `APP_CHECK_ENABLED=true`
+- `APP_CHECK_WEB_RECAPTCHA_SITE_KEY=<cle du fournisseur reCAPTCHA v3>`
+
+Etape manuelle prealable (console Firebase, non scriptable) : dans
+Firebase Console > App Check, enregistrer un fournisseur reCAPTCHA v3 pour
+l app Web `1:975666203662:web:75e8ffc66e6340bf32005f` (projet
+`adfoot-production`) et recuperer la cle de site associee.
+
+Important : activer App Check cote client ne suffit pas a proteger les
+callables admin. L enforcement (`enforceAppCheck`) est defini cote Cloud
+Functions, dans le depot mobile (`functions/src/admin_account_support.ts`),
+et doit rester desactive pour les callables admin tant que le token envoye
+par ce portail n a pas ete valide en staging. Voir le suivi dedie avant de
+modifier ce fichier.
+
+## Firebase Hosting (portail admin)
+
+Deux sites Hosting dedies existent, distincts des sites marketing mobile
+(`adfoot-production` / `adfoot-staging`, a ne jamais toucher depuis ce
+depot) :
+
+- staging : site `adfoot-admin-staging` (projet `adfoot-staging`),
+  target `admin-staging`
+- production : site `adfoot-admin` (projet `adfoot-production`),
+  target `admin-production`
+
+Deploiement :
+
+```powershell
+npm.cmd run deploy:web:staging
+npm.cmd run deploy:web:production
+```
+
+`deploy:web:production` relance `release:check` avant de builder et
+deployer. Toujours valider visuellement le staging avant de lancer le
+deploiement production.
 
 Le script `contract:mobile` cherche par defaut le depot mobile dans :
 

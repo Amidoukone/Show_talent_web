@@ -133,8 +133,23 @@ class AppUser {
     this.cvUrl,
   });
 
-  factory AppUser.fromMap(Map<String, dynamic> map) {
-    return AppUser._fromMap(map, parseNestedCollections: true);
+  /// [privateContact] merges in users/{uid}/private/contact
+  /// (phone/email/authDisabledReason) and [adminNotes] merges in
+  /// users/{uid}/private/adminNotes (profileVerificationNote) — both moved
+  /// out of the main doc so a non-admin can't read them. Pass them only
+  /// when the caller actually fetched those docs (admin review dialog);
+  /// omit for list views built from the bulk users snapshot.
+  factory AppUser.fromMap(
+    Map<String, dynamic> map, {
+    Map<String, dynamic>? privateContact,
+    Map<String, dynamic>? adminNotes,
+  }) {
+    final merged = <String, dynamic>{
+      ...map,
+      ...?privateContact,
+      ...?adminNotes,
+    };
+    return AppUser._fromMap(merged, parseNestedCollections: true);
   }
 
   factory AppUser.fromEmbeddedMap(Map<String, dynamic> map) {
@@ -384,27 +399,27 @@ class AppUser {
   }
 
   String get profileTrustLabel {
-    if (isProfileTrusted) return 'Profil certifie';
+    if (isProfileTrusted) return 'Profil certifié';
     if (profileVerified && !isEffectivelyActiveAccount) {
       return 'Certification suspendue';
     }
-    if (!isEffectivelyActiveAccount) return 'Compte a activer';
-    if (profileVerificationNeedsReview) return 'A revalider';
-    if (isMvpProfileComplete) return 'Pret a verifier';
-    return 'Profil a completer';
+    if (!isEffectivelyActiveAccount) return 'Compte à activer';
+    if (profileVerificationNeedsReview) return 'À revalider';
+    if (isMvpProfileComplete) return 'Prêt à vérifier';
+    return 'Profil à compléter';
   }
 
   String get profileVerificationStatusLabel {
     switch (profileVerificationStatus) {
       case 'verified':
-        return 'Verifie par admin';
+        return 'Vérifié par admin';
       case 'rejected':
-        return 'Verification refusee';
+        return 'Vérification refusée';
       case 'pending':
-        return 'Verification a refaire';
+        return 'Vérification à refaire';
       case 'unverified':
       default:
-        return 'Non verifie';
+        return 'Non vérifié';
     }
   }
 

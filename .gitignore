@@ -34,6 +34,10 @@ migrate_working_dir/
 # Node.js dependencies
 node_modules/
 
+# Firebase Hosting deploy artifacts
+.firebase/
+firebase-debug.log*
+
 # Symbolication related
 app.*.symbols
 
@@ -61,6 +65,10 @@ android/local.properties
 android/app/google-services.json
 lib/firebase_options.dart
 ios/Runner/GoogleService-Info.plist
+
+# Local web build config (Firebase Web SDK values per environment)
+config/*.json
+!config/*.example.json
 
 # Keys / certificates
 *.pem

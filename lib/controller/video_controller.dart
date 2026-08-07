@@ -2,24 +2,37 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
+import '../config/app_environment.dart';
 import '../models/video.dart';
 import '../services/admin_content_service.dart';
 
 class VideoController extends GetxController {
   VideoController({AdminContentService? adminContentService})
-      : _adminContentService = adminContentService ?? AdminContentService();
+      : _visualQaMode = AppEnvironmentConfig.visualQaMode,
+        _adminContentService = AppEnvironmentConfig.visualQaMode
+            ? AdminContentService.visualQa()
+            : adminContentService ?? AdminContentService();
 
   final AdminContentService _adminContentService;
+  final bool _visualQaMode;
 
   var videoList = <Video>[].obs;
+  final RxBool isLoading = true.obs;
 
   @override
   void onInit() {
     super.onInit();
+    if (_visualQaMode) {
+      videoList.clear();
+      isLoading.value = false;
+      return;
+    }
+
     fetchVideos();
   }
 
   void fetchVideos() {
+    isLoading.value = true;
     FirebaseFirestore.instance.collection('videos').snapshots().listen((
       snapshot,
     ) {
@@ -39,9 +52,11 @@ class VideoController extends GetxController {
             .whereType<Video>()
             .toList(),
       );
+      isLoading.value = false;
     }, onError: (Object error) {
       debugPrint('Flux Firestore vidéos indisponible : $error');
       videoList.clear();
+      isLoading.value = false;
     });
   }
 
@@ -136,45 +151,52 @@ class VideoController extends GetxController {
   }
 
   Future<void> deleteVideo(String videoId) async {
-    try {
-      final response = await _adminContentService.deleteVideo(videoId: videoId);
-      if (!response.success) {
-        final message = response.message.trim().isNotEmpty
-            ? response.message
-            : 'Suppression de la vidéo impossible.';
-        throw StateError(message);
-      }
+    final response = await _adminContentService.deleteVideo(videoId: videoId);
+    if (!response.success) {
+      final message = response.message.trim().isNotEmpty
+          ? response.message
+          : 'Suppression de la vidéo impossible.';
+      throw StateError(message);
+    }
 
-      videoList.removeWhere((video) => video.id == videoId);
+    videoList.removeWhere((video) => video.id == videoId);
+  }
 
-      Get.snackbar('Succès', 'Vidéo supprimée avec succès.');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Échec de la suppression de la vidéo : $e');
-      rethrow;
+  Future<void> setVideoStatus(
+    String videoId,
+    String status, {
+    String reason = '',
+  }) async {
+    final response = await _adminContentService.setVideoStatus(
+      videoId: videoId,
+      status: status,
+      reason: reason,
+    );
+    if (!response.success) {
+      final message = response.message.trim().isNotEmpty
+          ? response.message
+          : 'Mise à jour du statut vidéo impossible.';
+      throw StateError(message);
     }
   }
 
-  Future<void> setVideoStatus(String videoId, String status) async {
-    try {
-      final response = await _adminContentService.setVideoStatus(
-        videoId: videoId,
-        status: status,
-      );
-      if (!response.success) {
-        final message = response.message.trim().isNotEmpty
-            ? response.message
-            : 'Mise à jour du statut vidéo impossible.';
-        throw StateError(message);
-      }
+  Future<void> approveVideo(String videoId) async {
+    await setVideoStatus(videoId, 'approved');
+  }
 
-      Get.snackbar('Succès', 'Statut vidéo mis à jour avec succès.');
-    } catch (e) {
-      Get.snackbar(
-        'Erreur',
-        'Erreur lors de la mise à jour du statut vidéo : $e',
-      );
-      rethrow;
+  Future<void> rejectVideo(String videoId, {String reason = ''}) async {
+    final response = await _adminContentService.rejectVideo(
+      videoId: videoId,
+      reason: reason,
+    );
+    if (!response.success) {
+      final message = response.message.trim().isNotEmpty
+          ? response.message
+          : 'Refus de la vidéo impossible.';
+      throw StateError(message);
     }
+
+    videoList.removeWhere((video) => video.id == videoId);
   }
 
   Future<void> updateVideo(

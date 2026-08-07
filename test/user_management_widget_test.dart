@@ -194,14 +194,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('A revalider'), findsWidgets);
-    expect(find.text('a revalider'), findsOneWidget);
+    expect(find.text('À revalider'), findsWidgets);
+    expect(find.text('à revalider'), findsOneWidget);
 
     final actionMenu = find.byType(PopupMenuButton<String>);
     await tester.ensureVisible(actionMenu);
     await tester.tap(actionMenu);
     await tester.pumpAndSettle();
 
-    expect(find.text('Revalider le profil'), findsOneWidget);
+    expect(find.text('Réexaminer le profil'), findsOneWidget);
   });
 }

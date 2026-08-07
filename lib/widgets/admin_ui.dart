@@ -25,33 +25,6 @@ class AdminAppBackground extends StatelessWidget {
               painter: _AdminGridPainter(),
             ),
           ),
-          const Positioned(
-            top: -180,
-            right: -120,
-            child: _AmbientGlow(
-              size: 320,
-              color: AdminTheme.accent,
-              opacity: 0.12,
-            ),
-          ),
-          const Positioned(
-            bottom: -160,
-            left: -80,
-            child: _AmbientGlow(
-              size: 260,
-              color: AdminTheme.cyan,
-              opacity: 0.1,
-            ),
-          ),
-          const Positioned(
-            top: 140,
-            left: 70,
-            child: _AmbientGlow(
-              size: 180,
-              color: AdminTheme.accentSoft,
-              opacity: 0.05,
-            ),
-          ),
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -80,7 +53,7 @@ class AdminGlassPanel extends StatelessWidget {
     this.margin,
     this.highlight = false,
     this.accentColor,
-    this.radius = 30,
+    this.radius = 18,
     this.width,
     this.height,
     super.key,
@@ -112,6 +85,68 @@ class AdminGlassPanel extends StatelessWidget {
   }
 }
 
+class AdminContentFrame extends StatelessWidget {
+  const AdminContentFrame({
+    required this.child,
+    this.maxWidth = AdminTheme.readingMaxWidth,
+    super.key,
+  });
+
+  final Widget child;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: child,
+      ),
+    );
+  }
+}
+
+class AdminBrandMark extends StatelessWidget {
+  const AdminBrandMark({
+    this.size = 54,
+    this.width,
+    super.key,
+  });
+
+  final double size;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width ?? size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AdminTheme.accent,
+            AdminTheme.cyan,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(size * 0.28),
+        border: Border.all(
+          color: AdminTheme.accentSoft.withValues(alpha: 0.34),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(size * 0.16),
+        child: Image.asset(
+          'assets/logo_icon_white.png',
+          fit: BoxFit.contain,
+        ),
+      ),
+    );
+  }
+}
+
 class AdminSectionHeader extends StatelessWidget {
   const AdminSectionHeader({
     required this.title,
@@ -133,6 +168,13 @@ class AdminSectionHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final vertical = constraints.maxWidth < 760;
+        final compactTitle = constraints.maxWidth < 560;
+        final titleStyle = compactTitle
+            ? textTheme.headlineMedium?.copyWith(
+                fontSize: 24,
+                height: 1.15,
+              )
+            : textTheme.headlineMedium;
 
         final titleBlock = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,14 +185,31 @@ class AdminSectionHeader extends StatelessWidget {
                 icon: Icons.auto_awesome,
                 color: AdminTheme.accentSoft,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
             ],
-            Text(title, style: textTheme.headlineMedium),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: trailing == null ? 760 : 680,
+              ),
+              child: Text(
+                title,
+                style: titleStyle,
+                maxLines: compactTitle ? 3 : 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             if (subtitle != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                subtitle!,
-                style: textTheme.bodyMedium,
+              const SizedBox(height: 6),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: trailing == null ? 760 : 680,
+                ),
+                child: Text(
+                  subtitle!,
+                  style: textTheme.bodyMedium,
+                  maxLines: vertical ? 4 : 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ],
@@ -170,10 +229,13 @@ class AdminSectionHeader extends StatelessWidget {
         }
 
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(child: titleBlock),
-            if (trailing != null) trailing!,
+            if (trailing != null) ...[
+              const SizedBox(width: 16),
+              trailing!,
+            ],
           ],
         );
       },
@@ -209,12 +271,16 @@ class AdminPill extends StatelessWidget {
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 8),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -254,15 +320,18 @@ class AdminInfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 640;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(compact ? 16 : 18),
       decoration: BoxDecoration(
         color: _toneColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _toneColor.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Flex(
+        direction: compact ? Axis.vertical : Axis.horizontal,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -274,8 +343,9 @@ class AdminInfoBanner extends StatelessWidget {
             ),
             child: Icon(icon, color: _toneColor),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: compact ? 0 : 14, height: compact ? 12 : 0),
           Expanded(
+            flex: compact ? 0 : 1,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -326,63 +396,85 @@ class AdminMetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final percent = (progress.clamp(0, 1) * 100).round();
 
-    return AdminGlassPanel(
-      highlight: true,
-      accentColor: accentColor,
-      padding: const EdgeInsets.all(20),
-      radius: 26,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 156),
+      child: AdminGlassPanel(
+        highlight: true,
+        accentColor: accentColor,
+        padding: const EdgeInsets.all(18),
+        radius: 18,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Icon(icon, size: 18, color: accentColor),
-                    const SizedBox(width: 10),
-                    Expanded(
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 18, color: accentColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 34,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Text(
                         title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AdminTheme.textSecondary,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
+                          height: 1.2,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AdminTheme.textPrimary,
-                    letterSpacing: -0.5,
                   ),
                 ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle!,
-                    style: const TextStyle(
-                      color: AdminTheme.textMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                const SizedBox(width: 10),
+                _AdminRing(
+                  color: accentColor,
+                  progress: progress,
+                  label: '$percent%',
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 14),
-          _AdminRing(
-            color: accentColor,
-            progress: progress,
-            label: '$percent%',
-          ),
-        ],
+            const SizedBox(height: 14),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 29,
+                fontWeight: FontWeight.w800,
+                color: AdminTheme.textPrimary,
+                letterSpacing: 0,
+                height: 1,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 32,
+                child: Text(
+                  subtitle!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AdminTheme.textMuted,
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -411,34 +503,47 @@ class AdminMiniStat extends StatelessWidget {
     return ConstrainedBox(
       constraints: BoxConstraints(minWidth: minWidth, maxWidth: 280),
       child: AdminGlassPanel(
-        padding: const EdgeInsets.all(16),
-        radius: 22,
+        padding: const EdgeInsets.all(14),
+        radius: 16,
         accentColor: accentColor,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: accentColor.withValues(alpha: 0.22),
+                ),
               ),
-              child: Icon(icon, color: accentColor, size: 20),
+              child: Icon(icon, color: accentColor, size: 19),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: AdminTheme.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  SizedBox(
+                    height: 32,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        label,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AdminTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     value,
                     style: const TextStyle(
@@ -451,9 +556,12 @@ class AdminMiniStat extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       subtitle!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AdminTheme.textMuted,
                         fontSize: 11,
+                        height: 1.3,
                       ),
                     ),
                   ],
@@ -484,8 +592,8 @@ class AdminSubsectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdminGlassPanel(
-      padding: const EdgeInsets.all(20),
-      radius: 24,
+      padding: const EdgeInsets.all(18),
+      radius: 18,
       accentColor: accentColor,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +622,7 @@ class AdminSubsectionCard extends StatelessWidget {
             ],
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               subtitle!,
               style: const TextStyle(
@@ -523,9 +631,47 @@ class AdminSubsectionCard extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           child,
         ],
+      ),
+    );
+  }
+}
+
+class AdminFormColumn extends StatelessWidget {
+  const AdminFormColumn({
+    required this.children,
+    this.maxWidth = 520,
+    this.spacing = 16,
+    this.crossAxisAlignment = CrossAxisAlignment.stretch,
+    super.key,
+  });
+
+  final List<Widget> children;
+  final double maxWidth;
+  final double spacing;
+  final CrossAxisAlignment crossAxisAlignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacedChildren = <Widget>[];
+    for (var index = 0; index < children.length; index += 1) {
+      if (index > 0) {
+        spacedChildren.add(SizedBox(height: spacing));
+      }
+      spacedChildren.add(children[index]);
+    }
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: crossAxisAlignment,
+          children: spacedChildren,
+        ),
       ),
     );
   }
@@ -536,30 +682,139 @@ class AdminSearchField extends StatelessWidget {
     required this.hintText,
     this.onChanged,
     this.controller,
+    this.maxWidth,
     super.key,
   });
 
   final String hintText;
   final ValueChanged<String>? onChanged;
   final TextEditingController? controller;
+  final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    final field = TextField(
       controller: controller,
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: Container(
-          margin: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AdminTheme.surfaceHighlight.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(12),
+      ),
+    );
+
+    if (maxWidth == null) {
+      return field;
+    }
+
+    return Align(
+      alignment: Alignment.center,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth!),
+        child: field,
+      ),
+    );
+  }
+}
+
+class AdminFilterBar extends StatelessWidget {
+  const AdminFilterBar({
+    required this.children,
+    this.flexes,
+    this.maxWidth = 860,
+    this.spacing = 10,
+    this.breakpoint = 760,
+    super.key,
+  });
+
+  final List<Widget> children;
+  final List<int>? flexes;
+  final double maxWidth;
+  final double spacing;
+  final double breakpoint;
+
+  @override
+  Widget build(BuildContext context) {
+    assert(
+      flexes == null || flexes!.length == children.length,
+      'flexes must match children length.',
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < breakpoint;
+
+        if (stacked) {
+          return AdminFormColumn(
+            maxWidth: maxWidth,
+            spacing: spacing,
+            children: children,
+          );
+        }
+
+        final rowChildren = <Widget>[];
+        for (var index = 0; index < children.length; index += 1) {
+          if (index > 0) {
+            rowChildren.add(SizedBox(width: spacing));
+          }
+          rowChildren.add(
+            Expanded(
+              flex: flexes?[index] ?? 1,
+              child: children[index],
+            ),
+          );
+        }
+
+        return Align(
+          alignment: Alignment.center,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Row(children: rowChildren),
           ),
-          child: const Icon(Icons.tune_rounded, size: 18),
-        ),
+        );
+      },
+    );
+  }
+}
+
+class AdminLoadingState extends StatelessWidget {
+  const AdminLoadingState({
+    this.message = 'Chargement des donn\u00e9es...',
+    super.key,
+  });
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AdminGlassPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AdminTheme.accent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Padding(
+              padding: EdgeInsets.all(12),
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Flexible(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AdminTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -632,6 +887,107 @@ class AdminEmptyState extends StatelessWidget {
   }
 }
 
+class AdminDataCardField {
+  const AdminDataCardField({required this.label, required this.value});
+
+  final String label;
+  final Widget value;
+}
+
+/// A single-record card used in place of a table row on narrow viewports.
+/// Pairs with [AdminDataTableCard]: pages show the [DataTable] on wide
+/// screens and a list of these cards below the compact breakpoint, so
+/// nothing requires horizontal scrolling on a phone.
+class AdminDataCard extends StatelessWidget {
+  const AdminDataCard({
+    required this.title,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.fields = const [],
+    this.actions,
+    this.accentColor = AdminTheme.accent,
+    super.key,
+  });
+
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? leading;
+  final Widget? trailing;
+  final List<AdminDataCardField> fields;
+  final Widget? actions;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return AdminGlassPanel(
+      padding: const EdgeInsets.all(16),
+      radius: 18,
+      accentColor: accentColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (leading != null) ...[leading!, const SizedBox(width: 12)],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    title,
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      subtitle!,
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 10),
+                trailing!,
+              ],
+            ],
+          ),
+          if (fields.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(
+              color: AdminTheme.borderSoft.withValues(alpha: 0.6),
+              height: 1,
+            ),
+            const SizedBox(height: 12),
+            for (final field in fields)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 116,
+                      child: Text(
+                        field.label,
+                        style: const TextStyle(
+                          color: AdminTheme.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: field.value),
+                  ],
+                ),
+              ),
+          ],
+          if (actions != null) ...[
+            const SizedBox(height: 4),
+            Align(alignment: Alignment.centerRight, child: actions!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class AdminDataTableCard extends StatelessWidget {
   const AdminDataTableCard({
     required this.child,
@@ -646,9 +1002,9 @@ class AdminDataTableCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AdminGlassPanel(
       padding: EdgeInsets.zero,
-      radius: compact ? 20 : 26,
+      radius: compact ? 16 : 18,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(compact ? 20 : 26),
+        borderRadius: BorderRadius.circular(compact ? 16 : 18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -668,7 +1024,7 @@ class AdminDataTableCard extends StatelessWidget {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Padding(
-                padding: EdgeInsets.all(compact ? 8 : 10),
+                padding: EdgeInsets.all(compact ? 6 : 8),
                 child: child,
               ),
             ),
@@ -685,7 +1041,7 @@ class AdminPaginationBar extends StatelessWidget {
     required this.totalPages,
     required this.onPrevious,
     required this.onNext,
-    this.previousLabel = 'Précédent',
+    this.previousLabel = 'Pr\u00e9c\u00e9dent',
     this.nextLabel = 'Suivant',
     super.key,
   });
@@ -751,38 +1107,6 @@ class AdminPaginationBar extends StatelessWidget {
   }
 }
 
-class _AmbientGlow extends StatelessWidget {
-  const _AmbientGlow({
-    required this.size,
-    required this.color,
-    required this.opacity,
-  });
-
-  final double size;
-  final Color color;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: opacity),
-              blurRadius: size * 0.45,
-              spreadRadius: size * 0.12,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _AdminGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -834,17 +1158,17 @@ class _AdminRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 60,
-      height: 60,
+      width: 52,
+      height: 52,
       child: Stack(
         alignment: Alignment.center,
         children: [
           SizedBox(
-            width: 60,
-            height: 60,
+            width: 52,
+            height: 52,
             child: CircularProgressIndicator(
               value: progress.clamp(0, 1),
-              strokeWidth: 6,
+              strokeWidth: 4.5,
               backgroundColor: AdminTheme.borderSoft,
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),

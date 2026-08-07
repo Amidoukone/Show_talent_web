@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:show_talent/models/user.dart';
+import 'package:show_talent/models/video.dart';
 import 'package:show_talent/screens/video_player.dart';
 
-import '../controller/video_controller.dart';
 import '../controller/user_controller.dart';
+import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/admin_video_ui.dart';
 
 class VideoReportedWidget extends StatefulWidget {
   const VideoReportedWidget({super.key});
@@ -34,7 +36,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
   }
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   String _resolveUserName(String uid) {
     return userController.userList
@@ -58,13 +60,136 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
         .nom;
   }
 
+  String _secondaryLabel(Video video) {
+    final songName = video.songName.trim();
+    if (songName.isNotEmpty &&
+        songName.toLowerCase() != video.displayTitle.trim().toLowerCase()) {
+      return songName;
+    }
+    return '${video.reportCount} signalement(s) à analyser';
+  }
+
+  String _compactVideoId(String id) {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) {
+      return 'inconnue';
+    }
+    return trimmed.length > 10 ? '${trimmed.substring(0, 10)}...' : trimmed;
+  }
+
+  List<AdminVideoMetaItem> _metadata(Video video) {
+    return [
+      AdminVideoMetaItem(
+        label: '${video.reportCount} signalement(s)',
+        icon: Icons.flag_outlined,
+        color: AdminTheme.warning,
+      ),
+      AdminVideoMetaItem(
+        label: video.moderationLabel,
+        icon: Icons.fact_check_outlined,
+        color: video.isApprovedPublic ? AdminTheme.success : AdminTheme.warning,
+      ),
+      if (video.shareCount > 0)
+        AdminVideoMetaItem(
+          label: '${video.shareCount} partage(s)',
+          icon: Icons.share_outlined,
+          color: AdminTheme.cyan,
+        ),
+    ];
+  }
+
+  Widget _buildPreview(Video video, bool compact) {
+    return AdminVideoPreviewCard(
+      thumbnailUrl: video.thumbnail,
+      statusLabel: '${video.reportCount} alertes',
+      statusColor: AdminTheme.warning,
+      footerLabel: _compactVideoId(video.id),
+      footerIcon: Icons.flag_outlined,
+      fallbackIcon: Icons.warning_amber_rounded,
+      compact: compact,
+    );
+  }
+
+  Widget _buildTitleCell(Video video) {
+    return AdminVideoTitleCell(
+      title: video.displayTitle,
+      subtitle: _secondaryLabel(video),
+      metadata: _metadata(video),
+    );
+  }
+
+  void _openVideo(Video video) {
+    final videoUrl = video.effectiveUrl;
+    if (videoUrl.isEmpty) {
+      showAdminFeedback(
+        title: 'Lecture indisponible',
+        message: 'Aucune source MP4 exploitable pour cette vidéo.',
+        tone: AdminBannerTone.warning,
+        position: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    Get.to(
+      () => VideoPlayerScreen(
+        videoUrl: videoUrl,
+        userId: video.uid,
+        videoId: video.id,
+      ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context, Video video) {
+    if (_deletingVideoId == video.id) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        AdminVideoActionButton(
+          onPressed: () => _openVideo(video),
+          icon: Icons.play_circle_outline_rounded,
+          label: 'Analyser',
+          tone: AdminVideoActionTone.info,
+        ),
+        AdminVideoActionButton(
+          onPressed: () => _confirmDelete(context, video.id),
+          icon: Icons.delete_outline_rounded,
+          label: 'Supprimer',
+          tone: AdminVideoActionTone.danger,
+          outlined: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVideoCard(BuildContext context, Video video) {
+    return AdminDataCard(
+      leading: _buildPreview(video, true),
+      title: _buildTitleCell(video),
+      fields: [
+        AdminDataCardField(
+          label: 'Ajoutée par',
+          value: Text(_resolveUserName(video.uid)),
+        ),
+      ],
+      actions: _buildActions(context, video),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
     final panelPadding = compact ? 16.0 : 22.0;
     final spacing = compact ? 12.0 : 16.0;
     final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 62.0 : 68.0;
+    final rowHeight = compact ? 112.0 : 122.0;
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -73,24 +198,11 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'File de modération',
-            title: 'Vidéos signalées',
-            subtitle:
-                'Traitement prioritaire des contenus remontés par les utilisateurs.',
-          ),
-          SizedBox(height: spacing),
-          const AdminInfoBanner(
-            title: 'Priorisation de la modération',
-            message:
-                'Cette vue met en avant les contenus remontés ainsi que le volume de signalements déjà reçus pour chaque vidéo.',
-            icon: Icons.report_gmailerrorred_outlined,
-            tone: AdminBannerTone.warning,
-          ),
           Padding(
             padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
             child: AdminSearchField(
               controller: _searchController,
+              maxWidth: 640,
               hintText: 'Rechercher une vidéo signalée',
               onChanged: (value) {
                 setState(() {
@@ -112,28 +224,45 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                 video.displayTitle,
                 video.songName,
                 video.uid,
+                _resolveUserName(video.uid),
                 video.status,
                 video.moderationStatus,
+                video.id,
               ].any((value) => value.toLowerCase().contains(normalizedQuery));
             }).toList();
 
-            final totalPages = (filteredVideos.length / rowsPerPage).ceil();
-            final startIndex = currentPage * rowsPerPage;
+            final totalPagesRaw = (filteredVideos.length / rowsPerPage).ceil();
+            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+            final safePage = currentPage >= totalPages
+                ? totalPages - 1
+                : currentPage.clamp(0, totalPages - 1);
+            final startIndex = safePage * rowsPerPage;
             final endIndex = (startIndex + rowsPerPage).clamp(
               0,
               filteredVideos.length,
             );
-            final displayedVideos =
-                filteredVideos.sublist(startIndex, endIndex);
+            final displayedVideos = filteredVideos.sublist(
+              startIndex,
+              endIndex,
+            );
+
+            if (videoController.isLoading.value) {
+              return const Center(
+                child: AdminLoadingState(
+                  message: 'Chargement des signalements...',
+                ),
+              );
+            }
 
             if (filteredVideos.isEmpty) {
               final hasSearch = searchQuery.trim().isNotEmpty;
 
               return AdminEmptyState(
                 title: 'Aucune vidéo signalée',
-                message:
-                    'Aucune alerte de modération ne correspond actuellement à la recherche.',
-                icon: Icons.mark_email_read_outlined,
+                message: hasSearch
+                    ? 'Aucun signalement ne correspond à cette recherche.'
+                    : 'Aucune vidéo signalée pour le moment.',
+                icon: Icons.report_off_outlined,
                 actionLabel: hasSearch
                     ? 'Effacer la recherche'
                     : 'Recharger les signalements',
@@ -170,187 +299,98 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                       value: '${reportedVideos.length}',
                       icon: Icons.report_gmailerrorred_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'File de modération',
+                      subtitle: 'À traiter',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Après filtre',
+                      label: 'Résultats',
                       value: '${filteredVideos.length}',
                       icon: Icons.filter_alt_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Résultats courants',
+                      subtitle: 'Après filtres',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Volume de signalements',
+                      label: 'Signalements reçus',
                       value: '$totalReports',
                       icon: Icons.flag_circle_outlined,
                       accentColor: AdminTheme.danger,
-                      subtitle: 'Sur la sélection',
+                      subtitle: 'Sélection affichée',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
                 ),
                 SizedBox(height: spacing),
-                AdminDataTableCard(
-                  compact: compact,
-                  child: DataTable(
-                    columnSpacing: tableColumnSpacing,
-                    horizontalMargin: compact ? 10 : 12,
-                    columns: const [
-                      DataColumn(label: Text('Aperçu')),
-                      DataColumn(label: Text('Titre')),
-                      DataColumn(label: Text('Ajoutée par')),
-                      DataColumn(label: Text('Signalements')),
-                      DataColumn(label: Text('Actions')),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final video in displayedVideos) ...[
+                        _buildVideoCard(context, video),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    rows: List<DataRow>.generate(
-                      displayedVideos.length,
-                      (index) => DataRow(
-                        cells: [
-                          DataCell(
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Container(
-                                width: compact ? 92 : 108,
-                                height: compact ? 54 : 62,
-                                color: AdminTheme.surfaceSoft,
-                                child: Image.network(
-                                  displayedVideos[index].thumbnail,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.warning_amber_rounded,
-                                      color: AdminTheme.warning,
-                                      size: 32,
-                                    );
-                                  },
-                                ),
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: tableColumnSpacing,
+                      horizontalMargin: compact ? 10 : 12,
+                      columns: const [
+                        DataColumn(label: Text('Aperçu')),
+                        DataColumn(label: Text('Contenu')),
+                        DataColumn(label: Text('Ajoutée par')),
+                        DataColumn(label: Text('Signalements')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: List<DataRow>.generate(displayedVideos.length, (
+                        index,
+                      ) {
+                        final video = displayedVideos[index];
+                        return DataRow(
+                          cells: [
+                            DataCell(_buildPreview(video, compact)),
+                            DataCell(_buildTitleCell(video)),
+                            DataCell(Text(_resolveUserName(video.uid))),
+                            DataCell(
+                              AdminPill(
+                                label: '${video.reportCount} signalement(s)',
+                                icon: Icons.flag_outlined,
+                                color: AdminTheme.warning,
                               ),
                             ),
-                          ),
-                          DataCell(
-                            Text(
-                              displayedVideos[index].displayTitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: AdminTheme.textPrimary,
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            Text(_resolveUserName(displayedVideos[index].uid)),
-                          ),
-                          DataCell(
-                            AdminPill(
-                              label:
-                                  '${displayedVideos[index].reportCount} signalement(s)',
-                              icon: Icons.flag_outlined,
-                              color: AdminTheme.warning,
-                            ),
-                          ),
-                          DataCell(
-                            _deletingVideoId == displayedVideos[index].id
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : PopupMenuButton<String>(
-                                    tooltip: 'Actions vidéo',
-                                    onSelected: (value) {
-                                      if (value == 'view_video') {
-                                        final video = displayedVideos[index];
-                                        final videoUrl = video.effectiveUrl;
-                                        if (videoUrl.isEmpty) {
-                                          showAdminFeedback(
-                                            title: 'Lecture indisponible',
-                                            message:
-                                                'Aucune source MP4 exploitable pour cette vidéo.',
-                                            tone: AdminBannerTone.warning,
-                                            position: SnackPosition.BOTTOM,
-                                          );
-                                          return;
-                                        }
-
-                                        Get.to(
-                                          () => VideoPlayerScreen(
-                                            videoUrl: videoUrl,
-                                            userId: video.uid,
-                                            videoId: video.id,
-                                          ),
-                                        );
-                                      } else if (value == 'delete_video') {
-                                        _confirmDelete(
-                                          context,
-                                          displayedVideos[index].id,
-                                        );
-                                      }
-                                    },
-                                    itemBuilder: (context) => const [
-                                      PopupMenuItem(
-                                        value: 'view_video',
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                                Icons
-                                                    .play_circle_outline_rounded,
-                                                size: 18,
-                                                color: AdminTheme.cyan),
-                                            SizedBox(width: 8),
-                                            Text('Regarder la vidéo'),
-                                          ],
-                                        ),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'delete_video',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.delete_outline_rounded,
-                                                size: 18,
-                                                color: AdminTheme.danger),
-                                            SizedBox(width: 8),
-                                            Text('Supprimer la vidéo'),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ],
+                            DataCell(_buildActions(context, video)),
+                          ],
+                        );
+                      }),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
                       ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: rowHeight,
+                      dataRowMaxHeight: rowHeight,
+                      headingRowHeight: compact ? 50 : 54,
                     ),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                    ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: rowHeight,
-                    dataRowMaxHeight: rowHeight,
-                    headingRowHeight: compact ? 50 : 54,
                   ),
-                ),
                 SizedBox(height: spacing),
                 AdminPaginationBar(
-                  currentPage: currentPage,
+                  currentPage: safePage,
                   totalPages: totalPages,
-                  onPrevious: currentPage > 0
+                  onPrevious: safePage > 0
                       ? () {
                           setState(() {
-                            currentPage--;
+                            currentPage = safePage - 1;
                           });
                         }
                       : null,
-                  onNext: currentPage < totalPages - 1
+                  onNext: safePage < totalPages - 1
                       ? () {
                           setState(() {
-                            currentPage++;
+                            currentPage = safePage + 1;
                           });
                         }
                       : null,
@@ -368,15 +408,17 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmation'),
-          content:
-              const Text('Êtes-vous sûr de vouloir supprimer cette vidéo ?'),
+          title: const Text('Supprimer la vidéo'),
+          content: const Text(
+            'Cette action retire définitivement la vidéo signalée et clôt la revue sur ce contenu.',
+          ),
           actions: [
-            TextButton(
-              onPressed: Get.back,
-              child: const Text('Annuler'),
-            ),
+            TextButton(onPressed: Get.back, child: const Text('Annuler')),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminTheme.danger,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () async {
                 Navigator.of(context).pop();
                 setState(() {
@@ -386,15 +428,15 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                 try {
                   await videoController.deleteVideo(videoId);
                   showAdminFeedback(
-                    title: 'Succès',
-                    message: 'Vidéo supprimée avec succès.',
+                    title: 'Vidéo supprimée',
+                    message: 'La vidéo signalée a été retirée avec succès.',
                     tone: AdminBannerTone.success,
                     position: SnackPosition.BOTTOM,
                   );
                 } catch (error) {
                   showAdminFeedback(
-                    title: 'Erreur',
-                    message: 'Suppression impossible : $error',
+                    title: 'Suppression impossible',
+                    message: '$error',
                     tone: AdminBannerTone.danger,
                     position: SnackPosition.BOTTOM,
                   );

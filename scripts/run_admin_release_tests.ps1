@@ -16,7 +16,10 @@ try {
     Write-Host "==> Environment and release guardrails"
     & flutter test `
         "test\app_environment_test.dart" `
-        "test\admin_release_guardrails_test.dart"
+        "test\admin_release_guardrails_test.dart" `
+        "test\admin_text_quality_guardrails_test.dart" `
+        "test\admin_responsive_guardrails_test.dart" `
+        "test\contact_intake_management_guardrails_test.dart"
     Assert-LastExitCode
 
     Write-Host ""

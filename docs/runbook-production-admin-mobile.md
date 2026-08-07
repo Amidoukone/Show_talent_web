@@ -148,6 +148,16 @@ Uniquement via backend partage :
 - suppression offre : `adminDeleteOffer`
 - changement de statut event : `adminSetEventStatus`
 - suppression event : `adminDeleteEvent`
+- changement de statut video : `adminSetVideoStatus`
+- rejet video : `adminRejectVideo`
+- suppression video : `adminDeleteVideo`
+- suivi agence mise en relation : `adminSetContactIntakeFollowUp`
+- suppression mise en relation : `adminDeleteContactIntake`
+- suppression conversation liee : `adminDeleteContactIntakeConversation`
+
+Liste complete des 17 callables et regle de synchronisation : voir
+`README.md` (section Cloud Functions admin) et
+`docs/admin-offer-event-rollout-plan.md`.
 
 ## Verifications operationnelles minimales
 
@@ -177,7 +187,32 @@ Voir la sequence detaillee :
 - succes de `adminDeleteOffer`
 - succes de `adminSetEventStatus`
 - succes de `adminDeleteEvent`
+- succes de `adminSetVideoStatus`, `adminRejectVideo`, `adminDeleteVideo`
+- succes de `adminSetContactIntakeFollowUp`, `adminDeleteContactIntake`,
+  `adminDeleteContactIntakeConversation`
 - refus maintenu cote mobile pour toute creation publique de compte metier
+- refus cote serveur (callables) pour un compte avec `role: 'admin'` en
+  Firestore mais sans claim admin -- le champ Firestore seul ne suffit plus,
+  voir section suivante
+
+## Controle serveur admin (claims uniquement)
+
+`assertAdminCaller()` (depot mobile, `functions/src/admin_account_support.ts`)
+et `isAdminOperator()` (depot mobile, `firestore.rules`) n exigent que le
+custom claim admin -- le champ Firestore `role: 'admin'` seul n ouvre plus
+aucun acces, cote callables comme cote regles Firestore. Avant tout
+deploiement qui touche l un de ces deux fichiers :
+
+1. Executer `node scripts/audit_admin_claims.mjs --service-account <sa.json>`
+   (depot mobile) sur l environnement cible et confirmer qu il ne trouve
+   aucun ecart.
+2. Combler tout ecart trouve via `npm.cmd run create-admin` avant de
+   deployer.
+3. Deployer d abord sur staging, valider, puis production.
+
+Sans cette verification prealable, un compte avec `role: 'admin'` mais sans
+claim (edition manuelle Firestore, erreur de script) perdrait l acces admin
+des le deploiement.
 
 ## Garde-fous production
 

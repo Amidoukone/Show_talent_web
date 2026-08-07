@@ -13,6 +13,7 @@ class TestUserController extends UserController {
   }) {
     seededUsers.assignAll(users);
     seededClaims.assignAll(claims);
+    isLoading.value = false;
   }
 
   final RxList<AppUser> seededUsers = <AppUser>[].obs;

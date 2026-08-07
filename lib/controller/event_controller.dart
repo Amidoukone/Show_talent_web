@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
+import '../config/app_environment.dart';
 import '../models/admin_action_response.dart';
 import '../models/event.dart';
 import '../services/admin_content_service.dart';
@@ -13,11 +14,17 @@ class EventController extends GetxController {
   EventController({
     FirebaseFirestore? firestore,
     AdminContentService? adminContentService,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _adminContentService = adminContentService ?? AdminContentService();
+  })  : _visualQaMode = AppEnvironmentConfig.visualQaMode,
+        _firestore = AppEnvironmentConfig.visualQaMode
+            ? null
+            : firestore ?? FirebaseFirestore.instance,
+        _adminContentService = AppEnvironmentConfig.visualQaMode
+            ? AdminContentService.visualQa()
+            : adminContentService ?? AdminContentService();
 
-  final FirebaseFirestore _firestore;
+  final FirebaseFirestore? _firestore;
   final AdminContentService _adminContentService;
+  final bool _visualQaMode;
 
   static const List<String> moderationStatuses = <String>[
     'brouillon',
@@ -36,6 +43,13 @@ class EventController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    if (_visualQaMode) {
+      events.clear();
+      lastError.value = '';
+      isLoading.value = false;
+      return;
+    }
+
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
           _handleAuthStateChanged,
         );
@@ -60,7 +74,7 @@ class EventController extends GetxController {
     isLoading.value = true;
     _eventsSubscription?.cancel();
 
-    _eventsSubscription = _firestore.collection('events').snapshots().listen(
+    _eventsSubscription = _firestore!.collection('events').snapshots().listen(
       (snapshot) {
         final parsed = <Event>[];
 

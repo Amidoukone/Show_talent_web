@@ -69,7 +69,37 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
+
+  Widget _buildRoleFilterField() {
+    return AdminGlassPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      radius: 16,
+      accentColor: AdminTheme.cyan,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedRole,
+          isExpanded: true,
+          dropdownColor: AdminTheme.surfaceRaised,
+          iconEnabledColor: AdminTheme.textSecondary,
+          items: <String>['Tous', ...adminProvisionedRoles]
+              .map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value, overflow: TextOverflow.ellipsis),
+                );
+              })
+              .toList(),
+          onChanged: (String? newValue) {
+            setState(() {
+              selectedRole = newValue;
+              currentPage = 0;
+            });
+          },
+        ),
+      ),
+    );
+  }
 
   void _clearFilters() {
     setState(() {
@@ -90,7 +120,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   String _verifyProfileActionLabel(AppUser user) {
     return user.profileVerificationNeedsReview
-        ? 'Revalider le profil'
+        ? 'Réexaminer le profil'
         : 'Certifier le profil';
   }
 
@@ -99,13 +129,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   IconData get _rowLeadingIcon => Icons.person_rounded;
 
   Color get _rowLeadingColor => AdminTheme.cyan;
-
-  String get _headerBadge => 'Opérations utilisateurs';
-
-  String get _headerTitle => 'Gestion des utilisateurs';
-
-  String get _headerSubtitle =>
-      'Recherche, rôles, statuts Auth, profils certifiés et actions admin centralisées.';
 
   String get _bannerTitle => 'Gouvernance des profils';
 
@@ -141,7 +164,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     required String title,
     required String message,
     required String confirmLabel,
-    Color confirmColor = Colors.red,
+    Color confirmColor = AdminTheme.danger,
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -154,9 +177,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Annuler'),
             ),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: confirmColor,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
-              style: TextButton.styleFrom(foregroundColor: confirmColor),
               child: Text(confirmLabel),
             ),
           ],
@@ -182,7 +208,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succès',
+        title: action.label,
         message: successMessage,
         tone: AdminBannerTone.success,
       );
@@ -192,8 +218,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
-        message: error.message ?? 'Opération ${action.callableName} refusée.',
+        title: 'Action impossible',
+        message: error.message ?? 'Opération ${action.label} refusée.',
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -202,8 +228,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
-        message: 'Opération ${action.callableName} impossible : $error',
+        title: 'Action impossible',
+        message: 'Opération impossible : $error',
         tone: AdminBannerTone.danger,
       );
     } finally {
@@ -233,7 +259,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: deleteManagedAccountAction.label,
       message:
-          'Cette suppression passe par le backend partagé et peut supprimer l’accès du compte ${user.email}.',
+          'Cette suppression passe par le service sécurisé et peut supprimer l’accès du compte ${user.email}.',
       confirmLabel: 'Supprimer',
     );
     if (!confirmed) {
@@ -252,8 +278,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: disableManagedAccountAuthAction.label,
       message:
-          'Cette action désactive immédiatement l’accès Firebase Auth pour ${user.email}. La session mobile sera fermée et les prochaines connexions seront refusées avec un message cohérent.',
-      confirmLabel: 'Désactiver Auth',
+          'Cette action désactive immédiatement l’accès au compte ${user.email}. La session mobile sera fermée et les prochaines connexions seront refusées.',
+      confirmLabel: 'Désactiver',
     );
     if (!confirmed) {
       return;
@@ -265,7 +291,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       request: () =>
           _managedAccountService.disableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'L’accès Auth a été désactivé pour ${user.email}. Le compte ne pourra plus se reconnecter tant qu’il ne sera pas réactivé.',
+          'L’accès a été désactivé pour ${user.email}. Le compte ne pourra plus se reconnecter tant qu’il ne sera pas réactivé.',
     );
   }
 
@@ -275,7 +301,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       action: enableManagedAccountAuthAction,
       request: () =>
           _managedAccountService.enableManagedAccountAuth(uid: user.uid),
-      successMessage: 'L’accès Auth a été réactivé pour ${user.email}.',
+      successMessage: 'L’accès a été réactivé pour ${user.email}.',
     );
   }
 
@@ -309,7 +335,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   Text('Compte cible : ${user.email}'),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: nextRole,
+                    initialValue: nextRole,
                     decoration: const InputDecoration(
                       labelText: 'Nouveau rôle',
                       border: OutlineInputBorder(),
@@ -389,7 +415,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Invitation renvoyée',
         message: 'Les liens d’invitation ont été régénérés pour ${user.email}.',
         tone: AdminBannerTone.success,
       );
@@ -400,8 +426,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
-        message: error.message ??
+        title: 'Envoi impossible',
+        message:
+            error.message ??
             'Impossible de renvoyer les liens d’invitation pour ce compte.',
         tone: AdminBannerTone.danger,
       );
@@ -411,7 +438,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       }
 
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Envoi impossible',
         message: 'Impossible de renvoyer les liens d’invitation : $error',
         tone: AdminBannerTone.danger,
       );
@@ -445,8 +472,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 const SizedBox(height: 12),
                 Text(
                   verifying
-                      ? 'Confirmez que les informations du profil sont cohérentes avec le contrat mobile et suffisamment fiables pour afficher un signal de confiance.'
-                      : 'La certification sera retirée du profil. Le compte reste actif si Auth et l’e-mail sont valides.',
+                      ? 'Confirmez que les informations du profil sont cohérentes et suffisamment fiables pour afficher un signal de confiance.'
+                      : 'La certification sera retirée du profil. Le compte reste actif si son accès et son e-mail sont valides.',
                   style: const TextStyle(color: AdminTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
@@ -511,7 +538,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Compte non éligible',
         message:
-            'Activez d’abord Auth et la vérification e-mail avant de certifier le profil.',
+            'Réactivez d’abord l’accès et la vérification e-mail avant de certifier le profil.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -587,6 +614,16 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   Future<void> _showProfileReviewDialog(AppUser user) async {
+    // phone/email/authDisabledReason/profileVerificationNote were moved out
+    // of the bulk users snapshot into users/{uid}/private/contact and
+    // users/{uid}/private/adminNotes, so the review dialog needs an
+    // on-demand fetch to show them (admin claims grant access to both).
+    final enrichedUser = await _userController.fetchUserWithPrivateFields(user);
+
+    if (!mounted) {
+      return;
+    }
+
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -601,7 +638,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           content: SizedBox(
             width: 620,
             child: SingleChildScrollView(
-              child: _ProfileReviewContent(user: user),
+              child: _ProfileReviewContent(user: enrichedUser),
             ),
           ),
           actions: [
@@ -648,13 +685,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   ? Icons.lock_open_rounded
                   : Icons.lock_outline_rounded,
               size: 18,
-              color:
-                  user.authDisabled ? AdminTheme.success : AdminTheme.warning,
+              color: user.authDisabled
+                  ? AdminTheme.success
+                  : AdminTheme.warning,
             ),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                user.authDisabled ? 'Réactiver Auth' : 'Désactiver Auth',
+                user.authDisabled ? 'Réactiver l’accès' : 'Suspendre l’accès',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -672,10 +710,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             Icon(Icons.fact_check_outlined, size: 18, color: AdminTheme.cyan),
             SizedBox(width: 8),
             Flexible(
-              child: Text(
-                'Revoir le profil',
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text('Revoir le profil', overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
@@ -721,14 +756,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           value: _actionChangeRole,
           child: Row(
             children: const [
-              Icon(Icons.manage_accounts_outlined,
-                  size: 18, color: AdminTheme.cyan),
+              Icon(
+                Icons.manage_accounts_outlined,
+                size: 18,
+                color: AdminTheme.cyan,
+              ),
               SizedBox(width: 8),
               Flexible(
-                child: Text(
-                  'Changer le rôle',
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: Text('Changer le rôle', overflow: TextOverflow.ellipsis),
               ),
             ],
           ),
@@ -737,8 +772,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           value: _actionResendInvite,
           child: Row(
             children: const [
-              Icon(Icons.mark_email_read_outlined,
-                  size: 18, color: AdminTheme.accent),
+              Icon(
+                Icons.mark_email_read_outlined,
+                size: 18,
+                color: AdminTheme.accent,
+              ),
               SizedBox(width: 8),
               Flexible(
                 child: Text(
@@ -758,15 +796,13 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         value: _actionDelete,
         child: Row(
           children: [
-            Icon(Icons.delete_outline_rounded,
-                size: 18, color: AdminTheme.danger),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                'Supprimer',
-                overflow: TextOverflow.ellipsis,
-              ),
+            Icon(
+              Icons.delete_outline_rounded,
+              size: 18,
+              color: AdminTheme.danger,
             ),
+            SizedBox(width: 8),
+            Flexible(child: Text('Supprimer', overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),
@@ -804,13 +840,95 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     }
   }
 
+  Widget _buildActionCell(AppUser user) {
+    if (_actionInFlightUid == user.uid) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 8),
+          Text(_actionInFlightLabel ?? 'Traitement...'),
+        ],
+      );
+    }
+
+    return PopupMenuButton<String>(
+      tooltip: 'Actions utilisateur',
+      onSelected: (value) => _handleActionSelection(value, user),
+      itemBuilder: (context) => _buildActionMenuItems(user),
+    );
+  }
+
+  Widget _buildUserCard(AppUser user) {
+    return AdminDataCard(
+      leading: Icon(_rowLeadingIcon, color: _rowLeadingColor, size: 22),
+      title: Text(
+        user.nom,
+        style: const TextStyle(
+          color: AdminTheme.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: Text(
+        user.email,
+        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 12),
+      ),
+      fields: [
+        AdminDataCardField(
+          label: 'Rôle',
+          value: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(user.role),
+              Text(
+                user.profileLevelLabel,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AdminTheme.textSecondary,
+                ),
+              ),
+              Text(
+                user.profileTrustLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: user.profileVerified
+                      ? AdminTheme.success
+                      : user.profileVerificationNeedsReview
+                      ? AdminTheme.warning
+                      : AdminTheme.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (user.createdByAdmin)
+                const Text(
+                  'créé par l\'administration',
+                  style: TextStyle(fontSize: 12, color: AdminTheme.accent),
+                ),
+            ],
+          ),
+        ),
+        AdminDataCardField(
+          label: 'Statut',
+          value: AdminAccountStatusChips(user: user),
+        ),
+      ],
+      actions: _buildActionCell(user),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
-    final panelPadding = compact ? 16.0 : 22.0;
-    final spacing = compact ? 12.0 : 16.0;
-    final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 86.0 : 92.0;
+    final panelPadding = compact ? 16.0 : 20.0;
+    final spacing = compact ? 12.0 : 18.0;
+    final tableColumnSpacing = compact ? 16.0 : 20.0;
+    final headingRowHeight = compact ? 54.0 : 58.0;
+    final dataRowHeight = compact ? 78.0 : 84.0;
+    final hasFilters = searchQuery.trim().isNotEmpty || selectedRole != 'Tous';
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(panelPadding),
@@ -819,66 +937,54 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AdminSectionHeader(
-            badge: _headerBadge,
-            title: _headerTitle,
-            subtitle: _headerSubtitle,
-            trailing: AdminGlassPanel(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              radius: 18,
-              accentColor: AdminTheme.cyan,
-              child: DropdownButton<String>(
-                value: selectedRole,
-                dropdownColor: AdminTheme.surfaceRaised,
-                underline: const SizedBox.shrink(),
-                items: <String>[
-                  'Tous',
-                  ...adminProvisionedRoles,
-                ].map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    selectedRole = newValue;
-                    currentPage = 0;
-                  });
-                },
-              ),
-            ),
-          ),
-          SizedBox(height: spacing),
           AdminInfoBanner(
             title: _bannerTitle,
             message: _bannerMessage,
             icon: Icons.rule_folder_outlined,
             tone: AdminBannerTone.warning,
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
-            child: AdminSearchField(
-              controller: _searchController,
-              hintText: _searchHint,
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value;
-                  currentPage = 0;
-                });
-              },
-            ),
+          SizedBox(height: spacing),
+          AdminFilterBar(
+            maxWidth: 1180,
+            breakpoint: 900,
+            spacing: compact ? 10 : 12,
+            flexes: const [5, 3, 2],
+            children: [
+              AdminSearchField(
+                controller: _searchController,
+                hintText: _searchHint,
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                    currentPage = 0;
+                  });
+                },
+              ),
+              _buildRoleFilterField(),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: hasFilters ? _clearFilters : null,
+                  icon: const Icon(Icons.filter_alt_off_rounded),
+                  label: const Text('Réinitialiser'),
+                ),
+              ),
+            ],
           ),
+          SizedBox(height: spacing),
           Obx(() {
             final filteredUsers = _userController.userList.where((user) {
               final matchesRole =
                   selectedRole == 'Tous' || user.role == selectedRole;
               final normalizedQuery = searchQuery.toLowerCase();
-              final matchesSearch = normalizedQuery.isEmpty ||
+              final matchesSearch =
+                  normalizedQuery.isEmpty ||
+                  // email/phone dropped: they no longer come back on the
+                  // bulk users snapshot (see UserController.fetchUsers),
+                  // only on the on-demand private-fields fetch used by the
+                  // profile review dialog.
                   [
                     user.nom,
-                    user.email,
-                    user.phone,
                     user.city,
                     user.region,
                     user.country,
@@ -890,9 +996,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                     user.profileTrustLabel,
                     user.profileVerificationStatusLabel,
                   ].whereType<String>().any(
-                        (value) =>
-                            value.toLowerCase().contains(normalizedQuery),
-                      );
+                    (value) => value.toLowerCase().contains(normalizedQuery),
+                  );
 
               return matchesRole && matchesSearch;
             }).toList();
@@ -904,6 +1009,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               filteredUsers.length,
             );
             final displayedUsers = filteredUsers.sublist(startIndex, endIndex);
+
+            if (_userController.isLoading.value) {
+              return const Center(
+                child: AdminLoadingState(
+                  message: 'Chargement des utilisateurs...',
+                ),
+              );
+            }
 
             if (filteredUsers.isEmpty) {
               final hasFilters =
@@ -932,13 +1045,17 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             final managedUsers = filteredUsers
                 .where((user) => _isAdminManagedAccount(user))
                 .length;
-            final advancedProfiles =
-                filteredUsers.where((user) => user.hasAdvancedProfile).length;
-            final verifiedProfiles =
-                filteredUsers.where((user) => user.profileVerified).length;
+            final advancedProfiles = filteredUsers
+                .where((user) => user.hasAdvancedProfile)
+                .length;
+            final verifiedProfiles = filteredUsers
+                .where((user) => user.profileVerified)
+                .length;
             final readyForVerification = filteredUsers
-                .where((user) =>
-                    !user.profileVerified && user.canBeProfileVerifiedByAdmin)
+                .where(
+                  (user) =>
+                      !user.profileVerified && user.canBeProfileVerifiedByAdmin,
+                )
                 .length;
             final pendingReview = filteredUsers
                 .where((user) => user.profileVerificationNeedsReview)
@@ -959,7 +1076,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Comptes administres',
+                      label: 'Comptes administrés',
                       value: '$managedUsers',
                       icon: Icons.manage_accounts_outlined,
                       accentColor: AdminTheme.accent,
@@ -967,7 +1084,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Auth désactivée',
+                      label: 'Accès suspendus',
                       value:
                           '${filteredUsers.where((user) => user.authDisabled).length}',
                       icon: Icons.lock_person_outlined,
@@ -984,19 +1101,19 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'A revalider',
+                      label: 'À revalider',
                       value: '$pendingReview',
                       icon: Icons.fact_check_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'Modifies cote mobile',
+                      subtitle: 'Informations à revoir',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Prets a verifier',
+                      label: 'Prêts à vérifier',
                       value: '$readyForVerification',
                       icon: Icons.rule_folder_outlined,
                       accentColor: AdminTheme.cyan,
-                      subtitle: 'Eligibles',
+                      subtitle: 'Éligibles',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -1004,7 +1121,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       value: '$advancedProfiles',
                       icon: Icons.verified_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Données mobile pro',
+                      subtitle: 'Profils complets',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -1018,130 +1135,148 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   ],
                 ),
                 SizedBox(height: spacing),
-                AdminDataTableCard(
-                  compact: compact,
-                  child: DataTable(
-                    columnSpacing: tableColumnSpacing,
-                    horizontalMargin: compact ? 10 : 12,
-                    columns: const [
-                      DataColumn(
-                          label: Text('Nom', textAlign: TextAlign.center)),
-                      DataColumn(
-                        label: Text('Email', textAlign: TextAlign.center),
-                      ),
-                      DataColumn(
-                          label: Text('Rôle', textAlign: TextAlign.center)),
-                      DataColumn(
-                        label: Text('Statut', textAlign: TextAlign.center),
-                      ),
-                      DataColumn(
-                        label: Text('Actions', textAlign: TextAlign.center),
-                      ),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final user in displayedUsers) ...[
+                        _buildUserCard(user),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    rows: List<DataRow>.generate(
-                      displayedUsers.length,
-                      (index) => DataRow(
-                        cells: [
-                          DataCell(
-                            Row(
-                              children: [
-                                Icon(
-                                  _rowLeadingIcon,
-                                  color: _rowLeadingColor,
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: tableColumnSpacing,
+                      horizontalMargin: compact ? 8 : 10,
+                      columns: const [
+                        DataColumn(
+                          label: Text('Nom', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Email', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Rôle', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Statut', textAlign: TextAlign.center),
+                        ),
+                        DataColumn(
+                          label: Text('Actions', textAlign: TextAlign.center),
+                        ),
+                      ],
+                      rows: List<DataRow>.generate(
+                        displayedUsers.length,
+                        (index) => DataRow(
+                          cells: [
+                            DataCell(
+                              SizedBox(
+                                width: compact ? 170 : 190,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _rowLeadingIcon,
+                                      color: _rowLeadingColor,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        displayedUsers[index].nom,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                Text(displayedUsers[index].nom),
-                              ],
+                              ),
                             ),
-                          ),
-                          DataCell(Text(displayedUsers[index].email)),
-                          DataCell(
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(displayedUsers[index].role),
-                                Text(
-                                  displayedUsers[index].profileLevelLabel,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AdminTheme.textSecondary,
-                                  ),
-                                ),
-                                Text(
-                                  displayedUsers[index].profileTrustLabel,
+                            DataCell(
+                              SizedBox(
+                                width: compact ? 200 : 240,
+                                child: Text(
+                                  displayedUsers[index].email,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: displayedUsers[index].profileVerified
-                                        ? AdminTheme.success
-                                        : displayedUsers[index]
-                                                .profileVerificationNeedsReview
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              SizedBox(
+                                width: compact ? 190 : 220,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayedUsers[index].role,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      displayedUsers[index].profileLevelLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AdminTheme.textSecondary,
+                                      ),
+                                    ),
+                                    Text(
+                                      displayedUsers[index].profileTrustLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color:
+                                            displayedUsers[index]
+                                                .profileVerified
+                                            ? AdminTheme.success
+                                            : displayedUsers[index]
+                                                  .profileVerificationNeedsReview
                                             ? AdminTheme.warning
                                             : AdminTheme.textMuted,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                if (displayedUsers[index].createdByAdmin)
-                                  const Text(
-                                    'créé par admin',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AdminTheme.accent,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          DataCell(
-                            AdminAccountStatusChips(
-                              user: displayedUsers[index],
-                            ),
-                          ),
-                          DataCell(
-                            _actionInFlightUid == displayedUsers[index].uid
-                                ? Row(
-                                    children: [
-                                      const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
+                                    if (displayedUsers[index].createdByAdmin)
+                                      const Text(
+                                        'créé par l\'administration',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AdminTheme.accent,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(_actionInFlightLabel ??
-                                          'Traitement...'),
-                                    ],
-                                  )
-                                : PopupMenuButton<String>(
-                                    tooltip: 'Actions utilisateur',
-                                    onSelected: (value) =>
-                                        _handleActionSelection(
-                                      value,
-                                      displayedUsers[index],
-                                    ),
-                                    itemBuilder: (context) =>
-                                        _buildActionMenuItems(
-                                            displayedUsers[index]),
-                                  ),
-                          ),
-                        ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              AdminAccountStatusChips(
+                                user: displayedUsers[index],
+                              ),
+                            ),
+                            DataCell(_buildActionCell(displayedUsers[index])),
+                          ],
+                        ),
                       ),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                      ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: dataRowHeight,
+                      dataRowMaxHeight: dataRowHeight,
+                      headingRowHeight: headingRowHeight,
                     ),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                    ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: rowHeight,
-                    dataRowMaxHeight: rowHeight,
-                    headingRowHeight: rowHeight,
                   ),
-                ),
                 SizedBox(height: spacing),
                 AdminPaginationBar(
                   currentPage: currentPage,
@@ -1190,8 +1325,9 @@ class _ProfileReviewContent extends StatelessWidget {
               icon: user.profileVerified
                   ? Icons.verified_rounded
                   : Icons.fact_check_outlined,
-              color:
-                  user.profileVerified ? AdminTheme.success : AdminTheme.cyan,
+              color: user.profileVerified
+                  ? AdminTheme.success
+                  : AdminTheme.cyan,
             ),
             AdminPill(
               label: user.profileLevelLabel,
@@ -1205,8 +1341,9 @@ class _ProfileReviewContent extends StatelessWidget {
               icon: user.profilePublic
                   ? Icons.visibility_outlined
                   : Icons.visibility_off_outlined,
-              color:
-                  user.profilePublic ? AdminTheme.success : AdminTheme.warning,
+              color: user.profilePublic
+                  ? AdminTheme.success
+                  : AdminTheme.warning,
             ),
           ],
         ),
@@ -1238,13 +1375,14 @@ class _ProfileReviewContent extends StatelessWidget {
             if (user.profileVerificationNeedsReview)
               _ProfileReviewItem(
                 label: 'Action requise',
-                value: 'Revalidation Adfoot apres modification utilisateur',
+                value: 'Revalidation Adfoot après modification utilisateur',
               ),
             if (user.profileVerificationInvalidatedAt != null)
               _ProfileReviewItem(
-                label: 'A revalider depuis',
-                value:
-                    user.profileVerificationInvalidatedAt!.toLocal().toString(),
+                label: 'À revalider depuis',
+                value: user.profileVerificationInvalidatedAt!
+                    .toLocal()
+                    .toString(),
               ),
             if (user.profileVerificationInvalidatedBy != null)
               _ProfileReviewItem(
@@ -1259,8 +1397,8 @@ class _ProfileReviewContent extends StatelessWidget {
             if (user.profileVerifiedAt != null)
               _ProfileReviewItem(
                 label: user.profileVerified
-                    ? 'Certifie le'
-                    : 'Derniere certification',
+                    ? 'Certifié le'
+                    : 'Dernière certification',
                 value: user.profileVerifiedAt!.toLocal().toString(),
               ),
             if (user.profileVerificationNote != null)
@@ -1328,10 +1466,7 @@ class _ProfileReviewContent extends StatelessWidget {
 
     if (user.isClub) {
       return [
-        _ProfileReviewItem(
-          label: 'Club',
-          value: user.nomClub ?? user.nom,
-        ),
+        _ProfileReviewItem(label: 'Club', value: user.nomClub ?? user.nom),
         _ProfileReviewItem(
           label: 'Ligue',
           value: user.ligue ?? 'Non renseignée',
@@ -1391,10 +1526,7 @@ class _ProfileReviewContent extends StatelessWidget {
 }
 
 class _ProfileReviewSection extends StatelessWidget {
-  const _ProfileReviewSection({
-    required this.title,
-    required this.children,
-  });
+  const _ProfileReviewSection({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
@@ -1428,16 +1560,12 @@ class _ProfileReviewSection extends StatelessWidget {
 }
 
 class _ProfileReviewItem extends StatelessWidget {
-  const _ProfileReviewItem({
-    required this.label,
-    required this.value,
-  }) : success = null;
+  const _ProfileReviewItem({required this.label, required this.value})
+    : success = null;
 
-  const _ProfileReviewItem.boolean({
-    required this.label,
-    required bool value,
-  })  : value = value ? 'Oui' : 'Non',
-        success = value;
+  const _ProfileReviewItem.boolean({required this.label, required bool value})
+    : value = value ? 'Oui' : 'Non',
+      success = value;
 
   final String label;
   final String value;

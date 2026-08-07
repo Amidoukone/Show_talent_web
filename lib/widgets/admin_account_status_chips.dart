@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../models/user.dart';
 import '../theme/admin_theme.dart';
+import 'admin_ui.dart';
 
 class AdminAccountStatusChips extends StatelessWidget {
   const AdminAccountStatusChips({
@@ -18,13 +19,11 @@ class AdminAccountStatusChips extends StatelessWidget {
     if (user.profileVerified) {
       statuses.add(const _StatusItem(
         label: 'profil certifié',
-        backgroundColor: Color(0x3367F1AB),
         textColor: AdminTheme.success,
       ));
     } else if (user.profileVerificationNeedsReview) {
       statuses.add(const _StatusItem(
-        label: 'a revalider',
-        backgroundColor: Color(0x33F4D27A),
+        label: 'à revalider',
         textColor: AdminTheme.warning,
       ));
     }
@@ -32,7 +31,6 @@ class AdminAccountStatusChips extends StatelessWidget {
     if (user.authDisabled) {
       statuses.add(const _StatusItem(
         label: 'auth désactivée',
-        backgroundColor: Color(0x33F4D27A),
         textColor: AdminTheme.warning,
       ));
     }
@@ -40,16 +38,12 @@ class AdminAccountStatusChips extends StatelessWidget {
     if (!user.isEffectivelyActiveAccount) {
       statuses.add(const _StatusItem(
         label: 'inactif',
-        backgroundColor: Color(0x334A655C),
         textColor: AdminTheme.textMuted,
       ));
     }
 
     statuses.add(_StatusItem(
       label: user.isEffectivelyActiveAccount ? 'actif' : 'accès limité',
-      backgroundColor: user.isEffectivelyActiveAccount
-          ? const Color(0x3367F1AB)
-          : const Color(0x334A655C),
       textColor: user.isEffectivelyActiveAccount
           ? AdminTheme.success
           : AdminTheme.textMuted,
@@ -59,24 +53,7 @@ class AdminAccountStatusChips extends StatelessWidget {
       spacing: 6,
       runSpacing: 6,
       children: statuses.map((status) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: status.backgroundColor,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: status.textColor.withValues(alpha: 0.18),
-            ),
-          ),
-          child: Text(
-            status.label,
-            style: TextStyle(
-              fontSize: 12,
-              color: status.textColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        );
+        return AdminPill(label: status.label, color: status.textColor);
       }).toList(),
     );
   }
@@ -85,11 +62,9 @@ class AdminAccountStatusChips extends StatelessWidget {
 class _StatusItem {
   const _StatusItem({
     required this.label,
-    required this.backgroundColor,
     required this.textColor,
   });
 
   final String label;
-  final Color backgroundColor;
   final Color textColor;
 }

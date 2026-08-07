@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controller/event_controller.dart';
 import '../models/event.dart';
 import '../theme/admin_theme.dart';
+import '../utils/admin_date_format.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 
@@ -26,12 +27,21 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
   String? _actionEventId;
 
   bool _isCompactLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 1120;
+      MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _searchQuery = '';
+      _selectedStatus = 'Tous';
+      _currentPage = 0;
+      _searchController.clear();
+    });
   }
 
   String _statusLabel(String status) {
@@ -41,9 +51,9 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       case 'ouvert':
         return 'Ouvert';
       case 'ferme':
-        return 'Ferme';
+        return 'Fermé';
       case 'archive':
-        return 'Archive';
+        return 'Archivé';
       default:
         return status;
     }
@@ -79,7 +89,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Statut mis à jour',
         message:
             'Statut de l’événement mis à jour : ${_statusLabel(nextStatus)}.',
         tone: AdminBannerTone.success,
@@ -87,7 +97,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Mise à jour impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
@@ -106,7 +116,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmation'),
+          title: const Text('Supprimer l’événement'),
           content: Text('Supprimer l’événement "${event.titre}" ?'),
           actions: [
             TextButton(
@@ -114,6 +124,10 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
               child: const Text('Annuler'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminTheme.danger,
+                foregroundColor: AdminTheme.background,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Supprimer'),
             ),
@@ -134,14 +148,14 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
 
     if (response.success) {
       showAdminFeedback(
-        title: 'Succès',
+        title: 'Événement supprimé',
         message: 'Événement supprimé.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
     } else {
       showAdminFeedback(
-        title: 'Erreur',
+        title: 'Suppression impossible',
         message: response.message,
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
@@ -155,9 +169,143 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
     }
   }
 
+  Widget _buildActionMenu(Event event, bool isActionInFlight) {
+    if (isActionInFlight) {
+      return const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return PopupMenuButton<String>(
+      tooltip: 'Actions événement',
+      onSelected: (value) {
+        if (value.startsWith('status:')) {
+          final status = value.split(':').last;
+          _updateStatus(event: event, nextStatus: status);
+          return;
+        }
+
+        if (value == 'delete') {
+          _confirmDelete(event);
+        }
+      },
+      itemBuilder: (context) {
+        return [
+          ...EventController.moderationStatuses.map(
+            (status) => PopupMenuItem(
+              value: 'status:$status',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    color: _statusColor(status),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text('Statut : ${_statusLabel(status)}'),
+                ],
+              ),
+            ),
+          ),
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.delete_outline_rounded,
+                  color: AdminTheme.danger,
+                  size: 18,
+                ),
+                SizedBox(width: 8),
+                Text('Supprimer'),
+              ],
+            ),
+          ),
+        ];
+      },
+    );
+  }
+
+  Widget _buildEventCard(Event event) {
+    final status = Event.normalizeStatus(event.statut);
+    final color = _statusColor(status);
+    final isActionInFlight = _actionEventId == event.id;
+    final tagsLabel = event.tags
+        ?.where((value) => value.trim().isNotEmpty)
+        .take(3)
+        .join(' | ');
+    final capacityLabel = event.capaciteMax == null
+        ? '${event.participants.length}'
+        : '${event.participants.length}/${event.capaciteMax} places';
+
+    return AdminDataCard(
+      title: Text(
+        event.titre,
+        style: const TextStyle(
+          color: AdminTheme.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: tagsLabel?.isNotEmpty == true
+          ? Text(
+              tagsLabel!,
+              style: const TextStyle(
+                color: AdminTheme.textSecondary,
+                fontSize: 12,
+              ),
+            )
+          : null,
+      trailing: AdminPill(label: _statusLabel(status), color: color),
+      fields: [
+        AdminDataCardField(
+          label: 'Organisateur',
+          value: Text(
+            event.organisateur.nom.isEmpty ? 'Inconnu' : event.organisateur.nom,
+          ),
+        ),
+        AdminDataCardField(
+          label: 'Période',
+          value: Text(
+            '${formatAdminDate(event.dateDebut)} - '
+            '${formatAdminDate(event.dateFin)}',
+          ),
+        ),
+        AdminDataCardField(label: 'Lieu', value: Text(event.lieu)),
+        AdminDataCardField(label: 'Participants', value: Text(capacityLabel)),
+      ],
+      actions: _buildActionMenu(event, isActionInFlight),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
+    final hasFilters =
+        _searchQuery.trim().isNotEmpty || _selectedStatus != 'Tous';
+    final statusItems = <String>['Tous', ...EventController.moderationStatuses];
+    final statusDropdown = DropdownButtonFormField<String>(
+      initialValue: _selectedStatus,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Statut'),
+      items: statusItems
+          .map(
+            (status) => DropdownMenuItem(
+              value: status,
+              child: Text(status == 'Tous' ? status : _statusLabel(status)),
+            ),
+          )
+          .toList(),
+      onChanged: (value) {
+        if (value == null) return;
+        setState(() {
+          _selectedStatus = value;
+          _currentPage = 0;
+        });
+      },
+    );
 
     return AdminGlassPanel(
       padding: EdgeInsets.all(compact ? 16 : 22),
@@ -166,96 +314,30 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AdminSectionHeader(
-            badge: 'Modération des événements',
-            title: 'Gestion des événements',
-            subtitle:
-                'Supervision des événements avec statuts admin et suppression via backend partagé.',
-          ),
-          const SizedBox(height: 14),
-          const AdminInfoBanner(
-            title: 'Traitement centralise',
-            message:
-                'Toutes les mutations de modération passent par les callables admin vérifiés.',
-            icon: Icons.event_note_rounded,
-            tone: AdminBannerTone.info,
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final stacked = constraints.maxWidth < 760;
-              final statusItems = <String>[
-                'Tous',
-                ...EventController.moderationStatuses,
-              ];
-
-              final statusDropdown = DropdownButtonFormField<String>(
-                value: _selectedStatus,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Statut',
-                ),
-                items: statusItems
-                    .map(
-                      (status) => DropdownMenuItem(
-                        value: status,
-                        child: Text(
-                          status == 'Tous' ? status : _statusLabel(status),
-                        ),
-                      ),
-                    )
-                    .toList(),
+          AdminFilterBar(
+            maxWidth: 900,
+            flexes: const [3, 2, 2],
+            children: [
+              AdminSearchField(
+                controller: _searchController,
+                hintText: 'Rechercher un événement',
                 onChanged: (value) {
-                  if (value == null) return;
                   setState(() {
-                    _selectedStatus = value;
+                    _searchQuery = value.trim().toLowerCase();
                     _currentPage = 0;
                   });
                 },
-              );
-
-              if (stacked) {
-                return Column(
-                  children: [
-                    AdminSearchField(
-                      controller: _searchController,
-                      hintText: 'Rechercher un événement',
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value.trim().toLowerCase();
-                          _currentPage = 0;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    statusDropdown,
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: AdminSearchField(
-                      controller: _searchController,
-                      hintText: 'Rechercher un événement',
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value.trim().toLowerCase();
-                          _currentPage = 0;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: statusDropdown,
-                  ),
-                ],
-              );
-            },
+              ),
+              statusDropdown,
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: hasFilters ? _clearFilters : null,
+                  icon: const Icon(Icons.filter_alt_off_rounded),
+                  label: const Text('Réinitialiser'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Obx(() {
@@ -265,7 +347,8 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
               final status = Event.normalizeStatus(event.statut);
               final statusMatch =
                   _selectedStatus == 'Tous' || status == _selectedStatus;
-              final searchMatch = _searchQuery.isEmpty ||
+              final searchMatch =
+                  _searchQuery.isEmpty ||
                   [
                     event.titre,
                     event.description,
@@ -275,45 +358,62 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                     event.flyerUrl,
                     ...?event.tags,
                   ].whereType<String>().any(
-                        (value) => value.toLowerCase().contains(_searchQuery),
-                      );
+                    (value) => value.toLowerCase().contains(_searchQuery),
+                  );
               return statusMatch && searchMatch;
             }).toList();
 
-            final totalPages = (filtered.length / _rowsPerPage).ceil();
-            final startIndex = _currentPage * _rowsPerPage;
-            final endIndex =
-                (startIndex + _rowsPerPage).clamp(0, filtered.length);
+            final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
+            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+            final safePage = _currentPage >= totalPages
+                ? totalPages - 1
+                : _currentPage.clamp(0, totalPages - 1);
+            final startIndex = safePage * _rowsPerPage;
+            final endIndex = (startIndex + _rowsPerPage).clamp(
+              0,
+              filtered.length,
+            );
             final displayed = filtered.sublist(startIndex, endIndex);
 
             if (_eventController.isLoading.value) {
               return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(28),
-                  child: CircularProgressIndicator(),
+                child: AdminLoadingState(
+                  message: 'Chargement des événements...',
                 ),
               );
             }
 
             if (filtered.isEmpty) {
+              if (allEvents.isEmpty) {
+                return AdminEmptyState(
+                  title: 'Aucun événement à modérer',
+                  message: 'Aucun événement n\'a encore été créé.',
+                  icon: Icons.event_busy_rounded,
+                  actionLabel: 'Recharger',
+                  actionIcon: Icons.refresh_rounded,
+                  onAction: _eventController.refreshEvents,
+                );
+              }
+
               return AdminEmptyState(
-                title: 'Aucun événement à modérer',
-                message:
-                    'Aucun événement ne correspond aux filtres appliqués pour le moment.',
-                icon: Icons.event_busy_rounded,
-                actionLabel: 'Recharger',
-                actionIcon: Icons.refresh_rounded,
-                onAction: _eventController.refreshEvents,
+                title: 'Aucun événement dans cette vue',
+                message: 'Aucun événement ne correspond aux filtres actuels.',
+                icon: Icons.filter_alt_off_outlined,
+                actionLabel: 'Réinitialiser',
+                actionIcon: Icons.filter_alt_off_rounded,
+                onAction: _clearFilters,
               );
             }
 
             final openedCount = allEvents
                 .where(
-                    (event) => Event.normalizeStatus(event.statut) == 'ouvert')
+                  (event) => Event.normalizeStatus(event.statut) == 'ouvert',
+                )
                 .length;
             final archivedCount = allEvents
                 .where(
-                    (event) => Event.normalizeStatus(event.statut) == 'archive')
+                  (event) => Event.normalizeStatus(event.statut) == 'archive',
+                )
                 .length;
             final totalViews = allEvents.fold<int>(
               0,
@@ -340,7 +440,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                       value: '$openedCount',
                       icon: Icons.event_available_outlined,
                       accentColor: AdminTheme.success,
-                      subtitle: 'Catalogue global',
+                      subtitle: 'Catalogue',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -348,37 +448,46 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                       value: '$archivedCount',
                       icon: Icons.archive_outlined,
                       accentColor: AdminTheme.warning,
-                      subtitle: 'Catalogue global',
+                      subtitle: 'Catalogue',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
-                      label: 'Vues evenements',
+                      label: 'Vues',
                       value: '$totalViews',
                       icon: Icons.visibility_outlined,
                       accentColor: AdminTheme.accentSoft,
-                      subtitle: 'Champ mobile views',
+                      subtitle: 'Côté application',
                       minWidth: compact ? 180 : 220,
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                AdminDataTableCard(
-                  compact: compact,
-                  child: DataTable(
-                    columnSpacing: compact ? 14 : 22,
-                    horizontalMargin: compact ? 8 : 10,
-                    columns: const [
-                      DataColumn(label: Text('Titre')),
-                      DataColumn(label: Text('Organisateur')),
-                      DataColumn(label: Text('Periode')),
-                      DataColumn(label: Text('Lieu')),
-                      DataColumn(label: Text('Participants')),
-                      DataColumn(label: Text('Statut')),
-                      DataColumn(label: Text('Actions')),
+                if (compact)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final event in displayed) ...[
+                        _buildEventCard(event),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    rows: List<DataRow>.generate(
-                      displayed.length,
-                      (index) {
+                  )
+                else
+                  AdminDataTableCard(
+                    compact: compact,
+                    child: DataTable(
+                      columnSpacing: compact ? 14 : 22,
+                      horizontalMargin: compact ? 8 : 10,
+                      columns: const [
+                        DataColumn(label: Text('Titre')),
+                        DataColumn(label: Text('Organisateur')),
+                        DataColumn(label: Text('Période')),
+                        DataColumn(label: Text('Lieu')),
+                        DataColumn(label: Text('Participants')),
+                        DataColumn(label: Text('Statut')),
+                        DataColumn(label: Text('Actions')),
+                      ],
+                      rows: List<DataRow>.generate(displayed.length, (index) {
                         final event = displayed[index];
                         final status = Event.normalizeStatus(event.statut);
                         final color = _statusColor(status);
@@ -395,8 +504,9 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                           cells: [
                             DataCell(
                               ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 220),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 220,
+                                ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,14 +545,15 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                             ),
                             DataCell(
                               Text(
-                                '${event.dateDebut.day}/${event.dateDebut.month}/${event.dateDebut.year} - '
-                                '${event.dateFin.day}/${event.dateFin.month}/${event.dateFin.year}',
+                                '${formatAdminDate(event.dateDebut)} - '
+                                '${formatAdminDate(event.dateFin)}',
                               ),
                             ),
                             DataCell(
                               ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 180),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 180,
+                                ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,124 +581,42 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                             ),
                             DataCell(Text('${event.participants.length}')),
                             DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: color.withValues(alpha: 0.13),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: color.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Text(
-                                  _statusLabel(status),
-                                  style: TextStyle(
-                                    color: color,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                              AdminPill(
+                                label: _statusLabel(status),
+                                color: color,
                               ),
                             ),
-                            DataCell(
-                              isActionInFlight
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : PopupMenuButton<String>(
-                                      tooltip: 'Actions événement',
-                                      onSelected: (value) {
-                                        if (value.startsWith('status:')) {
-                                          final status = value.split(':').last;
-                                          _updateStatus(
-                                            event: event,
-                                            nextStatus: status,
-                                          );
-                                          return;
-                                        }
-
-                                        if (value == 'delete') {
-                                          _confirmDelete(event);
-                                        }
-                                      },
-                                      itemBuilder: (context) {
-                                        return [
-                                          ...EventController.moderationStatuses
-                                              .map(
-                                            (status) => PopupMenuItem(
-                                              value: 'status:$status',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.flag_outlined,
-                                                    color: _statusColor(status),
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Statut : ${_statusLabel(status)}',
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          const PopupMenuDivider(),
-                                          const PopupMenuItem(
-                                            value: 'delete',
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  color: AdminTheme.danger,
-                                                  size: 18,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Text('Supprimer'),
-                                              ],
-                                            ),
-                                          ),
-                                        ];
-                                      },
-                                    ),
-                            ),
+                            DataCell(_buildActionMenu(event, isActionInFlight)),
                           ],
                         );
-                      },
+                      }),
+                      headingRowColor: WidgetStateProperty.all(
+                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
+                      ),
+                      dataRowColor: WidgetStateProperty.all(
+                        AdminTheme.surface.withValues(alpha: 0.14),
+                      ),
+                      dividerThickness: 1,
+                      dataRowMinHeight: compact ? 62 : 68,
+                      dataRowMaxHeight: compact ? 62 : 68,
+                      headingRowHeight: compact ? 50 : 54,
                     ),
-                    headingRowColor: WidgetStateProperty.all(
-                      AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                    ),
-                    dataRowColor: WidgetStateProperty.all(
-                      AdminTheme.surface.withValues(alpha: 0.14),
-                    ),
-                    dividerThickness: 1,
-                    dataRowMinHeight: compact ? 62 : 68,
-                    dataRowMaxHeight: compact ? 62 : 68,
-                    headingRowHeight: compact ? 50 : 54,
                   ),
-                ),
                 const SizedBox(height: 12),
                 AdminPaginationBar(
-                  currentPage: _currentPage,
+                  currentPage: safePage,
                   totalPages: totalPages,
-                  onPrevious: _currentPage > 0
+                  onPrevious: safePage > 0
                       ? () {
                           setState(() {
-                            _currentPage -= 1;
+                            _currentPage = safePage - 1;
                           });
                         }
                       : null,
-                  onNext: _currentPage < totalPages - 1
+                  onNext: safePage < totalPages - 1
                       ? () {
                           setState(() {
-                            _currentPage += 1;
+                            _currentPage = safePage + 1;
                           });
                         }
                       : null,

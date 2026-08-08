@@ -63,8 +63,12 @@ firebase-adminsdk*.json
 # Local platform config files (avoid accidental key exposure)
 android/local.properties
 android/app/google-services.json
-lib/firebase_options.dart
 ios/Runner/GoogleService-Info.plist
+# lib/firebase_options.dart is intentionally tracked: it's the FlutterFire-
+# generated client config (not a secret -- see Firebase's own docs; access
+# control is Security Rules/App Check, not hiding this file), and
+# firebase_bootstrap.dart imports it unconditionally, so a fresh clone
+# can't even compile without it.
 
 # Local web build config (Firebase Web SDK values per environment)
 config/*.json

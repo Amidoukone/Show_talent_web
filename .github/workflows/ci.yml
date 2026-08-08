@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-admin-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  flutter:
+    name: Flutter analyze & test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
+
+  production-config:
+    name: Production config guardrail
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: powershell
+        run: .\scripts\check_admin_production_config.ps1
+
+  contract:
+    name: Admin / mobile contract check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: admin-repo
+      # Cross-repo checkout: the contract check reads files from the sibling
+      # mobile repo (Cloud Functions, firestore.rules, contract docs) that
+      # don't exist in this repo. ADFOOT_CROSS_REPO_TOKEN needs at least
+      # read access to Amidoukone/Show-Talent.
+      - uses: actions/checkout@v4
+        with:
+          repository: Amidoukone/Show-Talent
+          token: ${{ secrets.ADFOOT_CROSS_REPO_TOKEN }}
+          path: mobile-repo
+      - shell: powershell
+        working-directory: admin-repo
+        run: .\scripts\check_mobile_contract.ps1 -MobileRepoPath "${{ github.workspace }}\mobile-repo"

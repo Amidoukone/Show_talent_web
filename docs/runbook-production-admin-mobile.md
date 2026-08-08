@@ -214,6 +214,26 @@ Sans cette verification prealable, un compte avec `role: 'admin'` mais sans
 claim (edition manuelle Firestore, erreur de script) perdrait l acces admin
 des le deploiement.
 
+## Requete collectionGroup('private') -- piege d index
+
+Le portail admin lit les contacts prives via une requete
+`collectionGroup('private')` sans `where()`/`orderBy()`
+(`lib/controller/user_controller.dart`, depot admin). Cette requete
+fonctionne aujourd hui uniquement parce qu elle n a aucun filtre.
+`firestore.indexes.json` (depot mobile) ne contient aucune entree
+`COLLECTION_GROUP` pour `private`.
+
+Avant d ajouter le moindre `where()` ou `orderBy()` a cette requete :
+
+1. Ajouter l entree `COLLECTION_GROUP` correspondante dans
+   `firestore.indexes.json` (depot mobile).
+2. Deployer l index (`firebase deploy --only firestore:indexes`) sur staging
+   et attendre qu il soit `READY` avant de deployer le code qui l utilise.
+3. Repeter sur production avant tout rollout.
+
+Sans cette sequence, la requete filtree sera rejetee par Firestore en
+production des le premier deploiement -- pas a la revue de code.
+
 ## Garde-fous production
 
 A maintenir imperativement :

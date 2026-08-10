@@ -31,9 +31,9 @@ class AppCheckService {
     }
 
     try {
-      await FirebaseAppCheck.instance.activate(
-        providerWeb: ReCaptchaV3Provider(_webRecaptchaSiteKey),
-      );
+      await FirebaseAppCheck.instance
+          .activate(providerWeb: ReCaptchaV3Provider(_webRecaptchaSiteKey))
+          .timeout(const Duration(seconds: 10));
 
       if (kDebugMode) {
         debugPrint(

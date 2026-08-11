@@ -531,7 +531,16 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       builder: (context) => _ManagedProfileEditDialog(user: user),
     );
 
-    if (patch == null || patch.isEmpty) {
+    if (patch == null) {
+      return;
+    }
+
+    if (patch.isEmpty) {
+      showAdminFeedback(
+        title: 'Aucune modification',
+        message: 'Aucun champ n’a été modifié pour ${user.nom}.',
+        tone: AdminBannerTone.info,
+      );
       return;
     }
 

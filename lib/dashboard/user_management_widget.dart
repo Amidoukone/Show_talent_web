@@ -39,6 +39,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   static const String _actionChangeRole = 'change_role';
   static const String _actionResendInvite = 'resend_invite';
   static const String _actionReviewProfile = 'review_profile';
+  static const String _actionEditProfile = 'edit_profile';
   static const String _actionVerifyProfile = 'verify_profile';
   static const String _actionUnverifyProfile = 'unverify_profile';
 
@@ -514,6 +515,37 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     return result;
   }
 
+  Future<void> _editManagedAccountProfile(AppUser user) async {
+    if (!_canManageProfileVerification(user)) {
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message:
+            'La modification du profil est réservée aux comptes gérés par l’administration et exclut les comptes admin.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    final patch = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      builder: (context) => _ManagedProfileEditDialog(user: user),
+    );
+
+    if (patch == null || patch.isEmpty) {
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: updateManagedAccountProfileAction,
+      request: () => _managedAccountService.updateManagedAccountProfile(
+        uid: user.uid,
+        patch: patch,
+      ),
+      successMessage: 'Le profil de ${user.nom} a été mis à jour.',
+    );
+  }
+
   Future<void> _verifyManagedAccountProfile(AppUser user) async {
     if (!_canManageProfileVerification(user)) {
       showAdminFeedback(
@@ -650,6 +682,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
               OutlinedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pop();
+                  _editManagedAccountProfile(user);
+                },
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Modifier le profil'),
+              ),
+            if (_canManageProfileVerification(user))
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
                   if (user.profileVerified) {
                     _unverifyManagedAccountProfile(user);
                   } else {
@@ -718,6 +759,23 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
 
     if (_canManageProfileVerification(user)) {
+      items.add(
+        const PopupMenuItem(
+          value: _actionEditProfile,
+          child: Row(
+            children: [
+              Icon(Icons.edit_outlined, size: 18, color: AdminTheme.cyan),
+              SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Modifier le profil',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
       items.add(
         PopupMenuItem(
           value: user.profileVerified
@@ -830,6 +888,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         break;
       case _actionReviewProfile:
         await _showProfileReviewDialog(user);
+        break;
+      case _actionEditProfile:
+        await _editManagedAccountProfile(user);
         break;
       case _actionVerifyProfile:
         await _verifyManagedAccountProfile(user);
@@ -1051,10 +1112,18 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             final verifiedProfiles = filteredUsers
                 .where((user) => user.profileVerified)
                 .length;
+            // canBeProfileVerifiedByAdmin alone doesn't check whether the
+            // account is actually one the admin can act on (self-signup
+            // joueur/fan accounts pass it too, but _verifyManagedAccountProfile
+            // and the backend's assertManagedTarget both reject those) — use
+            // the same _canManageProfileVerification gate as the action
+            // itself so this count matches what "Certifier" can actually do.
             final readyForVerification = filteredUsers
                 .where(
                   (user) =>
-                      !user.profileVerified && user.canBeProfileVerifiedByAdmin,
+                      !user.profileVerified &&
+                      _canManageProfileVerification(user) &&
+                      user.canBeProfileVerifiedByAdmin,
                 )
                 .length;
             final pendingReview = filteredUsers
@@ -1305,6 +1374,203 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 }
 
+class _ManagedProfileEditDialog extends StatefulWidget {
+  const _ManagedProfileEditDialog({required this.user});
+
+  final AppUser user;
+
+  @override
+  State<_ManagedProfileEditDialog> createState() =>
+      _ManagedProfileEditDialogState();
+}
+
+class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nomController;
+  late final TextEditingController _positionController;
+  late final TextEditingController _teamController;
+  late final TextEditingController _ligueController;
+  late final TextEditingController _entrepriseController;
+  late final TextEditingController _licenseController;
+
+  AppUser get _user => widget.user;
+
+  @override
+  void initState() {
+    super.initState();
+    _nomController = TextEditingController(text: _user.nom);
+    _positionController = TextEditingController(text: _user.position ?? '');
+    _teamController = TextEditingController(text: _user.team ?? '');
+    _ligueController = TextEditingController(text: _user.ligue ?? '');
+    _entrepriseController = TextEditingController(text: _user.entreprise ?? '');
+    _licenseController = TextEditingController(
+      text: _currentLicenseNumber() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nomController.dispose();
+    _positionController.dispose();
+    _teamController.dispose();
+    _ligueController.dispose();
+    _entrepriseController.dispose();
+    _licenseController.dispose();
+    super.dispose();
+  }
+
+  String? _currentLicenseNumber() {
+    if (_user.isPlayer) {
+      return _user.playerProfile?['licenseNumber']?.toString();
+    }
+    if (_user.isClub) {
+      return _user.clubProfile?['licenseNumber']?.toString();
+    }
+    if (_user.isRecruiter) {
+      return _user.agentProfile?['licenseNumber']?.toString();
+    }
+    return null;
+  }
+
+  String? _trimOrNull(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  Map<String, dynamic> _buildPatch() {
+    final patch = <String, dynamic>{};
+
+    final nom = _nomController.text.trim();
+    if (nom.isNotEmpty && nom != _user.nom) {
+      patch['nom'] = nom;
+    }
+
+    if (_user.isPlayer) {
+      final position = _trimOrNull(_positionController.text);
+      if (position != _user.position) {
+        patch['position'] = position;
+      }
+      final team = _trimOrNull(_teamController.text);
+      if (team != _user.team) {
+        patch['team'] = team;
+      }
+      final license = _trimOrNull(_licenseController.text);
+      if (license != _currentLicenseNumber()) {
+        patch['playerProfile'] = {'licenseNumber': license};
+      }
+    } else if (_user.isClub) {
+      final ligue = _trimOrNull(_ligueController.text);
+      if (ligue != _user.ligue) {
+        patch['ligue'] = ligue;
+      }
+      final license = _trimOrNull(_licenseController.text);
+      if (license != _currentLicenseNumber()) {
+        patch['clubProfile'] = {'licenseNumber': license};
+      }
+    } else if (_user.isRecruiter) {
+      final entreprise = _trimOrNull(_entrepriseController.text);
+      if (entreprise != _user.entreprise) {
+        patch['entreprise'] = entreprise;
+      }
+      final license = _trimOrNull(_licenseController.text);
+      if (license != _currentLicenseNumber()) {
+        patch['agentProfile'] = {'licenseNumber': license};
+      }
+    }
+
+    return patch;
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+    Navigator.of(context).pop(_buildPatch());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Modifier le profil - ${_user.nom}'),
+      content: SizedBox(
+        width: 480,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nomController,
+                  decoration: const InputDecoration(labelText: 'Nom'),
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Le nom est requis.'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                if (_user.isPlayer) ...[
+                  TextFormField(
+                    controller: _positionController,
+                    decoration: const InputDecoration(labelText: 'Poste'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _teamController,
+                    decoration: const InputDecoration(labelText: 'Équipe'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _licenseController,
+                    decoration: const InputDecoration(
+                      labelText: 'Numéro de licence (facultatif)',
+                    ),
+                  ),
+                ] else if (_user.isClub) ...[
+                  TextFormField(
+                    controller: _ligueController,
+                    decoration: const InputDecoration(labelText: 'Ligue'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _licenseController,
+                    decoration: const InputDecoration(
+                      labelText: 'Numéro de licence du club (facultatif)',
+                    ),
+                  ),
+                ] else if (_user.isRecruiter) ...[
+                  TextFormField(
+                    controller: _entrepriseController,
+                    decoration: const InputDecoration(
+                      labelText: 'Organisation',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _licenseController,
+                    decoration: InputDecoration(
+                      labelText: _user.isAgent
+                          ? 'Numéro de licence'
+                          : 'Référence de licence ou d’agrément',
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(onPressed: _submit, child: const Text('Enregistrer')),
+      ],
+    );
+  }
+}
+
 class _ProfileReviewContent extends StatelessWidget {
   const _ProfileReviewContent({required this.user});
 
@@ -1458,6 +1724,12 @@ class _ProfileReviewContent extends StatelessWidget {
           value: user.cvUrl?.isNotEmpty == true ? 'Présent' : 'Absent',
         ),
         _ProfileReviewItem(
+          label: 'Numéro de licence',
+          value:
+              user.playerProfile?['licenseNumber']?.toString() ??
+              'Non renseigné',
+        ),
+        _ProfileReviewItem(
           label: 'Profil joueur avancé',
           value: _formatMapSummary(user.playerProfile),
         ),
@@ -1470,6 +1742,11 @@ class _ProfileReviewContent extends StatelessWidget {
         _ProfileReviewItem(
           label: 'Ligue',
           value: user.ligue ?? 'Non renseignée',
+        ),
+        _ProfileReviewItem(
+          label: 'Numéro de licence du club',
+          value:
+              user.clubProfile?['licenseNumber']?.toString() ?? 'Non renseigné',
         ),
         _ProfileReviewItem(
           label: 'Profil club avancé',
@@ -1487,6 +1764,14 @@ class _ProfileReviewContent extends StatelessWidget {
         _ProfileReviewItem(
           label: 'Recrutements',
           value: user.nombreDeRecrutements?.toString() ?? 'Non renseigné',
+        ),
+        _ProfileReviewItem(
+          label: user.isAgent
+              ? 'Numéro de licence'
+              : 'Référence de licence ou d’agrément',
+          value:
+              user.agentProfile?['licenseNumber']?.toString() ??
+              'Non renseigné',
         ),
         _ProfileReviewItem(
           label: 'Profil agent/recruteur',

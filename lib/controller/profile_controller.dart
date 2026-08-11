@@ -30,24 +30,7 @@ class ProfileController extends GetxController {
       user?.photoProfil = photoUrl;
       update();
     } catch (_) {
-      Get.snackbar(
-        'Erreur',
-        'Échec de la mise à jour de la photo de profil.',
-      );
-    }
-  }
-
-  Future<void> updateUserProfile(AppUser updatedUser) async {
-    try {
-      await _firestore
-          .collection('users')
-          .doc(updatedUser.uid)
-          .update(updatedUser.toMap());
-      user = updatedUser;
-      update();
-      Get.snackbar('Succès', 'Profil mis à jour avec succès.');
-    } catch (_) {
-      Get.snackbar('Erreur', 'Échec de la mise à jour du profil.');
+      Get.snackbar('Erreur', 'Échec de la mise à jour de la photo de profil.');
     }
   }
 
@@ -61,8 +44,10 @@ class ProfileController extends GetxController {
     final profileUserId = user!.uid;
 
     try {
-      final currentUserSnapshot =
-          await _firestore.collection('users').doc(currentUserId).get();
+      final currentUserSnapshot = await _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .get();
 
       if (!currentUserSnapshot.exists) {
         Get.snackbar(
@@ -73,8 +58,9 @@ class ProfileController extends GetxController {
       }
 
       final currentUserData = currentUserSnapshot.data()!;
-      final followings =
-          List<String>.from(currentUserData['followings'] ?? const []);
+      final followings = List<String>.from(
+        currentUserData['followings'] ?? const [],
+      );
 
       if (followings.contains(profileUserId)) {
         followings.remove(profileUserId);

@@ -170,9 +170,9 @@ class AppUser {
       email: map['email']?.toString() ?? 'Adresse e-mail inconnue',
       role: normalizedRole.isEmpty ? 'utilisateur' : normalizedRole,
       photoProfil: map['photoProfil']?.toString() ?? '',
-      estActif: map['estActif'] as bool? ?? true,
+      estActif: _toBool(map['estActif'], true),
       authDisabled: map['authDisabled'] == true,
-      emailVerified: map['emailVerified'] as bool? ?? false,
+      emailVerified: _toBool(map['emailVerified'], false),
       createdByAdmin: map['createdByAdmin'] == true,
       followers: _parseInt(map['followers']) ?? 0,
       followings: _parseInt(map['followings']) ?? 0,
@@ -188,28 +188,34 @@ class AppUser {
       ),
       profileVerifiedAt: _parseNullableDate(map['profileVerifiedAt']),
       profileVerifiedBy: _normalizeNullableString(map['profileVerifiedBy']),
-      profileVerificationUpdatedAt:
-          _parseNullableDate(map['profileVerificationUpdatedAt']),
-      profileVerificationUpdatedBy:
-          _normalizeNullableString(map['profileVerificationUpdatedBy']),
-      profileVerificationNote:
-          _normalizeNullableString(map['profileVerificationNote']),
-      profileVerificationInvalidatedAt:
-          _parseNullableDate(map['profileVerificationInvalidatedAt']),
-      profileVerificationInvalidatedBy:
-          _normalizeNullableString(map['profileVerificationInvalidatedBy']),
+      profileVerificationUpdatedAt: _parseNullableDate(
+        map['profileVerificationUpdatedAt'],
+      ),
+      profileVerificationUpdatedBy: _normalizeNullableString(
+        map['profileVerificationUpdatedBy'],
+      ),
+      profileVerificationNote: _normalizeNullableString(
+        map['profileVerificationNote'],
+      ),
+      profileVerificationInvalidatedAt: _parseNullableDate(
+        map['profileVerificationInvalidatedAt'],
+      ),
+      profileVerificationInvalidatedBy: _normalizeNullableString(
+        map['profileVerificationInvalidatedBy'],
+      ),
       profileVerificationInvalidationReason: _normalizeNullableString(
-          map['profileVerificationInvalidationReason']),
+        map['profileVerificationInvalidationReason'],
+      ),
       birthDate: _parseNullableDate(map['birthDate']),
       country: _normalizeNullableString(map['country']),
       city: _normalizeNullableString(map['city']),
       region: _normalizeNullableString(map['region']),
       languages: _safeList(map['languages']).isEmpty
           ? null
-          : _safeList(map['languages'])
-              .map((entry) => entry.toString())
-              .toList(),
-      openToOpportunities: map['openToOpportunities'] as bool?,
+          : _safeList(
+              map['languages'],
+            ).map((entry) => entry.toString()).toList(),
+      openToOpportunities: _toNullableBool(map['openToOpportunities']),
       bio: _normalizeNullableString(map['bio']),
       position: _normalizeNullableString(map['position']),
       clubActuel: _normalizeNullableString(map['clubActuel']),
@@ -218,15 +224,12 @@ class AppUser {
       assistances: _parseInt(map['assistances']),
       videosPubliees: parseNestedCollections
           ? _safeList(map['videosPubliees'])
-              .whereType<Map>()
-              .map((video) => Video.fromMap(Map<String, dynamic>.from(video)))
-              .toList()
+                .whereType<Map>()
+                .map((video) => Video.fromMap(Map<String, dynamic>.from(video)))
+                .toList()
           : null,
       performances: safeMapPerformances?.map(
-        (key, value) => MapEntry(
-          key,
-          value is num ? value.toDouble() : 0,
-        ),
+        (key, value) => MapEntry(key, value is num ? value.toDouble() : 0),
       ),
       playerProfile: _safeMap(map['playerProfile']),
       clubProfile: _safeMap(map['clubProfile']),
@@ -236,51 +239,52 @@ class AppUser {
       ligue: _normalizeNullableString(map['ligue']),
       offrePubliees: parseNestedCollections
           ? _safeList(map['offrePubliees'])
-              .whereType<Map>()
-              .map((offre) => Offre.fromMap(Map<String, dynamic>.from(offre)))
-              .toList()
+                .whereType<Map>()
+                .map((offre) => Offre.fromMap(Map<String, dynamic>.from(offre)))
+                .toList()
           : null,
       eventPublies: parseNestedCollections
           ? _safeList(map['eventPublies'])
-              .whereType<Map>()
-              .map((event) => Event.fromMap(Map<String, dynamic>.from(event)))
-              .toList()
+                .whereType<Map>()
+                .map((event) => Event.fromMap(Map<String, dynamic>.from(event)))
+                .toList()
           : null,
       entreprise: _normalizeNullableString(map['entreprise']),
       nombreDeRecrutements: _parseInt(map['nombreDeRecrutements']),
       team: _normalizeNullableString(map['team']),
       joueursSuivis: parseNestedCollections
           ? _safeList(map['joueursSuivis'])
-              .whereType<Map>()
-              .map(
-                (joueur) =>
-                    AppUser.fromEmbeddedMap(Map<String, dynamic>.from(joueur)),
-              )
-              .toList()
+                .whereType<Map>()
+                .map(
+                  (joueur) => AppUser.fromEmbeddedMap(
+                    Map<String, dynamic>.from(joueur),
+                  ),
+                )
+                .toList()
           : null,
       clubsSuivis: parseNestedCollections
           ? _safeList(map['clubsSuivis'])
-              .whereType<Map>()
-              .map(
-                (club) =>
-                    AppUser.fromEmbeddedMap(Map<String, dynamic>.from(club)),
-              )
-              .toList()
+                .whereType<Map>()
+                .map(
+                  (club) =>
+                      AppUser.fromEmbeddedMap(Map<String, dynamic>.from(club)),
+                )
+                .toList()
           : null,
       videosLikees: parseNestedCollections
           ? _safeList(map['videosLikees'])
-              .whereType<Map>()
-              .map((video) => Video.fromMap(Map<String, dynamic>.from(video)))
-              .toList()
+                .whereType<Map>()
+                .map((video) => Video.fromMap(Map<String, dynamic>.from(video)))
+                .toList()
           : null,
-      followersList: _safeList(map['followersList'])
-          .map((entry) => entry.toString())
-          .toList(),
-      followingsList: _safeList(map['followingsList'])
-          .map((entry) => entry.toString())
-          .toList(),
-      profilePublic: map['profilePublic'] as bool? ?? true,
-      allowMessages: map['allowMessages'] as bool? ?? true,
+      followersList: _safeList(
+        map['followersList'],
+      ).map((entry) => entry.toString()).toList(),
+      followingsList: _safeList(
+        map['followingsList'],
+      ).map((entry) => entry.toString()).toList(),
+      profilePublic: _toBool(map['profilePublic'], true),
+      allowMessages: _toBool(map['allowMessages'], true),
       cvUrl: _normalizeNullableString(map['cvUrl']),
     );
   }
@@ -315,8 +319,9 @@ class AppUser {
       'followings': followings,
       'dateInscription': Timestamp.fromDate(dateInscription),
       'dernierLogin': Timestamp.fromDate(dernierLogin),
-      'emailVerifiedAt':
-          emailVerifiedAt != null ? Timestamp.fromDate(emailVerifiedAt!) : null,
+      'emailVerifiedAt': emailVerifiedAt != null
+          ? Timestamp.fromDate(emailVerifiedAt!)
+          : null,
       'authDisabledReason': authDisabledReason,
       'profileVerifiedAt': profileVerifiedAt != null
           ? Timestamp.fromDate(profileVerifiedAt!)
@@ -329,8 +334,8 @@ class AppUser {
       'profileVerificationNote': profileVerificationNote,
       'profileVerificationInvalidatedAt':
           profileVerificationInvalidatedAt != null
-              ? Timestamp.fromDate(profileVerificationInvalidatedAt!)
-              : null,
+          ? Timestamp.fromDate(profileVerificationInvalidatedAt!)
+          : null,
       'profileVerificationInvalidatedBy': profileVerificationInvalidatedBy,
       'profileVerificationInvalidationReason':
           profileVerificationInvalidationReason,
@@ -355,8 +360,9 @@ class AppUser {
       'offrePubliees': offrePubliees?.map((offre) => offre.toMap()).toList(),
       'eventPublies': eventPublies?.map((event) => event.toMap()).toList(),
       'nombreDeRecrutements': nombreDeRecrutements,
-      'joueursSuivis':
-          joueursSuivis?.map((joueur) => joueur.toEmbeddedMap()).toList(),
+      'joueursSuivis': joueursSuivis
+          ?.map((joueur) => joueur.toEmbeddedMap())
+          .toList(),
       'clubsSuivis': clubsSuivis?.map((club) => club.toEmbeddedMap()).toList(),
       'videosLikees': videosLikees?.map((video) => video.toMap()).toList(),
       'followersList': followersList,
@@ -497,7 +503,8 @@ class AppUser {
         ? Map<String, dynamic>.from(profile['physical'] as Map)
         : <String, dynamic>{};
 
-    final hasPhysical = physical['heightCm'] != null ||
+    final hasPhysical =
+        physical['heightCm'] != null ||
         physical['weightKg'] != null ||
         physical['strongFoot'] != null;
     final positions = profile['positions'];
@@ -506,7 +513,8 @@ class AppUser {
     final hasSkills = skills is List && skills.isNotEmpty;
     final stats = profile['stats'];
     final hasStats = stats is Map && stats.isNotEmpty;
-    final hasEvidence = (videosPubliees?.isNotEmpty ?? false) ||
+    final hasEvidence =
+        (videosPubliees?.isNotEmpty ?? false) ||
         (cvUrl?.trim().isNotEmpty ?? false);
 
     return (hasPhysical || hasSkills) && hasPosition && hasStats && hasEvidence;
@@ -552,6 +560,15 @@ class AppUser {
     return int.tryParse(value?.toString() ?? '');
   }
 
+  static bool _toBool(dynamic value, bool fallback) {
+    if (value is bool) return value;
+    return fallback;
+  }
+
+  static bool? _toNullableBool(dynamic value) {
+    return value is bool ? value : null;
+  }
+
   static List<dynamic> _safeList(dynamic value) {
     if (value is List) {
       return value;
@@ -578,12 +595,7 @@ class AppUser {
     required bool verified,
   }) {
     final normalized = value?.toString().trim().toLowerCase();
-    const supportedStatuses = {
-      'verified',
-      'unverified',
-      'pending',
-      'rejected',
-    };
+    const supportedStatuses = {'verified', 'unverified', 'pending', 'rejected'};
 
     if (normalized != null && supportedStatuses.contains(normalized)) {
       return normalized;

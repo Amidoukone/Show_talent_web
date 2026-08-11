@@ -28,6 +28,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
   String searchQuery = '';
   int currentPage = 0;
   String? _deletingVideoId;
+  bool _isOpeningVideo = false;
 
   @override
   void dispose() {
@@ -118,7 +119,9 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
     );
   }
 
-  void _openVideo(Video video) {
+  Future<void> _openVideo(Video video) async {
+    if (_isOpeningVideo) return;
+
     final videoUrl = video.effectiveUrl;
     if (videoUrl.isEmpty) {
       showAdminFeedback(
@@ -130,13 +133,18 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       return;
     }
 
-    Get.to(
-      () => VideoPlayerScreen(
-        videoUrl: videoUrl,
-        userId: video.uid,
-        videoId: video.id,
-      ),
-    );
+    _isOpeningVideo = true;
+    try {
+      await Get.to(
+        () => VideoPlayerScreen(
+          videoUrl: videoUrl,
+          userId: video.uid,
+          videoId: video.id,
+        ),
+      );
+    } finally {
+      _isOpeningVideo = false;
+    }
   }
 
   Widget _buildActions(BuildContext context, Video video) {

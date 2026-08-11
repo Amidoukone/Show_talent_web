@@ -29,6 +29,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   int currentPage = 0;
   String? _processingVideoId;
   String? _processingAction;
+  bool _isOpeningVideo = false;
 
   @override
   void dispose() {
@@ -127,7 +128,9 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     ];
   }
 
-  void _openVideo(Video video) {
+  Future<void> _openVideo(Video video) async {
+    if (_isOpeningVideo) return;
+
     final videoUrl = video.effectiveUrl;
     if (videoUrl.isEmpty) {
       showAdminFeedback(
@@ -139,13 +142,22 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       return;
     }
 
-    Get.to(
-      () => VideoPlayerScreen(
-        videoUrl: videoUrl,
-        userId: video.uid,
-        videoId: video.id,
-      ),
-    );
+    // A rapid double-tap could otherwise push two VideoPlayerScreen routes
+    // and start two network video downloads before the first navigation
+    // transition completes. Guarded for the entire time the preview is
+    // open, not just a short debounce window.
+    _isOpeningVideo = true;
+    try {
+      await Get.to(
+        () => VideoPlayerScreen(
+          videoUrl: videoUrl,
+          userId: video.uid,
+          videoId: video.id,
+        ),
+      );
+    } finally {
+      _isOpeningVideo = false;
+    }
   }
 
   Future<void> _approveVideo(Video video) async {
@@ -232,51 +244,64 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       return await showDialog<String?>(
         context: context,
         builder: (context) {
-          return AlertDialog(
-            title: const Text('Refuser la vidéo'),
-            content: SizedBox(
-              width: 480,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    video.displayTitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              final hasReason = controller.text.trim().isNotEmpty;
+              return AlertDialog(
+                title: const Text('Refuser la vidéo'),
+                content: SizedBox(
+                  width: 480,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        video.displayTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: controller,
+                        maxLines: 3,
+                        maxLength: 500,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Motif envoyé au joueur',
+                          hintText:
+                              'Exemple : action peu visible, qualité insuffisante...',
+                          errorText: hasReason
+                              ? null
+                              // This deletes the video permanently once
+                              // confirmed -- a reason is required so an
+                              // empty-text misclick can't slip through.
+                              : 'Un motif est requis avant suppression.',
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: controller,
-                    maxLines: 3,
-                    maxLength: 500,
-                    decoration: const InputDecoration(
-                      labelText: 'Motif envoyé au joueur',
-                      hintText:
-                          'Exemple : action peu visible, qualité insuffisante...',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(null),
+                    child: const Text('Annuler'),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AdminTheme.danger,
+                      foregroundColor: AdminTheme.background,
                     ),
+                    onPressed: hasReason
+                        ? () =>
+                              Navigator.of(context).pop(controller.text.trim())
+                        : null,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text('Refuser et supprimer'),
                   ),
                 ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(null),
-                child: const Text('Annuler'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AdminTheme.danger,
-                  foregroundColor: AdminTheme.background,
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop(controller.text.trim());
-                },
-                icon: const Icon(Icons.delete_outline_rounded),
-                label: const Text('Refuser et supprimer'),
-              ),
-            ],
+              );
+            },
           );
         },
       );

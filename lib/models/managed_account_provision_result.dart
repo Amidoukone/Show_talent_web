@@ -6,6 +6,18 @@ class ManagedAccountProvisionResult {
   final String? passwordSetupLink;
   final String? emailVerificationLink;
 
+  /// Whether the backend e-mailed the invitation itself.
+  ///
+  /// Defaults to false, which is also what an older backend — one that never
+  /// sends anything — produces. The links below are returned either way, so
+  /// this only ever adds information: it never takes away the copy-paste
+  /// workflow this dialog was built around.
+  final bool inviteEmailSent;
+
+  /// Coarse reason the invitation was not sent (`not_configured`,
+  /// `send_failed`, `invalid_recipient`), or null when it was.
+  final String? inviteEmailReason;
+
   const ManagedAccountProvisionResult({
     required this.uid,
     required this.email,
@@ -13,6 +25,8 @@ class ManagedAccountProvisionResult {
     required this.existingUser,
     this.passwordSetupLink,
     this.emailVerificationLink,
+    this.inviteEmailSent = false,
+    this.inviteEmailReason,
   });
 
   factory ManagedAccountProvisionResult.fromMap(Map<String, dynamic> map) {
@@ -25,7 +39,36 @@ class ManagedAccountProvisionResult {
       passwordSetupLink: _readOptionalString(payload['passwordSetupLink']),
       emailVerificationLink:
           _readOptionalString(payload['emailVerificationLink']),
+      inviteEmailSent: payload['inviteEmailSent'] == true,
+      inviteEmailReason: _readOptionalString(payload['inviteEmailReason']),
     );
+  }
+
+  /// What to tell the admin about the automatic send, in their own terms.
+  ///
+  /// Silence here was the bug worth avoiding: an admin who is told nothing
+  /// assumes the member was contacted, and the member waits for a message
+  /// that never left.
+  String get inviteEmailStatusMessage {
+    if (inviteEmailSent) {
+      return 'L’invitation a été envoyée automatiquement à $email. '
+          'Les liens ci-dessous restent disponibles en secours.';
+    }
+
+    switch (inviteEmailReason) {
+      case 'not_configured':
+        return 'L’envoi automatique n’est pas configuré sur le serveur. '
+            'Transmettez le lien ci-dessous au titulaire.';
+      case 'invalid_recipient':
+        return 'L’adresse e-mail a été refusée par le serveur d’envoi. '
+            'Vérifiez-la, puis transmettez le lien ci-dessous.';
+      case 'send_failed':
+        return 'L’envoi automatique a échoué. '
+            'Transmettez le lien ci-dessous au titulaire.';
+      default:
+        return 'Aucun e-mail n’a été envoyé automatiquement. '
+            'Transmettez le lien ci-dessous au titulaire.';
+    }
   }
 
   bool get hasPasswordSetupLink => passwordSetupLink != null;

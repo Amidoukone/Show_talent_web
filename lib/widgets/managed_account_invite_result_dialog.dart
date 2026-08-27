@@ -127,6 +127,19 @@ class ManagedAccountInviteSummary extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         AdminInfoBanner(
+          title: result.inviteEmailSent
+              ? 'Invitation envoyée par e-mail'
+              : 'Invitation à transmettre vous-même',
+          message: result.inviteEmailStatusMessage,
+          icon: result.inviteEmailSent
+              ? Icons.mark_email_read_rounded
+              : Icons.outgoing_mail,
+          tone: result.inviteEmailSent
+              ? AdminBannerTone.success
+              : AdminBannerTone.warning,
+        ),
+        const SizedBox(height: 12),
+        AdminInfoBanner(
           title: 'Ordre conseillé',
           message: result.requiresEmailVerification
               ? 'Le titulaire doit valider son e-mail, créer son mot de passe, puis se connecter.'

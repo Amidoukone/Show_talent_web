@@ -146,5 +146,61 @@ void main() {
         result.buildEmailMessage(recipientName: 'Club Test'),
       );
     });
+
+    // The backend now e-mails the invitation itself. Telling the admin
+    // nothing about that is the failure worth guarding: they would assume
+    // the member was contacted, and the member would wait for a message that
+    // never left.
+    test('a sent invitation is reported as sent', () {
+      final result = ManagedAccountProvisionResult.fromMap(<String, dynamic>{
+        'uid': 'uid-1003',
+        'email': 'joueur@example.com',
+        'role': 'joueur',
+        'existingUser': false,
+        'passwordSetupLink': 'https://reset-link',
+        'inviteEmailSent': true,
+      });
+
+      expect(result.inviteEmailSent, isTrue);
+      expect(
+        result.inviteEmailStatusMessage,
+        contains('joueur@example.com'),
+      );
+      // The link survives the send: it is the admin's fallback, always.
+      expect(result.hasPasswordSetupLink, isTrue);
+    });
+
+    test('a skipped or failed invitation says so, per reason', () {
+      Map<String, dynamic> payload(String? reason) => <String, dynamic>{
+            'uid': 'uid-1004',
+            'email': 'fan@example.com',
+            'role': 'fan',
+            'existingUser': false,
+            'passwordSetupLink': 'https://reset-link',
+            'inviteEmailSent': false,
+            if (reason != null) 'inviteEmailReason': reason,
+          };
+
+      expect(
+        ManagedAccountProvisionResult.fromMap(payload('not_configured'))
+            .inviteEmailStatusMessage,
+        contains('n’est pas configuré'),
+      );
+      expect(
+        ManagedAccountProvisionResult.fromMap(payload('send_failed'))
+            .inviteEmailStatusMessage,
+        contains('a échoué'),
+      );
+      expect(
+        ManagedAccountProvisionResult.fromMap(payload('invalid_recipient'))
+            .inviteEmailStatusMessage,
+        contains('refusée'),
+      );
+      // An older backend returns neither field: default to "not sent", never
+      // to a claim that it was.
+      final legacy = ManagedAccountProvisionResult.fromMap(payload(null));
+      expect(legacy.inviteEmailSent, isFalse);
+      expect(legacy.inviteEmailStatusMessage, contains('Aucun e-mail'));
+    });
   });
 }

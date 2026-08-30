@@ -96,6 +96,18 @@ const AdminCallableActionDescriptor updateManagedAccountProfileAction =
   isConnectedInUi: true,
 );
 
+const AdminCallableActionDescriptor setManagedAccountMembershipAction =
+    AdminCallableActionDescriptor(
+  id: 'set_managed_account_membership',
+  label: 'Gérer les droits',
+  callableName: 'setManagedAccountMembership',
+  summary:
+      "Enregistre ou retire les droits d'un compte suivi par l'agence, sans aucun montant.",
+  uiSurfaces: ['Gestion des utilisateurs'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
 const AdminCallableActionDescriptor setOfferStatusAction =
     AdminCallableActionDescriptor(
   id: 'admin_set_offer_status',
@@ -215,6 +227,7 @@ const List<AdminCallableActionDescriptor> adminCallableActions = [
   disableManagedAccountAuthAction,
   enableManagedAccountAuthAction,
   updateManagedAccountProfileAction,
+  setManagedAccountMembershipAction,
   setOfferStatusAction,
   deleteOfferAction,
   setEventStatusAction,

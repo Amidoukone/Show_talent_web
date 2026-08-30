@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:show_talent/controller/user_controller.dart';
+import 'package:show_talent/models/membership.dart';
 import 'package:show_talent/models/user.dart';
 import 'package:show_talent/theme/admin_theme.dart';
 
@@ -57,6 +58,7 @@ AppUser buildTestUser({
   DateTime? profileVerificationInvalidatedAt,
   String? position,
   String? team,
+  Membership membership = Membership.none,
 }) {
   final now = DateTime(2026, 4, 17);
   return AppUser(
@@ -81,6 +83,7 @@ AppUser buildTestUser({
             : 'profile_updated_by_user',
     position: position,
     team: team,
+    membership: membership,
     followers: 0,
     followings: 0,
     dateInscription: now,

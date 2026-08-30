@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 
 import '../config/app_environment.dart';
 import '../models/managed_account_provision_result.dart';
+import '../models/membership.dart';
 import '../utils/account_role_policy.dart';
 
 typedef ManagedAccountCallableExecutor = Future<Map<String, dynamic>> Function(
@@ -144,6 +145,72 @@ class ManagedAccountService {
         'uid': uid,
       },
     );
+  }
+
+  /// Enregistre — ou retire — les droits d'un compte suivi par l'agence.
+  ///
+  /// Appel dédié plutôt qu'un champ de [updateManagedAccountProfile] : ce
+  /// dernier invalide la certification du profil, et enregistrer un règlement
+  /// ne doit pas coûter son badge à un joueur.
+  ///
+  /// Aucun montant ne transite ici : le règlement a lieu hors de la
+  /// plateforme et cet appel ne fait qu'en enregistrer le résultat.
+  /// [validUntil] est facultatif — un joueur sous contrat n'a pas de terme —
+  /// et [reference] reçoit la référence interne du règlement ou du contrat.
+  Future<void> setManagedAccountMembership({
+    required String uid,
+    required MembershipTier tier,
+    DateTime? validUntil,
+    String? reference,
+  }) async {
+    final normalizedUid = uid.trim();
+    if (normalizedUid.isEmpty) {
+      throw ArgumentError(
+        'setManagedAccountMembership requiert un uid non vide.',
+      );
+    }
+
+    // tier: none efface le dossier. Envoyer une échéance ou une référence
+    // avec serait au mieux ignoré côté backend, au pire trompeur dans le
+    // journal d'appels : on ne les transmet pas.
+    if (tier == MembershipTier.none) {
+      await _callable(
+        'setManagedAccountMembership',
+        payload: <String, dynamic>{
+          'uid': normalizedUid,
+          'tier': Membership.tierToString(MembershipTier.none),
+        },
+      );
+      return;
+    }
+
+    if (validUntil != null && !validUntil.isAfter(DateTime.now())) {
+      throw ArgumentError.value(
+        validUntil,
+        'validUntil',
+        "L'échéance doit être dans le futur. Pour retirer un droit, "
+            'utilisez MembershipTier.none.',
+      );
+    }
+
+    final normalizedReference = reference?.trim();
+
+    await _callable(
+      'setManagedAccountMembership',
+      payload: <String, dynamic>{
+        'uid': normalizedUid,
+        'tier': Membership.tierToString(tier),
+        if (validUntil != null)
+          'validUntil': validUntil.toUtc().toIso8601String(),
+        if (normalizedReference != null && normalizedReference.isNotEmpty)
+          'reference': normalizedReference,
+      },
+    );
+  }
+
+  /// Retire tout dossier de droits du compte.
+  Future<void> clearManagedAccountMembership({required String uid}) {
+    return setManagedAccountMembership(uid: uid, tier: MembershipTier.none);
   }
 
   Future<void> updateManagedAccountProfile({

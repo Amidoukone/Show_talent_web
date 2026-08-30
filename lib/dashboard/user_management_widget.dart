@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../controller/user_controller.dart';
 import '../models/managed_account_provision_result.dart';
+import '../models/membership.dart';
 import '../models/user.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
@@ -42,6 +43,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   static const String _actionEditProfile = 'edit_profile';
   static const String _actionVerifyProfile = 'verify_profile';
   static const String _actionUnverifyProfile = 'unverify_profile';
+  static const String _actionManageMembership = 'manage_membership';
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -115,8 +117,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     return user.createdByAdmin || isManagedAccountRole(user.role);
   }
 
-  bool _canManageProfileVerification(AppUser user) {
+  /// Les mutations admin d'un compte sont refusées pour un compte du portail
+  /// et pour un compte que l'administration ne suit pas : même garde ici que
+  /// dans les callables, pour ne pas proposer une action déjà perdue.
+  bool _isMutableManagedAccount(AppUser user) {
     return _isAdminManagedAccount(user) && !isAdminPortalOnlyRole(user.role);
+  }
+
+  bool _canManageProfileVerification(AppUser user) {
+    return _isMutableManagedAccount(user);
   }
 
   String _verifyProfileActionLabel(AppUser user) {
@@ -654,6 +663,55 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
+  Future<void> _setManagedAccountMembership(AppUser user) async {
+    if (!_isMutableManagedAccount(user)) {
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message:
+            'Les droits ne se gèrent que sur les comptes suivis par l’administration, comptes du portail exclus.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    final decision = await showDialog<_MembershipDecision>(
+      context: context,
+      builder: (context) => _ManagedMembershipDialog(user: user),
+    );
+
+    if (decision == null) {
+      return;
+    }
+
+    final current = user.membership;
+    // Réenvoyer le dossier à l'identique redémarrerait la date de début côté
+    // backend : autant le dire plutôt que d'écrire pour rien.
+    if (decision.tier == current.tier &&
+        decision.validUntil == current.validUntil &&
+        decision.reference == current.reference) {
+      showAdminFeedback(
+        title: 'Aucune modification',
+        message: 'Les droits de ${user.nom} sont déjà dans cet état.',
+        tone: AdminBannerTone.info,
+      );
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: setManagedAccountMembershipAction,
+      request: () => _managedAccountService.setManagedAccountMembership(
+        uid: user.uid,
+        tier: decision.tier,
+        validUntil: decision.validUntil,
+        reference: decision.reference,
+      ),
+      successMessage: decision.tier == MembershipTier.none
+          ? 'Les droits de ${user.nom} ont été retirés.'
+          : 'Droits enregistrés pour ${user.nom} : ${decision.summaryLabel}.',
+    );
+  }
+
   Future<void> _showProfileReviewDialog(AppUser user) async {
     // phone/email/authDisabledReason/profileVerificationNote were moved out
     // of the bulk users snapshot into users/{uid}/private/contact and
@@ -695,6 +753,18 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 },
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Modifier le profil'),
+              ),
+            if (_isMutableManagedAccount(user))
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _setManagedAccountMembership(user);
+                },
+                icon: const Icon(
+                  Icons.workspace_premium_outlined,
+                  size: 18,
+                ),
+                label: const Text('Gérer les droits'),
               ),
             if (_canManageProfileVerification(user))
               OutlinedButton.icon(
@@ -816,6 +886,34 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       );
     }
 
+    if (_isMutableManagedAccount(user)) {
+      items.add(
+        PopupMenuItem(
+          value: _actionManageMembership,
+          child: Row(
+            children: [
+              Icon(
+                user.membership.isRecorded
+                    ? Icons.workspace_premium_rounded
+                    : Icons.workspace_premium_outlined,
+                size: 18,
+                color: user.membership.isActiveAt(DateTime.now())
+                    ? AdminTheme.accent
+                    : AdminTheme.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              const Flexible(
+                child: Text(
+                  'Gérer les droits',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isAdminManagedAccount(user)) {
       items.add(const PopupMenuDivider());
       items.addAll([
@@ -906,6 +1004,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         break;
       case _actionUnverifyProfile:
         await _unverifyManagedAccountProfile(user);
+        break;
+      case _actionManageMembership:
+        await _setManagedAccountMembership(user);
         break;
     }
   }
@@ -1192,6 +1293,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       icon: Icons.rule_folder_outlined,
                       accentColor: AdminTheme.cyan,
                       subtitle: 'Éligibles',
+                      minWidth: compact ? 180 : 220,
+                    ),
+                    AdminMiniStat(
+                      label: 'Droits actifs',
+                      value:
+                          '${filteredUsers.where((user) => user.membership.isActiveAt(DateTime.now())).length}',
+                      icon: Icons.workspace_premium_outlined,
+                      accentColor: AdminTheme.accent,
+                      subtitle: 'Dossiers en cours',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
@@ -1580,6 +1690,232 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   }
 }
 
+/// Ce que l'administrateur a décidé dans le dialogue des droits.
+class _MembershipDecision {
+  const _MembershipDecision({
+    required this.tier,
+    this.validUntil,
+    this.reference,
+  });
+
+  final MembershipTier tier;
+  final DateTime? validUntil;
+  final String? reference;
+
+  String get summaryLabel {
+    if (tier == MembershipTier.none) {
+      return 'aucun droit';
+    }
+
+    final until = validUntil;
+    final label = Membership.tierLabelOf(tier);
+    return until == null
+        ? '$label, sans terme'
+        : '$label, jusqu’au ${Membership.formatDate(until)}';
+  }
+}
+
+class _ManagedMembershipDialog extends StatefulWidget {
+  const _ManagedMembershipDialog({required this.user});
+
+  final AppUser user;
+
+  @override
+  State<_ManagedMembershipDialog> createState() =>
+      _ManagedMembershipDialogState();
+}
+
+class _ManagedMembershipDialogState extends State<_ManagedMembershipDialog> {
+  late MembershipTier _tier;
+  late DateTime? _validUntil;
+  late final TextEditingController _referenceController;
+
+  AppUser get _user => widget.user;
+
+  @override
+  void initState() {
+    super.initState();
+    _tier = _user.membership.tier;
+    _validUntil = _user.membership.validUntil;
+    _referenceController = TextEditingController(
+      text: _user.membership.reference ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _referenceController.dispose();
+    super.dispose();
+  }
+
+  bool get _isClearing => _tier == MembershipTier.none;
+
+  Future<void> _pickValidUntil() async {
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year, now.month, now.day + 1);
+    // Deux jours de marge sur la limite du callable : la date choisie est
+    // ramenée à 23h59, et une échéance au dernier jour exact serait refusée
+    // pour quelques heures de trop.
+    final lastDate = now.add(Membership.maxValidity - const Duration(days: 2));
+    final current = _validUntil;
+    final initialDate = (current != null && current.isAfter(firstDate))
+        ? (current.isBefore(lastDate) ? current : lastDate)
+        : firstDate;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      helpText: 'Échéance des droits',
+      cancelText: 'Annuler',
+      confirmText: 'Valider',
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      // Fin de journée : des droits accordés « jusqu’au 12 » valent tout le 12.
+      _validUntil = DateTime(picked.year, picked.month, picked.day, 23, 59);
+    });
+  }
+
+  void _submit() {
+    final reference = _referenceController.text.trim();
+
+    Navigator.of(context).pop(
+      _MembershipDecision(
+        tier: _tier,
+        validUntil: _isClearing ? null : _validUntil,
+        reference: (_isClearing || reference.isEmpty) ? null : reference,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = _user.membership;
+
+    return AlertDialog(
+      title: Text('Droits - ${_user.nom}'),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Compte cible : ${_user.nom} (${_user.email})'),
+              const SizedBox(height: 6),
+              Text(
+                'État actuel : ${current.statusLabelAt(DateTime.now())}',
+                style: const TextStyle(color: AdminTheme.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<MembershipTier>(
+                initialValue: _tier,
+                decoration: const InputDecoration(
+                  labelText: 'Catégorie',
+                  border: OutlineInputBorder(),
+                ),
+                items: Membership.selectableTiers
+                    .map(
+                      (tier) => DropdownMenuItem<MembershipTier>(
+                        value: tier,
+                        child: Text(Membership.tierLabelOf(tier)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+
+                  setState(() {
+                    _tier = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                Membership.tierDescriptionOf(_tier),
+                style: const TextStyle(
+                  color: AdminTheme.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+              if (!_isClearing) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _validUntil == null
+                            ? 'Échéance : sans terme'
+                            : 'Échéance : ${Membership.formatDate(_validUntil!)}',
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _pickValidUntil,
+                      icon: const Icon(Icons.event_outlined, size: 18),
+                      label: const Text('Choisir'),
+                    ),
+                    if (_validUntil != null)
+                      TextButton(
+                        onPressed: () => setState(() => _validUntil = null),
+                        child: const Text('Sans terme'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Un compte sous contrat avec l’agence n’a normalement pas de terme.',
+                  style: TextStyle(
+                    color: AdminTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _referenceController,
+                  maxLength: Membership.referenceMaxLength,
+                  decoration: const InputDecoration(
+                    labelText: 'Référence interne (facultatif)',
+                    hintText: 'Ex. contrat 2026-014 ou reçu agence 1287',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                _isClearing
+                    ? 'Le dossier sera effacé : le compte redeviendra un compte sans droits enregistrés.'
+                    : 'Aucun montant n’est enregistré ici. Le règlement se fait à l’agence et cette fiche ne fait qu’en garder la trace.',
+                style: const TextStyle(
+                  color: AdminTheme.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: Text(_isClearing ? 'Retirer les droits' : 'Enregistrer'),
+        ),
+      ],
+    );
+  }
+}
+
 class _ProfileReviewContent extends StatelessWidget {
   const _ProfileReviewContent({required this.user});
 
@@ -1681,6 +2017,37 @@ class _ProfileReviewContent extends StatelessWidget {
                 label: 'Note interne',
                 value: user.profileVerificationNote!,
               ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _ProfileReviewSection(
+          title: 'Droits enregistrés',
+          children: [
+            _ProfileReviewItem(
+              label: 'État',
+              value: user.membership.statusLabelAt(DateTime.now()),
+            ),
+            _ProfileReviewItem(
+              label: 'Catégorie',
+              value: user.membership.tierLabel,
+            ),
+            if (user.membership.startedAt != null)
+              _ProfileReviewItem(
+                label: 'Enregistré le',
+                value: Membership.formatDate(user.membership.startedAt!),
+              ),
+            _ProfileReviewItem(
+              label: 'Échéance',
+              value: user.membership.validUntil == null
+                  ? (user.membership.isRecorded
+                        ? 'Sans terme'
+                        : 'Sans objet')
+                  : Membership.formatDate(user.membership.validUntil!),
+            ),
+            _ProfileReviewItem(
+              label: 'Référence interne',
+              value: user.membership.reference ?? 'Non renseignée',
+            ),
           ],
         ),
         const SizedBox(height: 14),

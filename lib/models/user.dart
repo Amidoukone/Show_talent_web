@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:show_talent/models/event.dart';
+import 'package:show_talent/models/membership.dart';
 import 'package:show_talent/models/offre.dart';
 import 'package:show_talent/models/video.dart';
 import 'package:show_talent/utils/account_role_policy.dart';
@@ -31,6 +32,12 @@ class AppUser {
   DateTime? profileVerificationInvalidatedAt;
   String? profileVerificationInvalidatedBy;
   String? profileVerificationInvalidationReason;
+
+  /// Droits enregistrés par l'administration.
+  ///
+  /// Écrit uniquement par le callable `setManagedAccountMembership` : ni le
+  /// mobile ni ce portail n'écrivent ce champ directement.
+  Membership membership;
 
   DateTime? birthDate;
   String? country;
@@ -98,6 +105,7 @@ class AppUser {
     this.profileVerificationInvalidatedAt,
     this.profileVerificationInvalidatedBy,
     this.profileVerificationInvalidationReason,
+    this.membership = Membership.none,
     this.birthDate,
     this.country,
     this.city,
@@ -206,6 +214,7 @@ class AppUser {
       profileVerificationInvalidationReason: _normalizeNullableString(
         map['profileVerificationInvalidationReason'],
       ),
+      membership: Membership.fromMap(map['membership']),
       birthDate: _parseNullableDate(map['birthDate']),
       country: _normalizeNullableString(map['country']),
       city: _normalizeNullableString(map['city']),
@@ -339,6 +348,11 @@ class AppUser {
       'profileVerificationInvalidatedBy': profileVerificationInvalidatedBy,
       'profileVerificationInvalidationReason':
           profileVerificationInvalidationReason,
+      // Volontairement absent de toEmbeddedMap : les droits ne suivent pas un
+      // compte recopié dans le document d'un autre. Ici en revanche il faut
+      // les garder, sinon la relecture d'un utilisateur enrichi de ses champs
+      // privés (fetchUserWithPrivateFields) perdrait son dossier.
+      'membership': membership.isRecorded ? membership.toMap() : null,
       'birthDate': birthDate != null ? Timestamp.fromDate(birthDate!) : null,
       'country': country,
       'city': city,

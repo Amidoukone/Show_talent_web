@@ -144,6 +144,7 @@ Uniquement via backend partage :
 - changement de role : `changeManagedAccountRole`
 - suppression : `deleteManagedAccount`
 - mise a jour profil : `updateManagedAccountProfile`
+- droits d acces enregistres : `setManagedAccountMembership`
 - changement de statut offre : `adminSetOfferStatus`
 - suppression offre : `adminDeleteOffer`
 - changement de statut event : `adminSetEventStatus`
@@ -155,7 +156,7 @@ Uniquement via backend partage :
 - suppression mise en relation : `adminDeleteContactIntake`
 - suppression conversation liee : `adminDeleteContactIntakeConversation`
 
-Liste complete des 17 callables et regle de synchronisation : voir
+Liste complete des 18 callables et regle de synchronisation : voir
 `README.md` (section Cloud Functions admin) et
 `docs/admin-offer-event-rollout-plan.md`.
 

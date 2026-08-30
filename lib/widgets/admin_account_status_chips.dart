@@ -28,6 +28,18 @@ class AdminAccountStatusChips extends StatelessWidget {
       ));
     }
 
+    // Les droits enregistrés ne changent pas l'accès au compte : ils sont
+    // affichés à côté des statuts d'accès, jamais confondus avec eux.
+    if (user.membership.isRecorded) {
+      final active = user.membership.isActiveAt(DateTime.now());
+      statuses.add(_StatusItem(
+        label: active
+            ? (user.membership.isAgencyPlayer ? 'sous contrat' : 'droits actifs')
+            : 'droits échus',
+        textColor: active ? AdminTheme.accent : AdminTheme.warning,
+      ));
+    }
+
     if (user.authDisabled) {
       statuses.add(const _StatusItem(
         label: 'auth désactivée',

@@ -147,7 +147,31 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     );
   }
 
-  Future<void> _openVideo(Video video) async {
+  AdminVideoQueueEntry _queueEntry(BuildContext context, Video video) {
+    return AdminVideoQueueEntry(
+      videoUrl: video.effectiveUrl,
+      userId: video.uid,
+      videoId: video.id,
+      title: video.displayTitle,
+      authorName: _resolveUserName(video.uid),
+      metadata: _metadata(video),
+      decisions: [
+        AdminVideoDecision(
+          label: 'Supprimer',
+          icon: Icons.delete_outline_rounded,
+          tone: AdminVideoActionTone.danger,
+          outlined: true,
+          onInvoke: () => _confirmDelete(context, video.id),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openVideo(
+    BuildContext context,
+    Video video,
+    List<Video> queue,
+  ) async {
     if (_isOpeningVideo) return;
 
     final videoUrl = video.effectiveUrl;
@@ -161,13 +185,25 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
       return;
     }
 
+    // La file suit ce que l'opérateur voit : la recherche en cours, dans son
+    // ordre, et non la seule page affichée.
+    final entries = queue
+        .where((candidate) => candidate.effectiveUrl.isNotEmpty)
+        .toList(growable: false);
+    final startIndex = entries.indexWhere(
+      (candidate) => candidate.id == video.id,
+    );
+
     _isOpeningVideo = true;
     try {
       await Get.to(
-        () => VideoPlayerScreen(
-          videoUrl: videoUrl,
-          userId: video.uid,
-          videoId: video.id,
+        () => VideoPlayerScreen.queue(
+          entries: entries.isEmpty
+              ? [_queueEntry(context, video)]
+              : entries
+                    .map((candidate) => _queueEntry(context, candidate))
+                    .toList(growable: false),
+          initialIndex: startIndex < 0 ? 0 : startIndex,
         ),
       );
     } finally {
@@ -175,7 +211,11 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     }
   }
 
-  Widget _buildActions(BuildContext context, Video video) {
+  Widget _buildActions(
+    BuildContext context,
+    Video video,
+    List<Video> queue,
+  ) {
     if (_deletingVideoId == video.id) {
       return const SizedBox(
         width: 18,
@@ -189,7 +229,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
       runSpacing: 6,
       children: [
         AdminVideoActionButton(
-          onPressed: () => _openVideo(video),
+          onPressed: () => _openVideo(context, video, queue),
           icon: Icons.play_circle_outline_rounded,
           label: 'Lire',
           tone: AdminVideoActionTone.info,
@@ -205,7 +245,11 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     );
   }
 
-  Widget _buildVideoCard(BuildContext context, Video video) {
+  Widget _buildVideoCard(
+    BuildContext context,
+    Video video,
+    List<Video> queue,
+  ) {
     return AdminDataCard(
       leading: _buildPreview(video, true),
       title: _buildTitleCell(video),
@@ -215,7 +259,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
           value: Text(_resolveUserName(video.uid)),
         ),
       ],
-      actions: _buildActions(context, video),
+      actions: _buildActions(context, video, queue),
     );
   }
 
@@ -392,7 +436,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (final video in displayedVideos) ...[
-                        _buildVideoCard(context, video),
+                        _buildVideoCard(context, video, filteredVideos),
                         const SizedBox(height: 12),
                       ],
                     ],
@@ -426,7 +470,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                                 color: _statusColor(video),
                               ),
                             ),
-                            DataCell(_buildActions(context, video)),
+                            DataCell(_buildActions(context, video, filteredVideos)),
                           ],
                         );
                       }),
@@ -469,8 +513,13 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     );
   }
 
-  void _confirmDelete(BuildContext context, String videoId) {
-    showDialog(
+  /// Rend `true` quand la vidéo a réellement été supprimée.
+  ///
+  /// La confirmation ne fait plus que confirmer : la suppression a lieu
+  /// ensuite, ici, ce qui permet au lecteur de modération de savoir si la
+  /// décision a eu lieu et de se refermer en conséquence.
+  Future<bool> _confirmDelete(BuildContext context, String videoId) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -479,46 +528,54 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             'Cette action retire définitivement la vidéo du catalogue et de la modération.',
           ),
           actions: [
-            TextButton(onPressed: Get.back, child: const Text('Annuler')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Annuler'),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AdminTheme.danger,
                 foregroundColor: AdminTheme.background,
               ),
-              onPressed: () async {
-                Navigator.of(context).pop();
-                setState(() {
-                  _deletingVideoId = videoId;
-                });
-
-                try {
-                  await videoController.deleteVideo(videoId);
-                  showAdminFeedback(
-                    title: 'Vidéo supprimée',
-                    message: 'La vidéo a été retirée avec succès.',
-                    tone: AdminBannerTone.success,
-                    position: SnackPosition.BOTTOM,
-                  );
-                } catch (error) {
-                  showAdminFeedback(
-                    title: 'Suppression impossible',
-                    message: '$error',
-                    tone: AdminBannerTone.danger,
-                    position: SnackPosition.BOTTOM,
-                  );
-                } finally {
-                  if (mounted) {
-                    setState(() {
-                      _deletingVideoId = null;
-                    });
-                  }
-                }
-              },
+              onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Supprimer'),
             ),
           ],
         );
       },
     );
+
+    if (confirmed != true) {
+      return false;
+    }
+
+    setState(() {
+      _deletingVideoId = videoId;
+    });
+
+    try {
+      await videoController.deleteVideo(videoId);
+      showAdminFeedback(
+        title: 'Vidéo supprimée',
+        message: 'La vidéo a été retirée avec succès.',
+        tone: AdminBannerTone.success,
+        position: SnackPosition.BOTTOM,
+      );
+      return true;
+    } catch (error) {
+      showAdminFeedback(
+        title: 'Suppression impossible',
+        message: '$error',
+        tone: AdminBannerTone.danger,
+        position: SnackPosition.BOTTOM,
+      );
+      return false;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _deletingVideoId = null;
+        });
+      }
+    }
   }
 }

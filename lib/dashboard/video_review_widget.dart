@@ -128,7 +128,41 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     ];
   }
 
-  Future<void> _openVideo(Video video) async {
+  /// Les décisions proposées dans le lecteur pour [video].
+  ///
+  /// Elles délèguent aux mêmes méthodes que la liste : une seule règle
+  /// métier, deux points d'entrée.
+  List<AdminVideoDecision> _playerDecisions(Video video) {
+    return [
+      AdminVideoDecision(
+        label: 'Approuver',
+        icon: Icons.check_circle_outline_rounded,
+        tone: AdminVideoActionTone.success,
+        onInvoke: () => _approveVideo(video),
+      ),
+      AdminVideoDecision(
+        label: 'Refuser',
+        icon: Icons.delete_outline_rounded,
+        tone: AdminVideoActionTone.danger,
+        outlined: true,
+        onInvoke: () => _rejectVideo(video),
+      ),
+    ];
+  }
+
+  AdminVideoQueueEntry _queueEntry(Video video) {
+    return AdminVideoQueueEntry(
+      videoUrl: video.effectiveUrl,
+      userId: video.uid,
+      videoId: video.id,
+      title: video.displayTitle,
+      authorName: _resolveUserName(video.uid),
+      metadata: _metadata(video),
+      decisions: _playerDecisions(video),
+    );
+  }
+
+  Future<void> _openVideo(Video video, List<Video> queue) async {
     if (_isOpeningVideo) return;
 
     final videoUrl = video.effectiveUrl;
@@ -142,6 +176,16 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       return;
     }
 
+    // La file suit ce que l'opérateur voit : la recherche en cours, dans son
+    // ordre, et non la seule page affichée. Les vidéos sans source lisible en
+    // sont retirées — sauf celle qu'on vient d'ouvrir, déjà écartée plus haut.
+    final entries = queue
+        .where((candidate) => candidate.effectiveUrl.isNotEmpty)
+        .toList(growable: false);
+    final startIndex = entries.indexWhere(
+      (candidate) => candidate.id == video.id,
+    );
+
     // A rapid double-tap could otherwise push two VideoPlayerScreen routes
     // and start two network video downloads before the first navigation
     // transition completes. Guarded for the entire time the preview is
@@ -149,10 +193,11 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     _isOpeningVideo = true;
     try {
       await Get.to(
-        () => VideoPlayerScreen(
-          videoUrl: videoUrl,
-          userId: video.uid,
-          videoId: video.id,
+        () => VideoPlayerScreen.queue(
+          entries: entries.isEmpty
+              ? [_queueEntry(video)]
+              : entries.map(_queueEntry).toList(growable: false),
+          initialIndex: startIndex < 0 ? 0 : startIndex,
         ),
       );
     } finally {
@@ -160,7 +205,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     }
   }
 
-  Future<void> _approveVideo(Video video) async {
+  Future<bool> _approveVideo(Video video) async {
     if (!video.optimized) {
       showAdminFeedback(
         title: 'Optimisation en cours',
@@ -168,7 +213,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         tone: AdminBannerTone.warning,
         position: SnackPosition.BOTTOM,
       );
-      return;
+      return false;
     }
 
     setState(() {
@@ -185,6 +230,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
+      return true;
     } catch (error) {
       showAdminFeedback(
         title: 'Approbation impossible',
@@ -192,6 +238,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
       );
+      return false;
     } finally {
       if (mounted) {
         setState(() {
@@ -202,10 +249,10 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     }
   }
 
-  Future<void> _rejectVideo(Video video) async {
+  Future<bool> _rejectVideo(Video video) async {
     final reason = await _askRejectionReason(video);
     if (reason == null) {
-      return;
+      return false;
     }
 
     setState(() {
@@ -221,6 +268,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
+      return true;
     } catch (error) {
       showAdminFeedback(
         title: 'Refus impossible',
@@ -228,6 +276,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         tone: AdminBannerTone.danger,
         position: SnackPosition.BOTTOM,
       );
+      return false;
     } finally {
       if (mounted) {
         setState(() {
@@ -330,7 +379,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     );
   }
 
-  Widget _buildActions(Video video) {
+  Widget _buildActions(Video video, List<Video> queue) {
     final isBusy = _processingVideoId == video.id;
     if (isBusy) {
       return Row(
@@ -355,7 +404,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       runSpacing: 6,
       children: [
         AdminVideoActionButton(
-          onPressed: () => _openVideo(video),
+          onPressed: () => _openVideo(video, queue),
           icon: Icons.play_circle_outline_rounded,
           label: 'Prévisualiser',
           tone: AdminVideoActionTone.info,
@@ -377,7 +426,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     );
   }
 
-  Widget _buildVideoCard(Video video) {
+  Widget _buildVideoCard(Video video, List<Video> queue) {
     return AdminDataCard(
       leading: _buildPreview(video, true),
       title: _buildTitleCell(video),
@@ -387,7 +436,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
           value: Text(_resolveUserName(video.uid)),
         ),
       ],
-      actions: _buildActions(video),
+      actions: _buildActions(video, queue),
     );
   }
 
@@ -542,7 +591,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (final video in displayedVideos) ...[
-                        _buildVideoCard(video),
+                        _buildVideoCard(video, filteredVideos),
                         const SizedBox(height: 12),
                       ],
                     ],
@@ -597,7 +646,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                                 color: _statusColor(video),
                               ),
                             ),
-                            DataCell(_buildActions(video)),
+                            DataCell(_buildActions(video, filteredVideos)),
                           ],
                         );
                       }),

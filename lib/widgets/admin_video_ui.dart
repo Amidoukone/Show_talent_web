@@ -4,6 +4,71 @@ import '../theme/admin_theme.dart';
 
 enum AdminVideoActionTone { neutral, info, success, warning, danger }
 
+/// Une vidéo de la file de modération, telle que le lecteur la reçoit.
+///
+/// Le lecteur travaille sur une file plutôt que sur une vidéo isolée : un
+/// opérateur qui doit revenir à la liste entre chaque décision passe son temps
+/// à naviguer au lieu de juger.
+class AdminVideoQueueEntry {
+  const AdminVideoQueueEntry({
+    required this.videoUrl,
+    required this.userId,
+    required this.videoId,
+    this.title,
+    this.authorName,
+    this.metadata = const <AdminVideoMetaItem>[],
+    this.decisions = const <AdminVideoDecision>[],
+  });
+
+  final String videoUrl;
+  final String userId;
+  final String videoId;
+  final String? title;
+  final String? authorName;
+  final List<AdminVideoMetaItem> metadata;
+  final List<AdminVideoDecision> decisions;
+
+  String get displayTitle {
+    final trimmed = title?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      return trimmed;
+    }
+    return 'Vidéo $videoId';
+  }
+}
+
+/// Une décision de modération, telle que le lecteur peut la proposer.
+///
+/// Le lecteur ne sait pas approuver ni refuser une vidéo : il reçoit les
+/// décisions de l'écran qui l'ouvre, qui garde sa logique, ses confirmations
+/// et ses messages. Sans cela, la même règle métier existerait en deux
+/// exemplaires — celui de la liste et celui du lecteur.
+class AdminVideoDecision {
+  const AdminVideoDecision({
+    required this.label,
+    required this.icon,
+    required this.onInvoke,
+    this.tone = AdminVideoActionTone.neutral,
+    this.outlined = false,
+    this.closesPlayer = true,
+  });
+
+  final String label;
+  final IconData icon;
+
+  /// Exécute la décision. Rend `true` si elle a bien été appliquée : un refus
+  /// dont l'opérateur annule la boîte de motif rend `false`, et le lecteur
+  /// reste alors ouvert au lieu de se fermer sur une action qui n'a pas eu
+  /// lieu.
+  final Future<bool> Function() onInvoke;
+
+  final AdminVideoActionTone tone;
+  final bool outlined;
+
+  /// Referme le lecteur quand la décision a été appliquée.
+  final bool closesPlayer;
+}
+
 class AdminVideoMetaItem {
   const AdminVideoMetaItem({
     required this.label,

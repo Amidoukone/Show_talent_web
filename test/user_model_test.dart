@@ -101,21 +101,18 @@ void main() {
       'city': 'Abidjan',
       'languages': ['fr', 'en'],
       'openToOpportunities': true,
-      'position': 'Milieu',
       'team': 'Academy A',
       'cvUrl': 'https://cdn.example/cv.pdf',
-      'playerProfile': {
-        'physical': {
-          'heightCm': 181,
-          'strongFoot': 'right',
-        },
-        'positions': ['CM'],
-        'skills': ['vision'],
-        'stats': {'minutes': 900},
-      },
-      'clubProfile': {
-        'categories': ['U19']
-      },
+      // La forme a plat de la refonte : des codes au premier niveau du
+      // document, parce qu'une requete Firestore n'indexe pas utilement un
+      // champ enfoui dans une map.
+      'nationalities': ['CI'],
+      'positionCodes': ['CM'],
+      'strongFoot': 'right',
+      'heightCm': 181,
+      'contractStatus': 'free',
+      'currentClubLevel': 'academy',
+      'currentSeason': {'season': '2025-26', 'minutes': 900},
     });
 
     expect(user.birthDate, isNotNull);
@@ -138,7 +135,10 @@ void main() {
       'followings': 0,
       'emailVerified': true,
       'authDisabled': false,
-      'position': 'Attaquant',
+      // Volontairement sans fait footballistique : ce test porte sur un
+      // profil *complet mais non avance*, pour verifier que la completude du
+      // profil et la verification par l'administration restent deux choses
+      // distinctes. Ajouter un poste le ferait basculer en « avance ».
       'team': 'Academy A',
       'profileVerified': true,
       'profileVerificationStatus': 'verified',

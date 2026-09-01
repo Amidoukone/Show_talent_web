@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:show_talent/models/event.dart';
 import 'package:show_talent/models/membership.dart';
+import 'package:show_talent/models/org_football_profile.dart';
+import 'package:show_talent/models/player_football_profile.dart';
 import 'package:show_talent/models/offre.dart';
 import 'package:show_talent/models/video.dart';
 import 'package:show_talent/utils/account_role_policy.dart';
@@ -55,6 +57,22 @@ class AppUser {
   List<Video>? videosPubliees;
   Map<String, double>? performances;
 
+  /// Les faits footballistiques, tels qu'un recruteur les filtre.
+  ///
+  /// Lus a plat sur le document, comme cote mobile. Voir
+  /// [PlayerFootballProfile].
+  PlayerFootballProfile football;
+
+  /// Ce que le club declare.
+  ClubFootballProfile club;
+
+  /// Ce que l'agent ou le recruteur declare.
+  AgentFootballProfile agent;
+
+  /// Anciens profils en texte libre, remplaces par les trois ci-dessus.
+  ///
+  /// Conserves pour ne pas perdre le document d'un compte qui en porte encore,
+  /// mais plus alimentes ni lus.
   Map<String, dynamic>? playerProfile;
   Map<String, dynamic>? clubProfile;
   Map<String, dynamic>? agentProfile;
@@ -120,6 +138,9 @@ class AppUser {
     this.assistances,
     this.videosPubliees,
     this.performances,
+    this.football = const PlayerFootballProfile(),
+    this.club = const ClubFootballProfile(),
+    this.agent = const AgentFootballProfile(),
     this.playerProfile,
     this.clubProfile,
     this.agentProfile,
@@ -240,6 +261,9 @@ class AppUser {
       performances: safeMapPerformances?.map(
         (key, value) => MapEntry(key, value is num ? value.toDouble() : 0),
       ),
+      football: PlayerFootballProfile.fromUserMap(map),
+      club: ClubFootballProfile.fromUserMap(map),
+      agent: AgentFootballProfile.fromUserMap(map),
       playerProfile: _safeMap(map['playerProfile']),
       clubProfile: _safeMap(map['clubProfile']),
       agentProfile: _safeMap(map['agentProfile']),
@@ -367,6 +391,9 @@ class AppUser {
       'assistances': assistances,
       'videosPubliees': videosPubliees?.map((video) => video.toMap()).toList(),
       'performances': performances,
+      ...football.toPatch(),
+      ...club.toPatch(),
+      ...agent.toPatch(),
       'playerProfile': playerProfile,
       'clubProfile': clubProfile,
       'agentProfile': agentProfile,
@@ -479,10 +506,13 @@ class AppUser {
 
   bool get isMvpProfileComplete {
     switch (role) {
+      // Le profil de base, sans rien de footballistique : le poste est un
+      // fait avance depuis la refonte, et l'exiger ici rendrait « Profil
+      // complet » inatteignable pour un joueur.
       case 'joueur':
         return nom.isNotEmpty &&
-            (position?.isNotEmpty ?? false) &&
-            (team?.isNotEmpty ?? false);
+            ((team?.trim().isNotEmpty ?? false) ||
+                (clubActuel?.trim().isNotEmpty ?? false));
       case 'club':
         return nom.isNotEmpty && (ligue?.isNotEmpty ?? false);
       case 'recruteur':
@@ -496,42 +526,44 @@ class AppUser {
   bool get hasAdvancedProfile {
     switch (role) {
       case 'joueur':
-        return playerProfile != null && playerProfile!.isNotEmpty;
+        return football.isNotEmpty;
       case 'club':
-        return clubProfile != null && clubProfile!.isNotEmpty;
+        return club.isNotEmpty;
       case 'recruteur':
       case 'agent':
-        return agentProfile != null && agentProfile!.isNotEmpty;
+        return agent.isNotEmpty;
       default:
         return false;
     }
   }
 
+  /// Dossier exploitable par un recruteur.
+  ///
+  /// Miroir de la regle du depot mobile (`AppUser.hasScoutReadyProfile`), et
+  /// c'est important qu'elle soit la meme : un administrateur qui voit
+  /// « Profil elite » sur une fiche que le mobile annonce « partielle » ne
+  /// peut plus arbitrer quoi que ce soit.
+  ///
+  /// L'age n'y figure pas : `birthDate` vit dans le sous-document prive et ne
+  /// parvient pas a tous les lecteurs, donc l'exiger rendrait le verdict
+  /// dependant de qui regarde. Il revient sous la forme du `birthYear` public,
+  /// derive cote serveur.
   bool get hasScoutReadyProfile {
-    if (!isPlayer || playerProfile == null) {
-      return false;
-    }
+    if (!isPlayer) return false;
 
-    final profile = playerProfile!;
-    final physical = profile['physical'] is Map
-        ? Map<String, dynamic>.from(profile['physical'] as Map)
-        : <String, dynamic>{};
+    if (country?.trim().isEmpty ?? true) return false;
+    if (football.nationalities.isEmpty) return false;
+    if (football.positions.isEmpty) return false;
+    if (football.strongFoot == null) return false;
+    if (football.heightCm == null) return false;
+    if (football.contractStatus == null) return false;
+    if (football.currentClubLevel == null) return false;
+    if (football.currentSeason == null) return false;
 
-    final hasPhysical =
-        physical['heightCm'] != null ||
-        physical['weightKg'] != null ||
-        physical['strongFoot'] != null;
-    final positions = profile['positions'];
-    final hasPosition = positions is List && positions.isNotEmpty;
-    final skills = profile['skills'];
-    final hasSkills = skills is List && skills.isNotEmpty;
-    final stats = profile['stats'];
-    final hasStats = stats is Map && stats.isNotEmpty;
     final hasEvidence =
         (videosPubliees?.isNotEmpty ?? false) ||
         (cvUrl?.trim().isNotEmpty ?? false);
-
-    return (hasPhysical || hasSkills) && hasPosition && hasStats && hasEvidence;
+    return hasEvidence;
   }
 
   bool get shouldShowAdvancedSection {

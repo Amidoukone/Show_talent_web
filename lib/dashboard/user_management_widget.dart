@@ -1,9 +1,11 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../controller/user_controller.dart';
 import '../models/managed_account_provision_result.dart';
+import '../models/football_vocabulary.dart';
 import '../models/membership.dart';
 import '../models/user.dart';
 import '../services/managed_account_service.dart';
@@ -1162,7 +1164,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                     user.team,
                     user.nomClub,
                     user.entreprise,
-                    user.position,
                     user.clubActuel,
                     user.profileTrustLabel,
                     user.profileVerificationStatusLabel,
@@ -1506,7 +1507,7 @@ class _ManagedProfileEditDialog extends StatefulWidget {
 class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nomController;
-  late final TextEditingController _positionController;
+  late List<FootballPosition> _positionCodes;
   late final TextEditingController _teamController;
   late final TextEditingController _ligueController;
   late final TextEditingController _entrepriseController;
@@ -1518,7 +1519,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   void initState() {
     super.initState();
     _nomController = TextEditingController(text: _user.nom);
-    _positionController = TextEditingController(text: _user.position ?? '');
+    _positionCodes = List<FootballPosition>.of(_user.football.positions);
     _teamController = TextEditingController(text: _user.team ?? '');
     _ligueController = TextEditingController(text: _user.ligue ?? '');
     _entrepriseController = TextEditingController(text: _user.entreprise ?? '');
@@ -1530,7 +1531,6 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   @override
   void dispose() {
     _nomController.dispose();
-    _positionController.dispose();
     _teamController.dispose();
     _ligueController.dispose();
     _entrepriseController.dispose();
@@ -1565,17 +1565,18 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     }
 
     if (_user.isPlayer) {
-      final position = _trimOrNull(_positionController.text);
-      if (position != _user.position) {
-        patch['position'] = position;
+      // Des codes, pas du texte : `updateManagedAccountProfile` valide contre
+      // la meme liste fermee et laisse tomber en silence ce qu'il ne reconnait
+      // pas. Un poste tape a la main serait donc perdu sans erreur.
+      final codes = _positionCodes.map((p) => p.code).toList();
+      final currentCodes =
+          _user.football.positions.map((p) => p.code).toList();
+      if (!listEquals(codes, currentCodes)) {
+        patch['positionCodes'] = codes;
       }
       final team = _trimOrNull(_teamController.text);
       if (team != _user.team) {
         patch['team'] = team;
-      }
-      final license = _trimOrNull(_licenseController.text);
-      if (license != _currentLicenseNumber()) {
-        patch['playerProfile'] = {'licenseNumber': license};
       }
     } else if (_user.isClub) {
       final ligue = _trimOrNull(_ligueController.text);
@@ -1584,7 +1585,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
       }
       final license = _trimOrNull(_licenseController.text);
       if (license != _currentLicenseNumber()) {
-        patch['clubProfile'] = {'licenseNumber': license};
+        patch['clubFederationId'] = license;
       }
     } else if (_user.isRecruiter) {
       final entreprise = _trimOrNull(_entrepriseController.text);
@@ -1629,21 +1630,46 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                 ),
                 const SizedBox(height: 12),
                 if (_user.isPlayer) ...[
-                  TextFormField(
-                    controller: _positionController,
-                    decoration: const InputDecoration(labelText: 'Poste'),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Postes',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: FootballPosition.values.map((position) {
+                      final index = _positionCodes.indexOf(position);
+                      final isSelected = index >= 0;
+                      final atLimit = _positionCodes.length >=
+                          FootballPosition.maxPerPlayer;
+
+                      return FilterChip(
+                        selected: isSelected,
+                        label: Text(
+                          isSelected
+                              ? '${index + 1}. ${position.labelFr}'
+                              : position.labelFr,
+                        ),
+                        onSelected: (!isSelected && atLimit)
+                            ? null
+                            : (_) => setState(() {
+                                if (isSelected) {
+                                  _positionCodes.remove(position);
+                                } else {
+                                  _positionCodes.add(position);
+                                }
+                              }),
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _teamController,
                     decoration: const InputDecoration(labelText: 'Équipe'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _licenseController,
-                    decoration: const InputDecoration(
-                      labelText: 'Numéro de licence (facultatif)',
-                    ),
                   ),
                 ] else if (_user.isClub) ...[
                   TextFormField(
@@ -2088,8 +2114,10 @@ class _ProfileReviewContent extends StatelessWidget {
     if (user.isPlayer) {
       return [
         _ProfileReviewItem(
-          label: 'Poste',
-          value: user.position ?? 'Non renseigné',
+          label: 'Postes',
+          value: user.football.positions.isEmpty
+              ? 'Non renseigné'
+              : user.football.positions.map((p) => p.labelFr).join(' · '),
         ),
         _ProfileReviewItem(
           label: 'Équipe',

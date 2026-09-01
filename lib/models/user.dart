@@ -322,18 +322,30 @@ class AppUser {
     );
   }
 
+  /// La copie du compte recopiée dans les documents que d'autres lisent.
+  ///
+  /// `email` et `phone` en sont volontairement absents, exactement comme dans
+  /// le modèle mobile : cette map atterrit dans les candidatures d'offres, les
+  /// inscriptions aux événements et les listes d'abonnés, et ces deux champs
+  /// vivent dans `users/{uid}/private/contact` précisément pour qu'un tiers ne
+  /// les voie jamais. Le portail ne les recopiait dans aucun document
+  /// aujourd'hui — il n'écrit ni offre ni événement — mais la divergence était
+  /// une mine posée pour le jour où il le ferait.
+  ///
+  /// La forme doit rester alignée sur celle du mobile pour une deuxième
+  /// raison : les règles comparent ces lignes par valeur
+  /// (`hasAll(currentOfferCandidates())`) pour empêcher un joueur d'effacer la
+  /// candidature d'un autre.
   Map<String, dynamic> toEmbeddedMap() {
     return {
       'uid': uid,
       'nom': nom,
-      'email': email,
       'role': normalizeUserRole(role),
       'photoProfil': photoProfil,
       'estActif': estActif,
       'authDisabled': authDisabled,
       'emailVerified': emailVerified,
       'createdByAdmin': createdByAdmin,
-      'phone': phone,
       'profileVerified': profileVerified,
       'profileVerificationStatus': profileVerificationStatus,
       'nomClub': nomClub,

@@ -1161,10 +1161,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                     user.city,
                     user.region,
                     user.country,
-                    user.team,
+                    user.football.currentClubName,
                     user.nomClub,
                     user.entreprise,
-                    user.clubActuel,
                     user.profileTrustLabel,
                     user.profileVerificationStatusLabel,
                   ].whereType<String>().any(
@@ -1520,7 +1519,14 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     super.initState();
     _nomController = TextEditingController(text: _user.nom);
     _positionCodes = List<FootballPosition>.of(_user.football.positions);
-    _teamController = TextEditingController(text: _user.team ?? '');
+    // Le club typé, pas `team`. Les deux existaient et personne ne les
+    // écrivait ensemble : le portail posait `team`, le formulaire avancé du
+    // mobile posait `currentClubName`, et la fiche affichait tantôt l'un
+    // tantôt l'autre. Un club corrigé ici ressortait donc à côté de l'ancien
+    // sur le téléphone.
+    _teamController = TextEditingController(
+      text: _user.football.currentClubName ?? '',
+    );
     _ligueController = TextEditingController(text: _user.ligue ?? '');
     _entrepriseController = TextEditingController(text: _user.entreprise ?? '');
     _licenseController = TextEditingController(
@@ -1574,9 +1580,9 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
       if (!listEquals(codes, currentCodes)) {
         patch['positionCodes'] = codes;
       }
-      final team = _trimOrNull(_teamController.text);
-      if (team != _user.team) {
-        patch['team'] = team;
+      final clubName = _trimOrNull(_teamController.text);
+      if (clubName != _user.football.currentClubName) {
+        patch['currentClubName'] = clubName;
       }
     } else if (_user.isClub) {
       final ligue = _trimOrNull(_ligueController.text);
@@ -2120,8 +2126,8 @@ class _ProfileReviewContent extends StatelessWidget {
               : user.football.positions.map((p) => p.labelFr).join(' · '),
         ),
         _ProfileReviewItem(
-          label: 'Équipe',
-          value: user.team ?? user.clubActuel ?? 'Non renseignée',
+          label: 'Club actuel',
+          value: user.football.currentClubName ?? 'Non renseigné',
         ),
         _ProfileReviewItem(
           label: 'CV',

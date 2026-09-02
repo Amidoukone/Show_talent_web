@@ -43,6 +43,33 @@ class TestUserController extends UserController {
   }) async {
     return seededClaims;
   }
+
+  /// Ce que `users/{uid}/private/contact` porterait, par uid.
+  ///
+  /// Sans cette graine, tout écran qui lit le document de contact toucherait
+  /// Firestore depuis un test.
+  final Map<String, Map<String, dynamic>> privateContactByUid =
+      <String, Map<String, dynamic>>{};
+
+  /// Les uid pour lesquels la lecture privée a été demandée, dans l'ordre.
+  final List<String> privateFieldFetches = <String>[];
+
+  /// Ce que la lecture privée doit lever, pour rejouer une lecture refusée.
+  Object? privateFieldsError;
+
+  @override
+  Future<AppUser> fetchUserWithPrivateFields(AppUser baseUser) async {
+    privateFieldFetches.add(baseUser.uid);
+    final error = privateFieldsError;
+    if (error != null) {
+      throw error;
+    }
+    final contact = privateContactByUid[baseUser.uid];
+    if (contact == null) {
+      return baseUser;
+    }
+    return AppUser.fromMap(baseUser.toMap(), privateContact: contact);
+  }
 }
 
 AppUser buildTestUser({

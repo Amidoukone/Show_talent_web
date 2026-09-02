@@ -538,9 +538,33 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
+    // La date de naissance vit dans users/{uid}/private/contact, pas dans le
+    // flux de la liste : sans cette lecture, le champ s'ouvrirait vide sur un
+    // profil qui en porte une, et l'administration corrigerait une fiche en
+    // croyant qu'il lui manque un fait qu'elle possède déjà.
+    var editable = user;
+    var contactLoaded = true;
+    try {
+      editable = await _userController.fetchUserWithPrivateFields(user);
+    } catch (error) {
+      // La modification n'est pas abandonnée pour autant : les postes, le club
+      // et le parcours restent corrigeables sans ce document. Seul le champ
+      // date disparaît — mieux vaut absent qu'affiché vide, ce qui se lirait
+      // comme « ce joueur n'a pas de date de naissance ».
+      contactLoaded = false;
+      debugPrint('Lecture de private/contact impossible : $error');
+    }
+
+    if (!mounted) {
+      return;
+    }
+
     final patch = await showDialog<Map<String, dynamic>?>(
       context: context,
-      builder: (context) => _ManagedProfileEditDialog(user: user),
+      builder: (context) => _ManagedProfileEditDialog(
+        user: editable,
+        contactLoaded: contactLoaded,
+      ),
     );
 
     if (patch == null) {
@@ -1495,9 +1519,19 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 }
 
 class _ManagedProfileEditDialog extends StatefulWidget {
-  const _ManagedProfileEditDialog({required this.user});
+  const _ManagedProfileEditDialog({
+    required this.user,
+    this.contactLoaded = true,
+  });
 
   final AppUser user;
+
+  /// Si `users/{uid}/private/contact` a pu être lu.
+  ///
+  /// Faux, le champ date de naissance n'est pas affiché du tout : il ne peut
+  /// être ni prérempli ni comparé, et un champ vide dirait le contraire de la
+  /// vérité sur une fiche qui porte une date.
+  final bool contactLoaded;
 
   @override
   State<_ManagedProfileEditDialog> createState() =>
@@ -1518,6 +1552,14 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   /// une base qu'on présente comme qualifiée. Ce qu'un administrateur doit
   /// pouvoir faire, c'est effacer une ligne fausse ou dupliquée.
   late List<SeasonRecord> _seasonHistory;
+
+  /// La date de naissance telle que l'administration la laissera.
+  ///
+  /// C'est le seul fait dont l'absence retire une fiche de toutes les
+  /// recherches : `birthYear` en est dérivé par le serveur, et un dossier sans
+  /// année n'est renvoyé à aucun recruteur. Jusqu'ici, seul le joueur pouvait
+  /// le réparer, depuis son téléphone.
+  DateTime? _birthDate;
   late final TextEditingController _teamController;
   late final TextEditingController _ligueController;
   late final TextEditingController _entrepriseController;
@@ -1531,6 +1573,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     _nomController = TextEditingController(text: _user.nom);
     _positionCodes = List<FootballPosition>.of(_user.football.positions);
     _seasonHistory = List<SeasonRecord>.of(_user.football.seasonHistory);
+    _birthDate = _user.birthDate;
     // Le club typé, pas `team`. Les deux existaient et personne ne les
     // écrivait ensemble : le portail posait `team`, le formulaire avancé du
     // mobile posait `currentClubName`, et la fiche affichait tantôt l'un
@@ -1574,6 +1617,95 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
+  /// Deux dates désignent-elles le même jour ?
+  ///
+  /// Comparer les `DateTime` entiers enverrait un patch à chaque ouverture du
+  /// dialogue : la valeur relue porte l'heure que le `Timestamp` a conservée,
+  /// jamais celle que le sélecteur produit.
+  static bool _isSameDay(DateTime? a, DateTime? b) {
+    if (a == null || b == null) {
+      return a == null && b == null;
+    }
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  static String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime(now.year - 18, 1, 1),
+      // Le serveur reste seul juge : la borne vit dans `MIN_BIRTH_YEAR`
+      // (functions/src/user_search_fields.ts), et le callable refuse une année
+      // hors bornes avec un message qui la nomme. Ce que le sélecteur borne
+      // ici n'est qu'un confort de saisie, pas la règle.
+      firstDate: DateTime(1930),
+      lastDate: now,
+      helpText: 'Date de naissance',
+    );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+    setState(() => _birthDate = picked);
+  }
+
+  Widget _buildBirthDateField() {
+    final value = _birthDate;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                value == null
+                    ? 'Date de naissance : non renseignée'
+                    : 'Date de naissance : ${_formatDate(value)}',
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _pickBirthDate,
+              icon: const Icon(Icons.event_outlined, size: 18),
+              label: Text(value == null ? 'Renseigner' : 'Modifier'),
+            ),
+            if (value != null)
+              IconButton(
+                tooltip: 'Effacer la date',
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () => setState(() => _birthDate = null),
+              ),
+          ],
+        ),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Sans elle, le dossier n’apparaît dans aucune recherche de '
+            'recruteur.',
+            style: TextStyle(fontSize: 12),
+          ),
+        ),
+        if (_user.profileVerified) ...[
+          const SizedBox(height: 4),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Modifier la date retire la certification jusqu’à un nouveau '
+              'contrôle : l’âge est un fait que le recruteur croit sur parole.',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Map<String, dynamic> _buildPatch() {
     final patch = <String, dynamic>{};
 
@@ -1595,6 +1727,13 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
       final clubName = _trimOrNull(_teamController.text);
       if (clubName != _user.football.currentClubName) {
         patch['currentClubName'] = clubName;
+      }
+      // ISO-8601, jamais un DateTime : le callable accepte la chaîne, la
+      // valide contre `toBirthYear` — celle-là même dont le trigger dérive
+      // l'année — et la stocke en `Timestamp`, la forme que le mobile écrit
+      // déjà. `null` efface, ce qui est le bon geste pour une date inventée.
+      if (widget.contactLoaded && !_isSameDay(_birthDate, _user.birthDate)) {
+        patch['birthDate'] = _birthDate?.toIso8601String();
       }
       // La liste entière est renvoyée, pas la seule ligne retirée : le
       // callable réécrit `seasonHistory` d'un bloc, et lui envoyer un fragment
@@ -1697,6 +1836,18 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                     controller: _teamController,
                     decoration: const InputDecoration(labelText: 'Club actuel'),
                   ),
+                  const SizedBox(height: 12),
+                  if (widget.contactLoaded)
+                    _buildBirthDateField()
+                  else
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Date de naissance indisponible : le document de '
+                        'contact n’a pas pu être lu.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
                   if (_seasonHistory.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     const Align(

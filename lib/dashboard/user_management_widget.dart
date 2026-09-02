@@ -7,6 +7,7 @@ import '../controller/user_controller.dart';
 import '../models/managed_account_provision_result.dart';
 import '../models/football_vocabulary.dart';
 import '../models/membership.dart';
+import '../models/player_football_profile.dart';
 import '../models/user.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
@@ -1507,6 +1508,16 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nomController;
   late List<FootballPosition> _positionCodes;
+
+  /// Le parcours tel que l'administration le laissera.
+  ///
+  /// Le portail retire, il n'ajoute pas : une saison s'archive depuis le
+  /// téléphone, au moment où elle se termine, avec le club que le profil
+  /// portait alors. Retaper une saison ici reviendrait à saisir de mémoire ce
+  /// que l'application savait déjà — et c'est ainsi qu'on invente un fait dans
+  /// une base qu'on présente comme qualifiée. Ce qu'un administrateur doit
+  /// pouvoir faire, c'est effacer une ligne fausse ou dupliquée.
+  late List<SeasonRecord> _seasonHistory;
   late final TextEditingController _teamController;
   late final TextEditingController _ligueController;
   late final TextEditingController _entrepriseController;
@@ -1519,6 +1530,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     super.initState();
     _nomController = TextEditingController(text: _user.nom);
     _positionCodes = List<FootballPosition>.of(_user.football.positions);
+    _seasonHistory = List<SeasonRecord>.of(_user.football.seasonHistory);
     // Le club typé, pas `team`. Les deux existaient et personne ne les
     // écrivait ensemble : le portail posait `team`, le formulaire avancé du
     // mobile posait `currentClubName`, et la fiche affichait tantôt l'un
@@ -1583,6 +1595,14 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
       final clubName = _trimOrNull(_teamController.text);
       if (clubName != _user.football.currentClubName) {
         patch['currentClubName'] = clubName;
+      }
+      // La liste entière est renvoyée, pas la seule ligne retirée : le
+      // callable réécrit `seasonHistory` d'un bloc, et lui envoyer un fragment
+      // effacerait le reste du parcours.
+      if (_seasonHistory.length != _user.football.seasonHistory.length) {
+        patch['seasonHistory'] = _seasonHistory
+            .map((season) => season.toMap())
+            .toList();
       }
     } else if (_user.isClub) {
       final ligue = _trimOrNull(_ligueController.text);
@@ -1675,8 +1695,48 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _teamController,
-                    decoration: const InputDecoration(labelText: 'Équipe'),
+                    decoration: const InputDecoration(labelText: 'Club actuel'),
                   ),
+                  if (_seasonHistory.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Parcours',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Retirez une saison fausse ou dupliquée. '
+                        'Une saison s’archive depuis l’application.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final (index, season) in _seasonHistory.indexed)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _ProfileReviewContent.archivedSeasonLabel(season),
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Retirer cette saison',
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () => setState(
+                              () => _seasonHistory = <SeasonRecord>[
+                                ..._seasonHistory,
+                              ]..removeAt(index),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                 ] else if (_user.isClub) ...[
                   TextFormField(
                     controller: _ligueController,
@@ -2116,6 +2176,32 @@ class _ProfileReviewContent extends StatelessWidget {
     );
   }
 
+  /// « 2024-25 · Ligue 1 CIV · ASEC Mimosas (Académie) · 28 matchs, 11 buts »
+  ///
+  /// Le niveau du club y figure parce qu'il change la lecture des chiffres :
+  /// vingt-huit matchs en académie et vingt-huit en première division ne
+  /// disent pas la même chose du joueur.
+  static String archivedSeasonLabel(SeasonRecord season) {
+    final head = <String>[
+      ?season.season,
+      ?season.competition,
+      if (season.clubName != null)
+        season.clubLevel == null
+            ? season.clubName!
+            : '${season.clubName} (${season.clubLevel!.labelFr})',
+    ].join(' · ');
+
+    final figures = <String>[
+      if (season.appearances != null) '${season.appearances} matchs',
+      if (season.minutes != null) '${season.minutes} min',
+      if (season.goals != null) '${season.goals} buts',
+      if (season.assists != null) '${season.assists} passes',
+    ].join(', ');
+
+    if (head.isEmpty) return figures.isEmpty ? 'Saison archivée' : figures;
+    return figures.isEmpty ? head : '$head · $figures';
+  }
+
   static List<_ProfileReviewItem> _buildRoleProfileItems(AppUser user) {
     if (user.isPlayer) {
       return [
@@ -2128,6 +2214,17 @@ class _ProfileReviewContent extends StatelessWidget {
         _ProfileReviewItem(
           label: 'Club actuel',
           value: user.football.currentClubName ?? 'Non renseigné',
+        ),
+        // Le parcours : c'est sur lui qu'un recruteur juge une progression,
+        // donc c'est lui qu'il signalera si une saison est fausse. Le voir
+        // est la condition pour pouvoir le corriger.
+        _ProfileReviewItem(
+          label: 'Parcours',
+          value: user.football.seasonHistory.isEmpty
+              ? 'Aucune saison archivée'
+              : user.football.seasonHistory
+                    .map(archivedSeasonLabel)
+                    .join('\n'),
         ),
         _ProfileReviewItem(
           label: 'CV',

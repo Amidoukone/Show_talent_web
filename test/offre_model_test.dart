@@ -80,8 +80,13 @@ void main() {
           'status': 'closed',
           'location': 'Abidjan',
           'salary': 'Prime de match',
+          // Laisses la volontairement : depuis la migration du vocabulaire,
+          // ces deux la ne doivent plus alimenter quoi que ce soit.
           'level': 'U19',
           'position': 'Gardien',
+          'positionCodes': <String>['GK'],
+          'ageCategories': <String>['U19'],
+          'clubLevel': 'academy',
           'attachmentUrl': 'https://cdn.example/offer.pdf',
           'vues': 12,
           'viewedBy': ['u1', 2],
@@ -98,8 +103,9 @@ void main() {
       expect(offre.statut, 'fermee');
       expect(offre.localisation, 'Abidjan');
       expect(offre.remuneration, 'Prime de match');
-      expect(offre.niveau, 'U19');
-      expect(offre.posteRecherche, 'Gardien');
+      expect(offre.positionCodes.map((position) => position.code), ['GK']);
+      expect(offre.ageCategories.map((category) => category.code), ['U19']);
+      expect(offre.clubLevel?.code, 'academy');
       expect(offre.pieceJointeUrl, 'https://cdn.example/offer.pdf');
       expect(offre.vues, 12);
       expect(offre.viewedBy, ['u1', '2']);

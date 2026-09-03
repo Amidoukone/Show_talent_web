@@ -228,15 +228,48 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
     );
   }
 
+  /// La ligne de contexte d'une offre, dans le vocabulaire code.
+  ///
+  /// Elle lisait `posteRecherche` et `niveau`, du texte libre que le mobile
+  /// n'ecrit plus depuis 06b4e43 : elle se reduisait a la localisation, et
+  /// personne ne pouvait s'en apercevoir, une cle absente se lisant comme
+  /// nulle. `AgeCategory` n'a pas de libelle francais -- son code (« U19 »,
+  /// « Senior ») est deja ce qu'un moderateur lit.
+  String _offerMetaLine(Offre offre) {
+    final niveau = [
+      ...offre.ageCategories.map((category) => category.code),
+      if (offre.clubLevel != null) offre.clubLevel!.labelFr,
+    ].join(' \u00b7 ');
+
+    return [
+      offre.positionCodes.map((position) => position.labelFr).join(', '),
+      offre.localisation ?? '',
+      niveau,
+    ].where((value) => value.trim().isNotEmpty).join(' | ');
+  }
+
+  /// Ce sur quoi la recherche doit tomber pour une offre.
+  ///
+  /// Codes et libelles ensemble : un moderateur tape « attaquant » aussi bien
+  /// que « ST », et la recherche ne trouvait plus ni l'un ni l'autre.
+  List<String> _offerFootballSearchTerms(Offre offre) => [
+    for (final position in offre.positionCodes) ...[
+      position.code,
+      position.labelFr,
+      position.labelEn,
+    ],
+    ...offre.ageCategories.map((category) => category.code),
+    if (offre.clubLevel != null) ...[
+      offre.clubLevel!.code,
+      offre.clubLevel!.labelFr,
+    ],
+  ];
+
   Widget _buildOfferCard(Offre offre) {
     final status = Offre.normalizeStatus(offre.statut);
     final color = _statusColor(status);
     final isActionInFlight = _actionOfferId == offre.id;
-    final offerMeta = [
-      offre.posteRecherche,
-      offre.localisation,
-      offre.niveau,
-    ].whereType<String>().where((value) => value.trim().isNotEmpty).join(' | ');
+    final offerMeta = _offerMetaLine(offre);
 
     return AdminDataCard(
       title: Text(
@@ -354,8 +387,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                     offre.recruteur.nom,
                     offre.localisation,
                     offre.remuneration,
-                    offre.niveau,
-                    offre.posteRecherche,
+                    ..._offerFootballSearchTerms(offre),
                   ].whereType<String>().any(
                     (value) => value.toLowerCase().contains(_searchQuery),
                   );
@@ -490,15 +522,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                         final status = Offre.normalizeStatus(offre.statut);
                         final color = _statusColor(status);
                         final isActionInFlight = _actionOfferId == offre.id;
-                        final offerMeta =
-                            [
-                                  offre.posteRecherche,
-                                  offre.localisation,
-                                  offre.niveau,
-                                ]
-                                .whereType<String>()
-                                .where((value) => value.trim().isNotEmpty)
-                                .join(' | ');
+                        final offerMeta = _offerMetaLine(offre);
 
                         return DataRow(
                           cells: [

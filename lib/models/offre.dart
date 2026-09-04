@@ -1,4 +1,18 @@
+// Miroir du depot mobile, meme chemin de fichier.
+//
+// Copie deliberee plutot que paquet partage : les deux depots se deploient
+// separement, et un paquet commun ferait dependre une mise en production
+// mobile d'une publication de paquet. Le prix est cette duplication.
+//
+// Elle doit rester exacte. Le mobile a remplace `posteRecherche` et `niveau`,
+// du texte libre, par `positionCodes[]`, `ageCategories[]` et `clubLevel`.
+// Tant que ce portail lisait les anciens champs, la ligne de contexte d'une
+// offre se reduisait a sa localisation et la recherche par poste ne remontait
+// rien -- sans erreur nulle part, puisqu'une cle absente se lit comme nulle.
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:show_talent/models/football_vocabulary.dart';
 import 'package:show_talent/models/user.dart';
 
 class Offre {
@@ -12,10 +26,30 @@ class Offre {
   String statut;
   DateTime dateCreation;
 
+  // Optional enriched fields
   String? localisation;
   String? remuneration;
-  String? niveau;
-  String? posteRecherche;
+  /// Les postes recherchés, dans le vocabulaire des joueurs.
+  ///
+  /// C'est le champ qui rend le rapprochement possible. Tant qu'il était du
+  /// texte libre (« Ex: Attaquant, milieu relayeur »), un club qui cherchait un
+  /// défenseur central ne tombait jamais sur les fiches marquées `CB` : les
+  /// deux côtés du marché ne parlaient pas la même langue, et coder le joueur
+  /// seul n'aurait servi à rien.
+  ///
+  /// Jusqu'à [FootballPosition.maxPerQuery], parce qu'un club cherche souvent
+  /// « un CB ou un LB » et que c'est la borne d'`array-contains-any`.
+  List<FootballPosition> positionCodes;
+
+  /// Les catégories visées.
+  ///
+  /// Remplace la moitié de l'ancien champ `niveau`, dont l'exemple disait tout
+  /// de la confusion : « Ex: U19, Sénior, Pro » mélangeait une catégorie d'âge
+  /// et un niveau de compétition dans une seule ligne de texte.
+  List<AgeCategory> ageCategories;
+
+  /// Le niveau de la structure, l'autre moitié de l'ancien `niveau`.
+  ClubLevel? clubLevel;
   String? pieceJointeUrl;
   int? vues;
   List<String>? viewedBy;
@@ -31,43 +65,41 @@ class Offre {
     required this.recruteur,
     required this.candidats,
     required this.statut,
-    DateTime? dateCreation,
+    required this.dateCreation,
     this.localisation,
     this.remuneration,
-    this.niveau,
-    this.posteRecherche,
+    this.positionCodes = const <FootballPosition>[],
+    this.ageCategories = const <AgeCategory>[],
+    this.clubLevel,
     this.pieceJointeUrl,
     this.vues,
     this.viewedBy,
     this.archivedAt,
     this.lastUpdated,
-  }) : dateCreation = dateCreation ?? DateTime.now();
+  });
 
-  static String normalizeStatus(String rawStatus) {
-    final value = rawStatus.trim().toLowerCase();
-    switch (value) {
-      case 'ouverte':
-      case 'open':
-        return 'ouverte';
-      case 'fermee':
-      case 'ferm\u00e9e':
-      case 'ferm\u00c3\u00a9e':
-      case 'ferm\u00c3\u00a3\u00c2\u00a9e':
-      case 'closed':
-        return 'fermee';
-      case 'archivee':
-      case 'archiv\u00e9e':
-      case 'archiv\u00c3\u00a9e':
-      case 'archiv\u00c3\u00a3\u00c2\u00a9e':
-      case 'archive':
-      case 'archived':
-        return 'archivee';
-      case 'brouillon':
-      case 'draft':
-        return 'brouillon';
-      default:
-        return value;
-    }
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'titre': titre,
+      'description': description,
+      'dateDebut': dateDebut,
+      'dateFin': dateFin,
+      'recruteur': recruteur.toEmbeddedMap(),
+      'candidats': candidats.map((joueur) => joueur.toEmbeddedMap()).toList(),
+      'statut': normalizeStatus(statut),
+      'dateCreation': dateCreation,
+      'localisation': localisation,
+      'remuneration': remuneration,
+      'positionCodes': positionCodes.map((p) => p.code).toList(),
+      'ageCategories': ageCategories.map((c) => c.code).toList(),
+      'clubLevel': clubLevel?.code,
+      'pieceJointeUrl': pieceJointeUrl,
+      'vues': vues,
+      'viewedBy': viewedBy,
+      'archivedAt': archivedAt,
+      'lastUpdated': lastUpdated,
+    };
   }
 
   static DateTime _parseDate(
@@ -102,27 +134,34 @@ class Offre {
     return null;
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'titre': titre,
-      'description': description,
-      'dateDebut': dateDebut,
-      'dateFin': dateFin,
-      'recruteur': recruteur.toEmbeddedMap(),
-      'candidats': candidats.map((joueur) => joueur.toEmbeddedMap()).toList(),
-      'statut': normalizeStatus(statut),
-      'dateCreation': dateCreation,
-      'localisation': localisation,
-      'remuneration': remuneration,
-      'niveau': niveau,
-      'posteRecherche': posteRecherche,
-      'pieceJointeUrl': pieceJointeUrl,
-      'vues': vues,
-      'viewedBy': viewedBy,
-      'archivedAt': archivedAt,
-      'lastUpdated': lastUpdated,
-    };
+  static int? _toNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static String normalizeStatus(String rawStatus) {
+    final value = rawStatus.trim().toLowerCase();
+    switch (value) {
+      case 'ouverte':
+      case 'open':
+        return 'ouverte';
+      case 'fermee':
+      case 'fermée':
+      case 'closed':
+        return 'fermee';
+      case 'archivee':
+      case 'archivée':
+      case 'archive':
+      case 'archived':
+        return 'archivee';
+      case 'brouillon':
+      case 'draft':
+        return 'brouillon';
+      default:
+        return value;
+    }
   }
 
   factory Offre.fromMap(
@@ -159,7 +198,7 @@ class Offre {
           };
     final rawCandidats =
         _readFirst(map, ['candidats', 'participants', 'applications']);
-    final candidatsMaps = rawCandidats is List
+    final candidatMaps = rawCandidats is List
         ? rawCandidats
             .whereType<Map>()
             .map((candidate) => Map<String, dynamic>.from(candidate))
@@ -177,15 +216,13 @@ class Offre {
               '',
       dateDebut: _parseDate(
         _readFirst(
-          map,
-          ['dateDebut', 'startDate', 'createdAt', 'dateCreation'],
-        ),
+            map, ['dateDebut', 'startDate', 'createdAt', 'dateCreation']),
       ),
       dateFin: _parseDate(
         _readFirst(map, ['dateFin', 'endDate', 'expirationDate', 'expiresAt']),
       ),
       recruteur: AppUser.fromEmbeddedMap(recruteurMap),
-      candidats: candidatsMaps.map(AppUser.fromEmbeddedMap).toList(),
+      candidats: List<AppUser>.from(candidatMaps.map(AppUser.fromEmbeddedMap)),
       statut: normalizeStatus(
         _readFirst(map, ['statut', 'status'])?.toString() ?? 'ouverte',
       ),
@@ -196,14 +233,17 @@ class Offre {
           _readFirst(map, ['localisation', 'location', 'lieu'])?.toString(),
       remuneration:
           _readFirst(map, ['remuneration', 'salary', 'salaire'])?.toString(),
-      niveau: _readFirst(map, ['niveau', 'level'])?.toString(),
-      posteRecherche:
-          _readFirst(map, ['posteRecherche', 'poste', 'position'])?.toString(),
+      positionCodes: FootballVocabulary.positions(
+        map['positionCodes'],
+        max: FootballPosition.maxPerQuery,
+      ),
+      ageCategories: FootballVocabulary.ageCategories(map['ageCategories']),
+      clubLevel: FootballVocabulary.clubLevel(map['clubLevel']),
       pieceJointeUrl: _readFirst(
         map,
         ['pieceJointeUrl', 'attachmentUrl', 'documentUrl'],
       )?.toString(),
-      vues: (map['vues'] as num?)?.toInt(),
+      vues: _toNullableInt(map['vues']),
       viewedBy: map['viewedBy'] is List
           ? (map['viewedBy'] as List).map((id) => id.toString()).toList()
           : null,

@@ -2,10 +2,12 @@
 assets/logo.png (black ink on white, full "AD FOOT" lockup).
 Not wired into the build; re-run manually if the source logo changes.
 """
+from pathlib import Path
+
 from PIL import Image, ImageOps
 
-BASE = r"C:\Users\Ing.Amidou.KONE\Desktop\MyApp\show_talent - web"
-SRC = BASE + r"\assets\logo.png"
+BASE = Path(__file__).resolve().parent.parent
+SRC = BASE / "assets" / "logo.png"
 
 BG = (14, 17, 20)  # AdminTheme.background 0xFF0E1114
 
@@ -55,22 +57,22 @@ def main():
     icon_white = pad_to_square(white_full.crop(ICON_BOX))
     lockup_white = white_full.crop(FULL_BOX)
 
-    icon_black.save(BASE + r"\assets\logo_icon.png")
-    icon_white.save(BASE + r"\assets\logo_icon_white.png")
-    lockup_white.save(BASE + r"\assets\logo_white.png")
+    icon_black.save(BASE / "assets" / "logo_icon.png")
+    icon_white.save(BASE / "assets" / "logo_icon_white.png")
+    lockup_white.save(BASE / "assets" / "logo_white.png")
 
-    app_icon(icon_white, 64, 0.8).save(BASE + r"\web\favicon.png")
+    app_icon(icon_white, 64, 0.8).save(BASE / "web" / "favicon.png")
     app_icon(icon_white, 192, 0.72).convert("RGB").save(
-        BASE + r"\web\icons\Icon-192.png"
+        BASE / "web" / "icons" / "Icon-192.png"
     )
     app_icon(icon_white, 512, 0.72).convert("RGB").save(
-        BASE + r"\web\icons\Icon-512.png"
+        BASE / "web" / "icons" / "Icon-512.png"
     )
     app_icon(icon_white, 192, 0.62).save(
-        BASE + r"\web\icons\Icon-maskable-192.png"
+        BASE / "web" / "icons" / "Icon-maskable-192.png"
     )
     app_icon(icon_white, 512, 0.62).save(
-        BASE + r"\web\icons\Icon-maskable-512.png"
+        BASE / "web" / "icons" / "Icon-maskable-512.png"
     )
 
     print("Done:")

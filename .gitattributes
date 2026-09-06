@@ -1,0 +1,4 @@
+# Force LF line endings on checkout regardless of the machine's core.autocrlf,
+# so source-content assertions (e.g. test/video_moderation_player_test.dart)
+# don't break when cloning on Windows.
+* text=auto eol=lf

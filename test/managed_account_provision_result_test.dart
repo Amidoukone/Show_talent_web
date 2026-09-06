@@ -178,7 +178,7 @@ void main() {
             'existingUser': false,
             'passwordSetupLink': 'https://reset-link',
             'inviteEmailSent': false,
-            if (reason != null) 'inviteEmailReason': reason,
+            'inviteEmailReason': ?reason,
           };
 
       expect(

@@ -9,6 +9,7 @@
     "analyze": "flutter analyze --no-fatal-infos",
     "build:web:production": "flutter build web --release --dart-define=APP_ENV=production --dart-define=FIREBASE_PROJECT_ID=adfoot-production --dart-define=FIREBASE_FUNCTIONS_REGION=europe-west1",
     "build:web:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build_web_staging.ps1",
+    "dev:web:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run_web_staging.ps1",
     "contract:mobile": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\check_mobile_contract.ps1",
     "create-admin": "node scripts/create_admin_account.mjs",
     "create-admin:guided": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\create_admin_account.ps1",

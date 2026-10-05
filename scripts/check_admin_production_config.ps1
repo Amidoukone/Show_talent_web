@@ -94,7 +94,8 @@ if ($errors.Count -eq 0) {
         "resendManagedAccountInvite",
         "disableManagedAccountAuth",
         "enableManagedAccountAuth",
-        "updateManagedAccountProfile"
+        "updateManagedAccountProfile",
+        "withdrawManagedMinorConsent"
     )) {
         Assert-ContainsRegex `
             -Raw $managedAccountServiceRaw `

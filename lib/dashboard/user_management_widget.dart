@@ -591,8 +591,36 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
+  Future<void> _withdrawMinorConsent(AppUser user) async {
+    if (!user.isPlayer || !user.isMinorProfile) {
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message: 'Cette action concerne uniquement les joueurs mineurs.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+    final confirmed = await _confirmAction(
+      title: withdrawManagedMinorConsentAction.label,
+      message:
+          'Confirmez-vous que la demande du parent ou tuteur a été vérifiée ? '
+          'La fiche sera masquée et les photos, CV et vidéos publiés seront supprimés.',
+      confirmLabel: 'Retirer les autorisations',
+    );
+    if (!confirmed) return;
+    await _runVoidAction(
+      user: user,
+      action: withdrawManagedMinorConsentAction,
+      request: () => _managedAccountService.withdrawManagedMinorConsent(
+        uid: user.uid,
+      ),
+      successMessage:
+          'Les autorisations de ${user.nom} ont été retirées et les médias purgés.',
+    );
+  }
+
   Future<void> _verifyManagedAccountProfile(AppUser user) async {
-    if (!_canManageProfileVerification(user)) {
+    if (!_canManageProfileVerification(user) || user.isMinorProfile) {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
@@ -793,7 +821,17 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 ),
                 label: const Text('Gérer les droits'),
               ),
-            if (_canManageProfileVerification(user))
+            if (user.isPlayer && user.isMinorProfile)
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _withdrawMinorConsent(user);
+                },
+                icon: const Icon(Icons.shield_outlined, size: 18),
+                label: const Text('Retirer les autorisations parentales'),
+              ),
+            if (_canManageProfileVerification(user) &&
+                (user.profileVerified || !user.isMinorProfile))
               OutlinedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -1102,8 +1140,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 ),
               ),
               if (user.createdByAdmin)
-                const Text(
-                  'créé par l\'administration',
+                Text(
+                  user.createdByAdminUid == null
+                      ? 'créé par l’administration'
+                      : 'Admin créateur : ${user.createdByAdminUid}',
                   style: TextStyle(fontSize: 12, color: AdminTheme.accent),
                 ),
             ],
@@ -1256,6 +1296,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             final readyForVerification = filteredUsers
                 .where(
                   (user) =>
+                      !user.isMinorProfile &&
                       !user.profileVerified &&
                       _canManageProfileVerification(user) &&
                       user.canBeProfileVerifiedByAdmin,
@@ -1560,6 +1601,12 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   /// année n'est renvoyé à aucun recruteur. Jusqu'ici, seul le joueur pouvait
   /// le réparer, depuis son téléphone.
   DateTime? _birthDate;
+  final _guardianNameController = TextEditingController();
+  final _guardianEvidenceController = TextEditingController();
+  String _guardianRelationship = 'parent';
+  String _guardianConsentMethod = 'oral_confirmation';
+  bool _guardianConsentConfirmed = false;
+  bool _guardianMediaAllowed = false;
   late final TextEditingController _teamController;
   late final TextEditingController _ligueController;
   late final TextEditingController _entrepriseController;
@@ -1596,6 +1643,8 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     _ligueController.dispose();
     _entrepriseController.dispose();
     _licenseController.dispose();
+    _guardianNameController.dispose();
+    _guardianEvidenceController.dispose();
     super.dispose();
   }
 
@@ -1617,6 +1666,39 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     return trimmed.isEmpty ? null : trimmed;
   }
 
+  bool get _isMinor {
+    final date = _birthDate;
+    if (date == null) {
+      return false;
+    }
+    final now = DateTime.now();
+    var age = now.year - date.year;
+    if (now.month < date.month ||
+        (now.month == date.month && now.day < date.day)) {
+      age--;
+    }
+    return age < 18;
+  }
+
+  bool get _requiresGuardianConsent =>
+      _isMinor &&
+      (!_user.isMinorProfile ||
+          !_user.minorProfileApproved ||
+          !_isSameDay(_birthDate, _user.birthDate));
+
+  Map<String, dynamic> _guardianConsentPayload() => <String, dynamic>{
+        'guardianName': _guardianNameController.text.trim(),
+        'relationship': _guardianRelationship,
+        'method': _guardianConsentMethod,
+        'evidenceReference': _guardianEvidenceController.text.trim(),
+        'mediaAllowed': _guardianMediaAllowed,
+        'confirmed': _guardianConsentConfirmed,
+      };
+
+  bool _hasValidGuardianConsent() =>
+      _guardianNameController.text.trim().length >= 2 &&
+      _guardianConsentConfirmed;
+
   /// Deux dates désignent-elles le même jour ?
   ///
   /// Comparer les `DateTime` entiers enverrait un patch à chaque ouverture du
@@ -1637,15 +1719,17 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
 
   Future<void> _pickBirthDate() async {
     final now = DateTime.now();
+    final latestEligibleDate = DateTime(now.year - 12, now.month, now.day);
+    final currentBirthDate = _birthDate;
+    final initialDate = currentBirthDate == null ||
+            currentBirthDate.isAfter(latestEligibleDate)
+        ? DateTime(now.year - 18, 1, 1)
+        : currentBirthDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _birthDate ?? DateTime(now.year - 18, 1, 1),
-      // Le serveur reste seul juge : la borne vit dans `MIN_BIRTH_YEAR`
-      // (functions/src/user_search_fields.ts), et le callable refuse une année
-      // hors bornes avec un message qui la nomme. Ce que le sélecteur borne
-      // ici n'est qu'un confort de saisie, pas la règle.
+      initialDate: initialDate,
       firstDate: DateTime(1930),
-      lastDate: now,
+      lastDate: latestEligibleDate,
       helpText: 'Date de naissance',
     );
 
@@ -1675,12 +1759,6 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
               icon: const Icon(Icons.event_outlined, size: 18),
               label: Text(value == null ? 'Renseigner' : 'Modifier'),
             ),
-            if (value != null)
-              IconButton(
-                tooltip: 'Effacer la date',
-                icon: const Icon(Icons.close_rounded, size: 18),
-                onPressed: () => setState(() => _birthDate = null),
-              ),
           ],
         ),
         const Align(
@@ -1735,6 +1813,9 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
       if (widget.contactLoaded && !_isSameDay(_birthDate, _user.birthDate)) {
         patch['birthDate'] = _birthDate?.toIso8601String();
       }
+      if (_requiresGuardianConsent && _hasValidGuardianConsent()) {
+        patch['guardianConsent'] = _guardianConsentPayload();
+      }
       // La liste entière est renvoyée, pas la seule ligne retirée : le
       // callable réécrit `seasonHistory` d'un bloc, et lui envoyer un fragment
       // effacerait le reste du parcours.
@@ -1767,8 +1848,32 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   }
 
   void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final date = _birthDate;
+    if (date != null) {
+      final now = DateTime.now();
+      var age = now.year - date.year;
+      if (now.month < date.month ||
+          (now.month == date.month && now.day < date.day)) {
+        age--;
+      }
+      if (age < 12) {
+        showAdminFeedback(
+          title: 'Date de naissance invalide',
+          message: 'Adfoot accueille les joueurs à partir de 12 ans.',
+          tone: AdminBannerTone.warning,
+        );
+        return;
+      }
+      final changed = widget.contactLoaded && !_isSameDay(date, _user.birthDate);
+      if (changed && age < 18 && !_hasValidGuardianConsent()) {
+        showAdminFeedback(
+          title: 'Accord parental requis',
+          message: 'Consignez l’accord du parent ou du tuteur avant cette correction.',
+          tone: AdminBannerTone.warning,
+        );
+        return;
+      }
     }
     Navigator.of(context).pop(_buildPatch());
   }
@@ -1848,6 +1953,54 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                         style: TextStyle(fontSize: 12),
                       ),
                     ),
+                  if (_isMinor) ...[
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Sans accord parental enregistré, la fiche reste masquée. Avec accord, accès limité aux recruteurs vérifiés et contact médié par l’administration.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    if (_requiresGuardianConsent) ...[
+                      TextFormField(
+                        controller: _guardianNameController,
+                        decoration: const InputDecoration(labelText: 'Nom du parent ou tuteur'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: _guardianRelationship,
+                        decoration: const InputDecoration(labelText: 'Lien avec le joueur'),
+                        items: const [
+                          DropdownMenuItem(value: 'parent', child: Text('Parent')),
+                          DropdownMenuItem(value: 'legal_guardian', child: Text('Tuteur légal')),
+                        ],
+                        onChanged: (value) { if (value != null) setState(() => _guardianRelationship = value); },
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: _guardianConsentMethod,
+                        decoration: const InputDecoration(labelText: 'Mode de consentement vérifié'),
+                        items: const [
+                          DropdownMenuItem(value: 'oral_confirmation', child: Text('Accord oral / téléphone')),
+                          DropdownMenuItem(value: 'written_confirmation', child: Text('Accord écrit')),
+                        ],
+                        onChanged: (value) { if (value != null) setState(() => _guardianConsentMethod = value); },
+                      ),
+                      TextFormField(
+                        controller: _guardianEvidenceController,
+                        decoration: const InputDecoration(labelText: 'Note de suivi (facultatif)'),
+                      ),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _guardianMediaAllowed,
+                        title: const Text('Le parent autorise la publication des photos, vidéos et CV sur la fiche ; les vidéos restent soumises à modération.'),
+                        onChanged: (value) => setState(() => _guardianMediaAllowed = value ?? false),
+                      ),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _guardianConsentConfirmed,
+                        title: const Text('J’atteste avoir recueilli et consigné l’accord du parent/tuteur.'),
+                        onChanged: (value) => setState(() => _guardianConsentConfirmed = value ?? false),
+                      ),
+                    ] else
+                      const Text('Consentement parental déjà enregistré.'),
+                  ],
                   if (_seasonHistory.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     const Align(

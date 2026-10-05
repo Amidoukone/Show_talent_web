@@ -31,10 +31,19 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _birthDateController = TextEditingController();
+  final TextEditingController _guardianNameController = TextEditingController();
+  final TextEditingController _guardianEvidenceController =
+      TextEditingController();
 
   late final UserController _userController;
   late final ManagedAccountService _managedAccountService;
   String _selectedRole = adminProvisionedRoles.first;
+  String _guardianRelationship = 'parent';
+  String _guardianConsentMethod = 'oral_confirmation';
+  DateTime? _birthDate;
+  bool _guardianConsentReceived = false;
+  bool _guardianMediaAllowed = false;
   bool _isSubmitting = false;
   String? _errorMessage;
   ManagedAccountProvisionResult? _lastResult;
@@ -52,16 +61,87 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   bool _isCompactLayout(BuildContext context) =>
       MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
+  bool get _isMinor {
+    final date = _birthDate;
+    if (date == null) return false;
+    final today = DateTime.now();
+    var age = today.year - date.year;
+    if (today.month < date.month ||
+        (today.month == date.month && today.day < date.day)) {
+      age--;
+    }
+    return age < 18;
+  }
+
+  bool _isBelowMinimumPlayerAge(DateTime date) {
+    final today = DateTime.now();
+    var age = today.year - date.year;
+    if (today.month < date.month ||
+        (today.month == date.month && today.day < date.day)) {
+      age--;
+    }
+    return age < 12;
+  }
+
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final latestEligibleDate = DateTime(now.year - 12, now.month, now.day);
+    final currentBirthDate = _birthDate;
+    final initialDate = currentBirthDate == null ||
+            currentBirthDate.isAfter(latestEligibleDate)
+        ? DateTime(now.year - 18, 1, 1)
+        : currentBirthDate;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1930),
+      lastDate: latestEligibleDate,
+      helpText: 'Date de naissance du joueur',
+    );
+    if (picked != null && mounted) setState(() => _birthDate = picked);
+  }
+
+  Map<String, dynamic>? _guardianConsentPayload() {
+    if (!_isMinor || !_guardianConsentReceived) return null;
+    return <String, dynamic>{
+      'guardianName': _guardianNameController.text.trim(),
+      'relationship': _guardianRelationship,
+      'method': _guardianConsentMethod,
+      'evidenceReference': _guardianEvidenceController.text.trim(),
+      'mediaAllowed': _guardianMediaAllowed,
+      'confirmed': true,
+    };
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _birthDateController.dispose();
+    _guardianNameController.dispose();
+    _guardianEvidenceController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    if (_selectedRole == 'joueur' && _birthDate == null) {
+      setState(() => _errorMessage =
+          'La date de naissance est requise pour vérifier l’âge du joueur.');
+      return;
+    }
+    if (_selectedRole == 'joueur' && _isBelowMinimumPlayerAge(_birthDate!)) {
+      setState(() => _errorMessage =
+          'Adfoot accueille les joueurs à partir de 12 ans.');
+      return;
+    }
+    if (_isMinor && _guardianConsentReceived &&
+        _guardianNameController.text.trim().length < 2) {
+      setState(() => _errorMessage =
+          'Ajoutez le nom du parent ou tuteur dont l’accord a été recueilli.');
       return;
     }
 
@@ -99,6 +179,8 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
         nom: _nameController.text,
         role: _selectedRole,
         phone: _phoneController.text,
+        birthDate: _birthDate,
+        guardianConsent: _guardianConsentPayload(),
       );
 
       if (!mounted) {
@@ -111,6 +193,12 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
         _nameController.clear();
         _emailController.clear();
         _phoneController.clear();
+        _birthDate = null;
+        _guardianNameController.clear();
+        _guardianEvidenceController.clear();
+        _guardianConsentMethod = 'oral_confirmation';
+        _guardianConsentReceived = false;
+        _guardianMediaAllowed = false;
       });
 
       showAdminFeedback(
@@ -346,6 +434,88 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                               });
                             },
                           ),
+                          if (_selectedRole == 'joueur') ...[
+                            OutlinedButton.icon(
+                              onPressed: _isSubmitting ? null : _pickBirthDate,
+                              icon: const Icon(Icons.event_outlined),
+                              label: Text(_birthDate == null
+                                  ? 'Date de naissance requise'
+                                  : 'Date de naissance : ${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'),
+                            ),
+                            if (_isMinor) ...[
+                              const Text(
+                                'Le compte et son invitation peuvent être créés maintenant. Tant que l’accord du parent ou tuteur n’est pas enregistré, la fiche et les médias du mineur restent masqués.',
+                              ),
+                              CheckboxListTile(
+                                contentPadding: EdgeInsets.zero,
+                                value: _guardianConsentReceived,
+                                title: const Text(
+                                  'Accord du parent ou tuteur déjà recueilli (oralement ou par écrit)',
+                                ),
+                                onChanged: (value) => setState(() {
+                                  _guardianConsentReceived = value ?? false;
+                                  if (!_guardianConsentReceived) {
+                                    _guardianMediaAllowed = false;
+                                  }
+                                }),
+                              ),
+                              if (_guardianConsentReceived) ...[
+                                TextFormField(
+                                  controller: _guardianNameController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nom du parent ou tuteur',
+                                  ),
+                                ),
+                                DropdownButtonFormField<String>(
+                                  initialValue: _guardianRelationship,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Lien avec le joueur',
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(value: 'parent', child: Text('Parent')),
+                                    DropdownMenuItem(value: 'legal_guardian', child: Text('Tuteur légal')),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _guardianRelationship = value);
+                                    }
+                                  },
+                                ),
+                                DropdownButtonFormField<String>(
+                                  initialValue: _guardianConsentMethod,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Accord recueilli par',
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(value: 'oral_confirmation', child: Text('Échange oral / téléphone')),
+                                    DropdownMenuItem(value: 'written_confirmation', child: Text('Écrit / document')),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() => _guardianConsentMethod = value);
+                                    }
+                                  },
+                                ),
+                                TextFormField(
+                                  controller: _guardianEvidenceController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Note de suivi (facultatif)',
+                                  ),
+                                ),
+                                CheckboxListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  value: _guardianMediaAllowed,
+                                  title: const Text('Le parent autorise la publication des photos, vidéos et CV sur la fiche ; les vidéos restent soumises à modération.'),
+                                  onChanged: (value) => setState(
+                                    () => _guardianMediaAllowed = value ?? false,
+                                  ),
+                                ),
+                              ] else
+                                const Text(
+                                  'Vous pouvez créer le compte sans cette information et enregistrer l’accord plus tard depuis la gestion du compte.',
+                                ),
+                            ],
+                          ],
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(

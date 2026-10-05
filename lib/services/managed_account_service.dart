@@ -54,6 +54,8 @@ class ManagedAccountService {
     required String nom,
     required String role,
     String? phone,
+    DateTime? birthDate,
+    Map<String, dynamic>? guardianConsent,
   }) async {
     final normalizedRole = normalizeUserRole(role);
 
@@ -71,7 +73,11 @@ class ManagedAccountService {
         'email': email.trim(),
         'nom': nom.trim(),
         'role': normalizedRole,
-        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        if (phone case final value? when value.trim().isNotEmpty)
+          'phone': value.trim(),
+        if (birthDate case final value?)
+          'birthDate': value.toUtc().toIso8601String(),
+        'guardianConsent': guardianConsent,
       },
     );
 
@@ -211,6 +217,18 @@ class ManagedAccountService {
   /// Retire tout dossier de droits du compte.
   Future<void> clearManagedAccountMembership({required String uid}) {
     return setManagedAccountMembership(uid: uid, tier: MembershipTier.none);
+  }
+
+  /// Applies a verified parent or guardian request to withdraw permissions.
+  Future<void> withdrawManagedMinorConsent({required String uid}) async {
+    final normalizedUid = uid.trim();
+    if (normalizedUid.isEmpty) {
+      throw ArgumentError('withdrawManagedMinorConsent requires a uid.');
+    }
+    await _callable(
+      'withdrawManagedMinorConsent',
+      payload: <String, dynamic>{'uid': normalizedUid},
+    );
   }
 
   Future<void> updateManagedAccountProfile({

@@ -144,6 +144,7 @@ Uniquement via backend partage :
 - changement de role : `changeManagedAccountRole`
 - suppression : `deleteManagedAccount`
 - mise a jour profil : `updateManagedAccountProfile`
+- retrait parental confirme : `withdrawManagedMinorConsent`
 - droits d acces enregistres : `setManagedAccountMembership`
 - changement de statut offre : `adminSetOfferStatus`
 - suppression offre : `adminDeleteOffer`

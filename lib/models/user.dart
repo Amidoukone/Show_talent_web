@@ -17,6 +17,8 @@ class AppUser {
   bool authDisabled;
   bool emailVerified;
   bool createdByAdmin;
+  String? createdByAdminUid;
+  DateTime? adminCreatedAt;
   int followers;
   int followings;
   DateTime dateInscription;
@@ -42,6 +44,8 @@ class AppUser {
   Membership membership;
 
   DateTime? birthDate;
+  bool isMinorProfile;
+  bool minorProfileApproved;
   String? country;
   String? city;
   String? region;
@@ -106,6 +110,8 @@ class AppUser {
     this.authDisabled = false,
     this.emailVerified = false,
     this.createdByAdmin = false,
+    this.createdByAdminUid,
+    this.adminCreatedAt,
     required this.followers,
     required this.followings,
     required this.dateInscription,
@@ -125,6 +131,8 @@ class AppUser {
     this.profileVerificationInvalidationReason,
     this.membership = Membership.none,
     this.birthDate,
+    this.isMinorProfile = false,
+    this.minorProfileApproved = false,
     this.country,
     this.city,
     this.region,
@@ -203,6 +211,8 @@ class AppUser {
       authDisabled: map['authDisabled'] == true,
       emailVerified: _toBool(map['emailVerified'], false),
       createdByAdmin: map['createdByAdmin'] == true,
+      createdByAdminUid: _normalizeNullableString(map['createdByAdminUid']),
+      adminCreatedAt: _parseNullableDate(map['adminCreatedAt']),
       followers: _parseInt(map['followers']) ?? 0,
       followings: _parseInt(map['followings']) ?? 0,
       dateInscription: _parseDate(map['dateInscription']),
@@ -237,6 +247,8 @@ class AppUser {
       ),
       membership: Membership.fromMap(map['membership']),
       birthDate: _parseNullableDate(map['birthDate']),
+      isMinorProfile: map['isMinorProfile'] == true,
+      minorProfileApproved: map['minorProfileApproved'] == true,
       country: _normalizeNullableString(map['country']),
       city: _normalizeNullableString(map['city']),
       region: _normalizeNullableString(map['region']),
@@ -360,6 +372,10 @@ class AppUser {
   Map<String, dynamic> toMap() {
     return {
       ...toEmbeddedMap(),
+      'createdByAdminUid': createdByAdminUid,
+      'adminCreatedAt': adminCreatedAt != null
+          ? Timestamp.fromDate(adminCreatedAt!)
+          : null,
       'followers': followers,
       'followings': followings,
       'dateInscription': Timestamp.fromDate(dateInscription),
@@ -390,6 +406,8 @@ class AppUser {
       // privés (fetchUserWithPrivateFields) perdrait son dossier.
       'membership': membership.isRecorded ? membership.toMap() : null,
       'birthDate': birthDate != null ? Timestamp.fromDate(birthDate!) : null,
+      'isMinorProfile': isMinorProfile,
+      'minorProfileApproved': minorProfileApproved,
       'country': country,
       'city': city,
       'region': region,

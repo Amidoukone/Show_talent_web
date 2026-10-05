@@ -96,6 +96,17 @@ const AdminCallableActionDescriptor updateManagedAccountProfileAction =
   isConnectedInUi: true,
 );
 
+const AdminCallableActionDescriptor withdrawManagedMinorConsentAction =
+    AdminCallableActionDescriptor(
+  id: 'withdraw_managed_minor_consent',
+  label: 'Retirer les autorisations parentales',
+  callableName: 'withdrawManagedMinorConsent',
+  summary: 'Masque la fiche mineure et purge les médias publiés après une demande parentale vérifiée.',
+  uiSurfaces: ['Gestion des utilisateurs'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
 const AdminCallableActionDescriptor setManagedAccountMembershipAction =
     AdminCallableActionDescriptor(
   id: 'set_managed_account_membership',
@@ -227,6 +238,7 @@ const List<AdminCallableActionDescriptor> adminCallableActions = [
   disableManagedAccountAuthAction,
   enableManagedAccountAuthAction,
   updateManagedAccountProfileAction,
+  withdrawManagedMinorConsentAction,
   setManagedAccountMembershipAction,
   setOfferStatusAction,
   deleteOfferAction,

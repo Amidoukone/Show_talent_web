@@ -6,6 +6,69 @@ import 'package:show_talent/services/managed_account_service.dart';
 import 'test_support/admin_test_helpers.dart';
 
 void main() {
+  testWidgets('loading failures are visible and can be retried', (
+    tester,
+  ) async {
+    final controller = TestUserController();
+    controller.usersLoadError.value = 'Connexion indisponible';
+    await pumpAdminTestApp(
+      tester,
+      UserManagementWidget(
+        selectedRole: 'Tous',
+        userController: controller,
+        managedAccountService: ManagedAccountService(
+          callableExecutor: (name, payload) async => <String, dynamic>{},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Chargement incomplet'), findsOneWidget);
+    expect(find.text('Aucun utilisateur trouvé'), findsNothing);
+    await tester.ensureVisible(find.text('Réessayer'));
+    await tester.tap(find.text('Réessayer'));
+    await tester.pumpAndSettle();
+    expect(controller.retries, 1);
+    expect(find.text('Chargement incomplet'), findsNothing);
+    controller.privateContactLoadError.value = 'Coordonnées indisponibles';
+    await tester.pumpAndSettle();
+    expect(find.text('Coordonnées indisponibles'), findsOneWidget);
+  });
+
+  testWidgets('live deletion clamps a user page after the list shrinks', (
+    tester,
+  ) async {
+    final controller = TestUserController(
+      users: List.generate(
+        5,
+        (i) => buildTestUser(
+          uid: 'page-$i',
+          nom: 'Compte $i',
+          email: 'test$i@example.invalid',
+          role: 'joueur',
+        ),
+      ),
+    );
+    await pumpAdminTestApp(
+      tester,
+      UserManagementWidget(
+        selectedRole: 'Tous',
+        userController: controller,
+        managedAccountService: ManagedAccountService(
+          callableExecutor: (name, payload) async => <String, dynamic>{},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final next = find.byIcon(Icons.arrow_forward_rounded);
+    await tester.ensureVisible(next);
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+    controller.seededUsers.removeRange(1, 5);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Compte 0'), findsOneWidget);
+  });
+
   ManagedAccountService buildService() {
     return ManagedAccountService(
       callableExecutor: (callableName, payload) async => <String, dynamic>{
@@ -52,8 +115,9 @@ void main() {
     expect(find.text('Renvoyer l’invitation'), findsOneWidget);
   }
 
-  testWidgets('change role dialog proposes the five admin provisioned roles',
-      (tester) async {
+  testWidgets('change role dialog proposes the five admin provisioned roles', (
+    tester,
+  ) async {
     final controller = TestUserController(
       users: [
         buildTestUser(
@@ -94,25 +158,26 @@ void main() {
   });
 
   testWidgets(
-      'createdByAdmin joueur users receive admin role and invite actions',
-      (tester) async {
-    await expectAdminActionsForRole(tester, 'joueur');
-  });
+    'createdByAdmin joueur users receive admin role and invite actions',
+    (tester) async {
+      await expectAdminActionsForRole(tester, 'joueur');
+    },
+  );
 
-  testWidgets('createdByAdmin fan users receive admin role and invite actions',
-      (tester) async {
-    await expectAdminActionsForRole(tester, 'fan');
-  });
+  testWidgets(
+    'createdByAdmin fan users receive admin role and invite actions',
+    (tester) async {
+      await expectAdminActionsForRole(tester, 'fan');
+    },
+  );
 
-  testWidgets('profile verification action calls managed profile backend',
-      (tester) async {
+  testWidgets('profile verification action calls managed profile backend', (
+    tester,
+  ) async {
     final recordedCalls = <Map<String, dynamic>>[];
     final service = ManagedAccountService(
       callableExecutor: (callableName, payload) async {
-        recordedCalls.add({
-          'callableName': callableName,
-          'payload': payload,
-        });
+        recordedCalls.add({'callableName': callableName, 'payload': payload});
         return <String, dynamic>{'success': true};
       },
     );
@@ -166,8 +231,9 @@ void main() {
     });
   });
 
-  testWidgets('pending profile verification is surfaced for admin review',
-      (tester) async {
+  testWidgets('pending profile verification is surfaced for admin review', (
+    tester,
+  ) async {
     final controller = TestUserController(
       users: [
         buildTestUser(

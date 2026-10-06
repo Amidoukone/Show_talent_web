@@ -36,6 +36,14 @@ class TestUserController extends UserController {
   @override
   void fetchUsers() {}
 
+  int retries = 0;
+  @override
+  Future<void> retryUsers() async {
+    retries++;
+    usersLoadError.value = null;
+    privateContactLoadError.value = null;
+  }
+
   @override
   Future<List<String>> refreshAdminClaims({
     User? firebaseUser,
@@ -99,15 +107,17 @@ AppUser buildTestUser({
     emailVerified: emailVerified,
     createdByAdmin: createdByAdmin,
     profileVerified: profileVerified,
-    profileVerificationStatus: profileVerificationStatus ??
+    profileVerificationStatus:
+        profileVerificationStatus ??
         (profileVerified ? 'verified' : 'unverified'),
     profileVerificationInvalidatedAt: profileVerificationInvalidatedAt,
-    profileVerificationInvalidatedBy:
-        profileVerificationInvalidatedAt == null ? null : uid,
+    profileVerificationInvalidatedBy: profileVerificationInvalidatedAt == null
+        ? null
+        : uid,
     profileVerificationInvalidationReason:
         profileVerificationInvalidatedAt == null
-            ? null
-            : 'profile_updated_by_user',
+        ? null
+        : 'profile_updated_by_user',
     position: position,
     team: team,
     membership: membership,
@@ -125,21 +135,13 @@ Widget buildAdminTestApp(Widget child) {
     theme: AdminTheme.buildTheme(),
     home: Scaffold(
       body: SingleChildScrollView(
-        child: Center(
-          child: SizedBox(
-            width: 1440,
-            child: child,
-          ),
-        ),
+        child: Center(child: SizedBox(width: 1440, child: child)),
       ),
     ),
   );
 }
 
-Future<void> pumpAdminTestApp(
-  WidgetTester tester,
-  Widget child,
-) async {
+Future<void> pumpAdminTestApp(WidgetTester tester, Widget child) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1600, 2600);
   addTearDown(() {

@@ -611,9 +611,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     await _runVoidAction(
       user: user,
       action: withdrawManagedMinorConsentAction,
-      request: () => _managedAccountService.withdrawManagedMinorConsent(
-        uid: user.uid,
-      ),
+      request: () =>
+          _managedAccountService.withdrawManagedMinorConsent(uid: user.uid),
       successMessage:
           'Les autorisations de ${user.nom} ont été retirées et les médias purgés.',
     );
@@ -815,10 +814,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   Navigator.of(context).pop();
                   _setManagedAccountMembership(user);
                 },
-                icon: const Icon(
-                  Icons.workspace_premium_outlined,
-                  size: 18,
-                ),
+                icon: const Icon(Icons.workspace_premium_outlined, size: 18),
                 label: const Text('Gérer les droits'),
               ),
             if (user.isPlayer && user.isMinorProfile)
@@ -1211,6 +1207,21 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           ),
           SizedBox(height: spacing),
           Obx(() {
+            final loadError =
+                _userController.usersLoadError.value ??
+                _userController.privateContactLoadError.value;
+            if (loadError != null) {
+              return AdminEmptyState(
+                title: 'Chargement incomplet',
+                message: loadError,
+                icon: Icons.error_outline_rounded,
+                actionLabel: 'Réessayer',
+                actionIcon: Icons.refresh_rounded,
+                onAction: () {
+                  _userController.retryUsers();
+                },
+              );
+            }
             final filteredUsers = _userController.userList.where((user) {
               final matchesRole =
                   selectedRole == 'Tous' || user.role == selectedRole;
@@ -1239,7 +1250,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             }).toList();
 
             final totalPages = (filteredUsers.length / rowsPerPage).ceil();
-            final startIndex = currentPage * rowsPerPage;
+            final safePage = totalPages == 0
+                ? 0
+                : currentPage.clamp(0, totalPages - 1);
+            final startIndex = safePage * rowsPerPage;
             final endIndex = (startIndex + rowsPerPage).clamp(
               0,
               filteredUsers.length,
@@ -1272,7 +1286,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   if (hasFilters) {
                     _clearFilters();
                   } else {
-                    _userController.fetchUsers();
+                    _userController.retryUsers();
                   }
                 },
               );
@@ -1533,19 +1547,19 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                   ),
                 SizedBox(height: spacing),
                 AdminPaginationBar(
-                  currentPage: currentPage,
+                  currentPage: safePage,
                   totalPages: totalPages,
-                  onPrevious: currentPage > 0
+                  onPrevious: safePage > 0
                       ? () {
                           setState(() {
-                            currentPage--;
+                            currentPage = safePage - 1;
                           });
                         }
                       : null,
-                  onNext: currentPage < totalPages - 1
+                  onNext: safePage < totalPages - 1
                       ? () {
                           setState(() {
-                            currentPage++;
+                            currentPage = safePage + 1;
                           });
                         }
                       : null,
@@ -1687,13 +1701,13 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
           !_isSameDay(_birthDate, _user.birthDate));
 
   Map<String, dynamic> _guardianConsentPayload() => <String, dynamic>{
-        'guardianName': _guardianNameController.text.trim(),
-        'relationship': _guardianRelationship,
-        'method': _guardianConsentMethod,
-        'evidenceReference': _guardianEvidenceController.text.trim(),
-        'mediaAllowed': _guardianMediaAllowed,
-        'confirmed': _guardianConsentConfirmed,
-      };
+    'guardianName': _guardianNameController.text.trim(),
+    'relationship': _guardianRelationship,
+    'method': _guardianConsentMethod,
+    'evidenceReference': _guardianEvidenceController.text.trim(),
+    'mediaAllowed': _guardianMediaAllowed,
+    'confirmed': _guardianConsentConfirmed,
+  };
 
   bool _hasValidGuardianConsent() =>
       _guardianNameController.text.trim().length >= 2 &&
@@ -1721,8 +1735,8 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     final now = DateTime.now();
     final latestEligibleDate = DateTime(now.year - 12, now.month, now.day);
     final currentBirthDate = _birthDate;
-    final initialDate = currentBirthDate == null ||
-            currentBirthDate.isAfter(latestEligibleDate)
+    final initialDate =
+        currentBirthDate == null || currentBirthDate.isAfter(latestEligibleDate)
         ? DateTime(now.year - 18, 1, 1)
         : currentBirthDate;
     final picked = await showDatePicker(
@@ -1797,8 +1811,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
       // la meme liste fermee et laisse tomber en silence ce qu'il ne reconnait
       // pas. Un poste tape a la main serait donc perdu sans erreur.
       final codes = _positionCodes.map((p) => p.code).toList();
-      final currentCodes =
-          _user.football.positions.map((p) => p.code).toList();
+      final currentCodes = _user.football.positions.map((p) => p.code).toList();
       if (!listEquals(codes, currentCodes)) {
         patch['positionCodes'] = codes;
       }
@@ -1865,11 +1878,13 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
         );
         return;
       }
-      final changed = widget.contactLoaded && !_isSameDay(date, _user.birthDate);
+      final changed =
+          widget.contactLoaded && !_isSameDay(date, _user.birthDate);
       if (changed && age < 18 && !_hasValidGuardianConsent()) {
         showAdminFeedback(
           title: 'Accord parental requis',
-          message: 'Consignez l’accord du parent ou du tuteur avant cette correction.',
+          message:
+              'Consignez l’accord du parent ou du tuteur avant cette correction.',
           tone: AdminBannerTone.warning,
         );
         return;
@@ -1914,7 +1929,8 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                     children: FootballPosition.values.map((position) {
                       final index = _positionCodes.indexOf(position);
                       final isSelected = index >= 0;
-                      final atLimit = _positionCodes.length >=
+                      final atLimit =
+                          _positionCodes.length >=
                           FootballPosition.maxPerPlayer;
 
                       return FilterChip(
@@ -1962,41 +1978,77 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                     if (_requiresGuardianConsent) ...[
                       TextFormField(
                         controller: _guardianNameController,
-                        decoration: const InputDecoration(labelText: 'Nom du parent ou tuteur'),
+                        decoration: const InputDecoration(
+                          labelText: 'Nom du parent ou tuteur',
+                        ),
                       ),
                       DropdownButtonFormField<String>(
                         initialValue: _guardianRelationship,
-                        decoration: const InputDecoration(labelText: 'Lien avec le joueur'),
+                        decoration: const InputDecoration(
+                          labelText: 'Lien avec le joueur',
+                        ),
                         items: const [
-                          DropdownMenuItem(value: 'parent', child: Text('Parent')),
-                          DropdownMenuItem(value: 'legal_guardian', child: Text('Tuteur légal')),
+                          DropdownMenuItem(
+                            value: 'parent',
+                            child: Text('Parent'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'legal_guardian',
+                            child: Text('Tuteur légal'),
+                          ),
                         ],
-                        onChanged: (value) { if (value != null) setState(() => _guardianRelationship = value); },
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _guardianRelationship = value);
+                          }
+                        },
                       ),
                       DropdownButtonFormField<String>(
                         initialValue: _guardianConsentMethod,
-                        decoration: const InputDecoration(labelText: 'Mode de consentement vérifié'),
+                        decoration: const InputDecoration(
+                          labelText: 'Mode de consentement vérifié',
+                        ),
                         items: const [
-                          DropdownMenuItem(value: 'oral_confirmation', child: Text('Accord oral / téléphone')),
-                          DropdownMenuItem(value: 'written_confirmation', child: Text('Accord écrit')),
+                          DropdownMenuItem(
+                            value: 'oral_confirmation',
+                            child: Text('Accord oral / téléphone'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'written_confirmation',
+                            child: Text('Accord écrit'),
+                          ),
                         ],
-                        onChanged: (value) { if (value != null) setState(() => _guardianConsentMethod = value); },
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _guardianConsentMethod = value);
+                          }
+                        },
                       ),
                       TextFormField(
                         controller: _guardianEvidenceController,
-                        decoration: const InputDecoration(labelText: 'Note de suivi (facultatif)'),
+                        decoration: const InputDecoration(
+                          labelText: 'Note de suivi (facultatif)',
+                        ),
                       ),
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: _guardianMediaAllowed,
-                        title: const Text('Le parent autorise la publication des photos, vidéos et CV sur la fiche ; les vidéos restent soumises à modération.'),
-                        onChanged: (value) => setState(() => _guardianMediaAllowed = value ?? false),
+                        title: const Text(
+                          'Le parent autorise la publication des photos, vidéos et CV sur la fiche ; les vidéos restent soumises à modération.',
+                        ),
+                        onChanged: (value) => setState(
+                          () => _guardianMediaAllowed = value ?? false,
+                        ),
                       ),
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: _guardianConsentConfirmed,
-                        title: const Text('J’atteste avoir recueilli et consigné l’accord du parent/tuteur.'),
-                        onChanged: (value) => setState(() => _guardianConsentConfirmed = value ?? false),
+                        title: const Text(
+                          'J’atteste avoir recueilli et consigné l’accord du parent/tuteur.',
+                        ),
+                        onChanged: (value) => setState(
+                          () => _guardianConsentConfirmed = value ?? false,
+                        ),
                       ),
                     ] else
                       const Text('Consentement parental déjà enregistré.'),
@@ -2435,9 +2487,7 @@ class _ProfileReviewContent extends StatelessWidget {
             _ProfileReviewItem(
               label: 'Échéance',
               value: user.membership.validUntil == null
-                  ? (user.membership.isRecorded
-                        ? 'Sans terme'
-                        : 'Sans objet')
+                  ? (user.membership.isRecorded ? 'Sans terme' : 'Sans objet')
                   : Membership.formatDate(user.membership.validUntil!),
             ),
             _ProfileReviewItem(
@@ -2526,9 +2576,7 @@ class _ProfileReviewContent extends StatelessWidget {
           label: 'Parcours',
           value: user.football.seasonHistory.isEmpty
               ? 'Aucune saison archivée'
-              : user.football.seasonHistory
-                    .map(archivedSeasonLabel)
-                    .join('\n'),
+              : user.football.seasonHistory.map(archivedSeasonLabel).join('\n'),
         ),
         _ProfileReviewItem(
           label: 'CV',

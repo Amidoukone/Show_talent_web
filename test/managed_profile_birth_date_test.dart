@@ -97,27 +97,20 @@ void main() {
     );
   });
 
-  testWidgets('clearing the date sends an explicit null', (tester) async {
-    // Effacer est un geste légitime : une date inventée vaut moins que pas de
-    // date. Le callable lit `null` comme un effacement, le trigger en dérive
-    // une année nulle, et la fiche sort des recherches — ce qui est exact.
+  testWidgets('a player birth date can be corrected but cannot be cleared', (
+    tester,
+  ) async {
+    // La date est requise pour appliquer les restrictions d'âge et de visibilité.
     final recorded = <Map<String, dynamic>>[];
     final controller = controllerWithPlayer(birthDate: '2004-05-17T00:00:00Z');
-
     await pumpDashboard(tester, controller, buildService(recorded));
     await openEditDialog(tester);
-
-    await tester.tap(find.byTooltip('Effacer la date'));
-    await tester.pumpAndSettle();
+    expect(find.byTooltip('Effacer la date'), findsNothing);
+    expect(find.text('Modifier'), findsOneWidget);
+    expect(find.text('Date de naissance : 17/05/2004'), findsOneWidget);
     await tester.tap(find.text('Enregistrer'));
     await tester.pumpAndSettle();
-
-    expect(recorded, hasLength(1));
-    expect(recorded.single['callableName'], 'updateManagedAccountProfile');
-    expect(
-      (recorded.single['payload'] as Map<String, dynamic>)['patch'],
-      {'birthDate': null},
-    );
+    expect(recorded, isEmpty);
   });
 
   testWidgets('a chosen date leaves as an ISO-8601 string', (tester) async {
@@ -170,10 +163,7 @@ void main() {
     await pumpDashboard(tester, controller, buildService([]));
     await openEditDialog(tester);
 
-    expect(
-      find.textContaining('retire la certification'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('retire la certification'), findsOneWidget);
   });
 
   testWidgets('an unreadable contact document hides the field', (tester) async {

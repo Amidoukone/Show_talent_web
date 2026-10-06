@@ -10,6 +10,7 @@ import '../models/admin_access_result.dart';
 import '../models/user.dart';
 import '../utils/admin_access_messages.dart';
 import '../utils/account_role_policy.dart';
+import '../utils/user_contact_projection.dart';
 
 class UserController extends GetxController {
   final Rx<AppUser?> _user = Rx<AppUser?>(null);
@@ -19,6 +20,24 @@ class UserController extends GetxController {
   List<AppUser> get userList => _userList;
 
   final RxBool isLoading = true.obs;
+  final RxnString usersLoadError = RxnString();
+  final RxnString privateContactLoadError = RxnString();
+  bool _hasContactSnapshot = false;
+  bool _retryingUsers = false;
+
+  Future<void> retryUsers() async {
+    if (_retryingUsers) return;
+    _retryingUsers = true;
+    isLoading.value = true;
+    try {
+      await _stopUsersStream();
+      usersLoadError.value = null;
+      privateContactLoadError.value = null;
+      fetchUsers();
+    } finally {
+      _retryingUsers = false;
+    }
+  }
 
   final RxList<String> _grantedAdminClaims = <String>[].obs;
   List<String> get grantedAdminClaims => _grantedAdminClaims;
@@ -40,8 +59,8 @@ class UserController extends GetxController {
     }
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
-          _handleAuthStateChanged,
-        );
+      _handleAuthStateChanged,
+    );
     _handleAuthStateChanged(FirebaseAuth.instance.currentUser);
   }
 
@@ -61,42 +80,46 @@ class UserController extends GetxController {
     }
 
     isLoading.value = true;
-    _usersSubscription =
-        FirebaseFirestore.instance.collection('users').snapshots().listen(
-      (snapshot) {
-        final parsedUsers = <AppUser>[];
+    _usersSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .listen(
+          (snapshot) {
+            final parsedUsers = <AppUser>[];
+            var invalidProfiles = 0;
 
-        for (final doc in snapshot.docs) {
-          try {
-            parsedUsers.add(
-              _parseUserData(
-                doc.data(),
-                fallbackUid: doc.id,
-              ),
-            );
-          } catch (error, stackTrace) {
-            debugPrint(
-              'Document utilisateur ignoré (${doc.id}) car invalide : $error',
-            );
+            for (final doc in snapshot.docs) {
+              try {
+                parsedUsers.add(
+                  _parseUserData(doc.data(), fallbackUid: doc.id),
+                );
+              } catch (error, stackTrace) {
+                invalidProfiles++;
+                debugPrint(
+                  'Document utilisateur ignoré (${doc.id}) car invalide : $error',
+                );
+                debugPrintStack(stackTrace: stackTrace);
+              }
+            }
+
+            usersLoadError.value = invalidProfiles == 0
+                ? null
+                : 'Certains profils sont illisibles. La liste ne peut pas être affichée intégralement.';
+            _userList.assignAll(parsedUsers);
+            _applyPrivateContactCache();
+            isLoading.value = false;
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint('Flux Firestore users indisponible : $error');
             debugPrintStack(stackTrace: stackTrace);
-          }
-        }
-
-        _userList.assignAll(parsedUsers);
-        _applyPrivateContactCache();
-        isLoading.value = false;
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        debugPrint('Flux Firestore users indisponible : $error');
-        debugPrintStack(stackTrace: stackTrace);
-        _userList.clear();
-        _usersSubscription = null;
-        isLoading.value = false;
-      },
-      onDone: () {
-        _usersSubscription = null;
-      },
-    );
+            usersLoadError.value =
+                'Impossible de charger les utilisateurs. Vérifiez votre connexion puis réessayez.';
+            isLoading.value = false;
+          },
+          onDone: () {
+            _usersSubscription = null;
+          },
+        );
 
     // email/phone moved out of the main users doc (see AppUser.fromMap
     // comment) — the list view still needs them for the email column and
@@ -112,51 +135,42 @@ class UserController extends GetxController {
         .collectionGroup('private')
         .snapshots()
         .listen(
-      (snapshot) {
-        for (final change in snapshot.docChanges) {
-          if (change.doc.id != 'contact') {
-            continue;
-          }
-          final uid = change.doc.reference.parent.parent?.id;
-          if (uid == null) {
-            continue;
-          }
-          if (change.type == DocumentChangeType.removed) {
-            _privateContactByUid.remove(uid);
-          } else {
-            _privateContactByUid[uid] = change.doc.data() ?? <String, dynamic>{};
-          }
-        }
-        _applyPrivateContactCache();
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        debugPrint('Flux Firestore private/contact indisponible : $error');
-        debugPrintStack(stackTrace: stackTrace);
-        _privateContactSubscription = null;
-      },
-      onDone: () {
-        _privateContactSubscription = null;
-      },
-    );
+          (snapshot) {
+            _hasContactSnapshot = true;
+            privateContactLoadError.value = null;
+            for (final change in snapshot.docChanges) {
+              if (change.doc.id != 'contact') {
+                continue;
+              }
+              final uid = change.doc.reference.parent.parent?.id;
+              if (uid == null) {
+                continue;
+              }
+              if (change.type == DocumentChangeType.removed) {
+                _privateContactByUid.remove(uid);
+              } else {
+                _privateContactByUid[uid] =
+                    change.doc.data() ?? <String, dynamic>{};
+              }
+            }
+            _applyPrivateContactCache();
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint('Flux Firestore private/contact indisponible : $error');
+            debugPrintStack(stackTrace: stackTrace);
+            privateContactLoadError.value =
+                'Impossible de charger les coordonnées des comptes. Réessayez.';
+          },
+          onDone: () {
+            _privateContactSubscription = null;
+          },
+        );
   }
 
   void _applyPrivateContactCache() {
-    if (_privateContactByUid.isEmpty || _userList.isEmpty) {
-      return;
-    }
+    if (!_hasContactSnapshot || _userList.isEmpty) return;
     for (final user in _userList) {
-      final contact = _privateContactByUid[user.uid];
-      if (contact == null) {
-        continue;
-      }
-      final email = contact['email'];
-      if (email is String && email.trim().isNotEmpty) {
-        user.email = email.trim();
-      }
-      final phone = contact['phone'];
-      if (phone != null) {
-        user.phone = phone.toString();
-      }
+      applyPrivateContact(user, _privateContactByUid[user.uid]);
     }
     _userList.refresh();
   }
@@ -177,8 +191,11 @@ class UserController extends GetxController {
     await _privateContactSubscription?.cancel();
     _privateContactSubscription = null;
     _privateContactByUid.clear();
+    _hasContactSnapshot = false;
 
     if (clearUsers) {
+      usersLoadError.value = null;
+      privateContactLoadError.value = null;
       _userList.clear();
       isLoading.value = false;
     }
@@ -238,9 +255,7 @@ class UserController extends GetxController {
 
       if (!userDoc.exists) {
         clearSessionState();
-        return const AdminAccessResult.denied(
-          AdminAccessMessages.userNotFound,
-        );
+        return const AdminAccessResult.denied(AdminAccessMessages.userNotFound);
       }
 
       final appUser = _parseUserData(
@@ -262,16 +277,12 @@ class UserController extends GetxController {
 
       if (!isAdminPortalOnlyRole(appUser.role)) {
         clearSessionState();
-        return const AdminAccessResult.denied(
-          AdminAccessMessages.roleDenied,
-        );
+        return const AdminAccessResult.denied(AdminAccessMessages.roleDenied);
       }
 
       if (appUser.authDisabled) {
         clearSessionState();
-        return const AdminAccessResult.denied(
-          AdminAccessMessages.authDisabled,
-        );
+        return const AdminAccessResult.denied(AdminAccessMessages.authDisabled);
       }
 
       _user.value = appUser;
@@ -284,10 +295,7 @@ class UserController extends GetxController {
     }
   }
 
-  AppUser _parseUserData(
-    Map<String, dynamic> userData, {
-    String? fallbackUid,
-  }) {
+  AppUser _parseUserData(Map<String, dynamic> userData, {String? fallbackUid}) {
     final normalized = Map<String, dynamic>.from(userData);
     final existingUid = normalized['uid']?.toString().trim() ?? '';
     if (existingUid.isEmpty && fallbackUid != null && fallbackUid.isNotEmpty) {
@@ -304,9 +312,9 @@ class UserController extends GetxController {
   /// [fetchUsers] deliberately doesn't include these fields anymore, and an
   /// admin session is required to read either doc (see firestore.rules).
   Future<AppUser> fetchUserWithPrivateFields(AppUser baseUser) async {
-    final usersRef = FirebaseFirestore.instance.collection('users').doc(
-          baseUser.uid,
-        );
+    final usersRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(baseUser.uid);
     final results = await Future.wait([
       usersRef.collection('private').doc('contact').get(),
       usersRef.collection('private').doc('adminNotes').get(),

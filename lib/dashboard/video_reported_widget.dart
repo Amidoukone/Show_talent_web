@@ -306,6 +306,20 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
               );
             }
 
+            final loadError = videoController.lastError.value;
+            if (loadError.isNotEmpty) {
+              return AdminEmptyState(
+                title: 'Chargement incomplet',
+                message: loadError,
+                icon: Icons.error_outline_rounded,
+                actionLabel: 'Réessayer',
+                actionIcon: Icons.refresh_rounded,
+                onAction: () {
+                  videoController.fetchVideos();
+                },
+              );
+            }
+
             if (filteredVideos.isEmpty) {
               final hasSearch = searchQuery.trim().isNotEmpty;
 

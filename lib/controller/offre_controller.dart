@@ -94,7 +94,8 @@ class OffreController extends GetxController {
       onError: (Object error) {
         debugPrint('Flux Firestore offres indisponible : $error');
         offres.clear();
-        lastError.value = 'offres_stream_failed';
+        lastError.value =
+            'Impossible de charger les offres. Vérifiez votre connexion puis réessayez.';
         isLoading.value = false;
       },
     );

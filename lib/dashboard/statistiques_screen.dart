@@ -45,6 +45,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
       final totalVideos = videos.length;
       final reportRate =
           totalVideos == 0 ? 0.0 : reportedVideos.length / totalVideos;
+      final cleanVideoRate = totalVideos == 0 ? 0.0 : 1 - reportRate;
       final managedRate = totalUsers == 0 ? 0.0 : managedUsers / totalUsers;
       final activeRate = totalUsers == 0 ? 0.0 : activeUsers / totalUsers;
       final disabledRate =
@@ -78,7 +79,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   value: '$totalVideos',
                   subtitle: '${reportedVideos.length} vidéos signalées',
                   icon: Icons.play_circle_outline_rounded,
-                  progress: 1,
+                  progress: cleanVideoRate,
                   accentColor: AdminTheme.accentSoft,
                 ),
                 AdminMetricCard(

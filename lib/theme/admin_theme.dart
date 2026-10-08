@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 
 class AdminTheme {
   static const Color background = Color(0xFF0E1114);
-  static const Color backgroundSecondary = Color(0xFF12161C);
   static const Color surface = Color(0xFF12161C);
+  // Même valeur que `surface` : alias explicite plutôt que deux littéraux
+  // identiques par coïncidence (qui divergeraient silencieusement si l'un
+  // des deux était modifié sans l'autre).
+  static const Color backgroundSecondary = surface;
   static const Color surfaceRaised = Color(0xFF1A1F26);
   static const Color surfaceSoft = Color(0xFF202632);
   static const Color surfaceHighlight = Color(0xFF26313D);
   static const Color surfaceOverlay = Color(0xFF18212B);
   static const Color border = Color(0xFF2E3A45);
-  static const Color borderSoft = Color(0xFF202632);
+  // Même valeur que `surfaceSoft` : alias explicite, voir backgroundSecondary.
+  static const Color borderSoft = surfaceSoft;
   static const Color accent = Color(0xFF2ED573);
   static const Color accentSoft = Color(0xFFB6F04A);
   static const Color cyan = Color(0xFF4EA8FF);

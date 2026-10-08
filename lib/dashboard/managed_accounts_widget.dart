@@ -8,6 +8,7 @@ import '../models/managed_account_provision_result.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
+import '../utils/firebase_functions_error.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/managed_account_invite_result_dialog.dart';
@@ -216,8 +217,10 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       }
 
       setState(() {
-        _errorMessage =
-            error.message ?? 'Le service sécurisé a refusé le provisionnement.';
+        _errorMessage = describeFunctionsError(
+          error,
+          fallbackMessage: 'Le service sécurisé a refusé le provisionnement.',
+        );
       });
     } catch (error) {
       if (!mounted) {

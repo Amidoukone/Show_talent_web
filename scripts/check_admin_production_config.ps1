@@ -126,6 +126,16 @@ if ($errors.Count -eq 0) {
             -Pattern ([regex]::Escape('"' + $scriptName + '"')) `
             -Message "package.json is missing npm script '$scriptName'."
     }
+
+    Assert-ContainsRegex `
+        -Raw $packageRaw `
+        -Pattern "build:web:production[\s\S]*?--dart-define=APP_CHECK_ENABLED=true" `
+        -Message "build:web:production no longer enables App Check (--dart-define=APP_CHECK_ENABLED=true is missing)."
+
+    Assert-ContainsRegex `
+        -Raw $packageRaw `
+        -Pattern "build:web:production[\s\S]*?--dart-define=APP_CHECK_WEB_RECAPTCHA_SITE_KEY=\S+" `
+        -Message "build:web:production no longer passes an App Check reCAPTCHA site key."
 }
 
 Write-Host "Checked files:"

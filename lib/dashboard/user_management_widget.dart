@@ -13,6 +13,7 @@ import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/admin_callable_action_catalog.dart';
+import '../utils/firebase_functions_error.dart';
 import '../widgets/admin_account_status_chips.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
@@ -232,7 +233,10 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Action impossible',
-        message: error.message ?? 'Opération ${action.label} refusée.',
+        message: describeFunctionsError(
+          error,
+          fallbackMessage: 'Opération ${action.label} refusée.',
+        ),
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -440,9 +444,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
       showAdminFeedback(
         title: 'Envoi impossible',
-        message:
-            error.message ??
-            'Impossible de renvoyer les liens d’invitation pour ce compte.',
+        message: describeFunctionsError(
+          error,
+          fallbackMessage:
+              'Impossible de renvoyer les liens d’invitation pour ce compte.',
+        ),
         tone: AdminBannerTone.danger,
       );
     } catch (error) {
@@ -771,7 +777,22 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     // of the bulk users snapshot into users/{uid}/private/contact and
     // users/{uid}/private/adminNotes, so the review dialog needs an
     // on-demand fetch to show them (admin claims grant access to both).
-    final enrichedUser = await _userController.fetchUserWithPrivateFields(user);
+    AppUser enrichedUser;
+    try {
+      enrichedUser = await _userController.fetchUserWithPrivateFields(user);
+    } catch (error) {
+      debugPrint('Lecture des champs privés impossible : $error');
+      if (!mounted) {
+        return;
+      }
+      showAdminFeedback(
+        title: 'Chargement impossible',
+        message:
+            'Impossible de charger les coordonnées de ${user.nom}. Vérifiez votre connexion puis réessayez.',
+        tone: AdminBannerTone.danger,
+      );
+      return;
+    }
 
     if (!mounted) {
       return;

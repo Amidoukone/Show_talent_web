@@ -7,7 +7,7 @@
   },
   "scripts": {
     "analyze": "flutter analyze --no-fatal-infos",
-    "build:web:production": "flutter build web --release --dart-define=APP_ENV=production --dart-define=FIREBASE_PROJECT_ID=adfoot-production --dart-define=FIREBASE_FUNCTIONS_REGION=europe-west1",
+    "build:web:production": "flutter build web --release --dart-define=APP_ENV=production --dart-define=FIREBASE_PROJECT_ID=adfoot-production --dart-define=FIREBASE_FUNCTIONS_REGION=europe-west1 --dart-define=APP_CHECK_ENABLED=true --dart-define=APP_CHECK_WEB_RECAPTCHA_SITE_KEY=6Le7VeUtAAAAAN-VzlxXEMOcZfIfBeGt4lUnuzAN",
     "build:web:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\build_web_staging.ps1",
     "dev:web:staging": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\run_web_staging.ps1",
     "contract:mobile": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\check_mobile_contract.ps1",

@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 
 import '../config/app_environment.dart';
 import '../models/admin_action_response.dart';
+import '../utils/firebase_functions_error.dart';
 
 class AdminContentService {
   AdminContentService({FirebaseFunctions? functions})
@@ -17,35 +18,6 @@ class AdminContentService {
 
   final FirebaseFunctions? _functions;
   final bool _visualQaMode;
-
-  String _buildFailureMessage(
-    FirebaseFunctionsException error, {
-    required String fallbackMessage,
-  }) {
-    final rawMessage = error.message?.trim() ?? '';
-    final hasActionableMessage = rawMessage.isNotEmpty &&
-        rawMessage.toLowerCase() != 'internal' &&
-        rawMessage.toUpperCase() != 'INTERNAL';
-
-    if (hasActionableMessage) {
-      return rawMessage;
-    }
-
-    switch (error.code) {
-      case 'unauthenticated':
-        return 'Session admin expirée. Reconnectez-vous.';
-      case 'permission-denied':
-        return "Action réservée à l’administration.";
-      case 'not-found':
-        return 'Élément introuvable ou déjà supprimé.';
-      case 'unavailable':
-        return '$fallbackMessage Réessayez dans un instant.';
-      case 'internal':
-        return '$fallbackMessage Vérifiez aussi le déploiement Functions partagé.';
-      default:
-        return fallbackMessage;
-    }
-  }
 
   Future<AdminActionResponse> _callable(
     String callableName, {
@@ -72,7 +44,7 @@ class AdminContentService {
     } on FirebaseFunctionsException catch (error) {
       return AdminActionResponse.failure(
         code: error.code,
-        message: _buildFailureMessage(
+        message: describeFunctionsError(
           error,
           fallbackMessage: fallbackMessage,
         ),

@@ -520,6 +520,20 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
               );
             }
 
+            final loadError = videoController.lastError.value;
+            if (loadError.isNotEmpty) {
+              return AdminEmptyState(
+                title: 'Chargement incomplet',
+                message: loadError,
+                icon: Icons.error_outline_rounded,
+                actionLabel: 'Réessayer',
+                actionIcon: Icons.refresh_rounded,
+                onAction: () {
+                  videoController.fetchVideos();
+                },
+              );
+            }
+
             return Column(
               children: [
                 Wrap(

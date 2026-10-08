@@ -24,8 +24,6 @@ class AppRoutes {
     ),
   ];
 
-  static const int _lastDashboardIndex = 8;
-
   static const Map<String, int> _localDashboardTabs = <String, int>{
     'users': 0,
     'utilisateurs': 0,
@@ -79,7 +77,7 @@ class AppRoutes {
     if (args is Map) {
       final initialIndex = args['initialIndex'];
       if (initialIndex is int) {
-        return initialIndex.clamp(0, _lastDashboardIndex);
+        return initialIndex.clamp(0, AdminDashboardScreen.tabCount - 1);
       }
 
       final tab = args['tab'];

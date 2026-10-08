@@ -94,7 +94,8 @@ class EventController extends GetxController {
       onError: (Object error) {
         debugPrint('Flux Firestore events indisponible : $error');
         events.clear();
-        lastError.value = 'events_stream_failed';
+        lastError.value =
+            'Impossible de charger les événements. Vérifiez votre connexion puis réessayez.';
         isLoading.value = false;
       },
     );

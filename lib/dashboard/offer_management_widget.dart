@@ -412,6 +412,20 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
               );
             }
 
+            final loadError = _offreController.lastError.value;
+            if (loadError.isNotEmpty) {
+              return AdminEmptyState(
+                title: 'Chargement incomplet',
+                message: loadError,
+                icon: Icons.error_outline_rounded,
+                actionLabel: 'Réessayer',
+                actionIcon: Icons.refresh_rounded,
+                onAction: () {
+                  _offreController.getAllOffres();
+                },
+              );
+            }
+
             if (filtered.isEmpty) {
               if (allOffres.isEmpty) {
                 return AdminEmptyState(

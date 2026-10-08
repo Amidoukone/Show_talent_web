@@ -21,6 +21,7 @@ class VideoController extends GetxController {
 
   var videoList = <Video>[].obs;
   final RxBool isLoading = true.obs;
+  final RxString lastError = ''.obs;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _videosSubscription;
@@ -52,6 +53,7 @@ class VideoController extends GetxController {
       _videosSubscription?.cancel();
       _videosSubscription = null;
       videoList.clear();
+      lastError.value = '';
       isLoading.value = false;
       return;
     }
@@ -69,6 +71,7 @@ class VideoController extends GetxController {
     if (_visualQaMode) return;
     if (FirebaseAuth.instance.currentUser == null) {
       videoList.clear();
+      lastError.value = '';
       isLoading.value = false;
       return;
     }
@@ -95,11 +98,14 @@ class VideoController extends GetxController {
                   .whereType<Video>()
                   .toList(),
             );
+            lastError.value = '';
             isLoading.value = false;
           },
           onError: (Object error) {
             debugPrint('Flux Firestore vidéos indisponible : $error');
             videoList.clear();
+            lastError.value =
+                'Impossible de charger les vidéos. Vérifiez votre connexion puis réessayez.';
             isLoading.value = false;
           },
         );
@@ -111,93 +117,6 @@ class VideoController extends GetxController {
 
   List<Video> getAllVideos() {
     return videoList;
-  }
-
-  void likeVideo(String videoId, String userId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('videos')
-          .doc(videoId)
-          .get();
-      final videoData = doc.data();
-      if (videoData == null) {
-        Get.snackbar('Erreur', 'Vidéo introuvable.');
-        return;
-      }
-
-      final likes = List<String>.from(videoData['likes'] ?? []);
-      if (likes.contains(userId)) {
-        likes.remove(userId);
-      } else {
-        likes.add(userId);
-      }
-
-      await FirebaseFirestore.instance.collection('videos').doc(videoId).update(
-        {'likes': likes},
-      );
-
-      Get.snackbar('Succès', 'Action effectuée avec succès.');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Impossible de liker la vidéo.');
-    }
-  }
-
-  void partagerVideo(String videoId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('videos')
-          .doc(videoId)
-          .get();
-      final videoData = doc.data();
-      if (videoData == null) {
-        Get.snackbar('Erreur', 'Vidéo introuvable.');
-        return;
-      }
-
-      var shareCount = videoData['shareCount'] ?? 0;
-      shareCount++;
-
-      await FirebaseFirestore.instance.collection('videos').doc(videoId).update(
-        {'shareCount': shareCount},
-      );
-
-      Get.snackbar('Succès', 'Vidéo partagée avec succès.');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Erreur lors du partage de la vidéo.');
-    }
-  }
-
-  void signalerVideo(String videoId, String userId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('videos')
-          .doc(videoId)
-          .get();
-      final videoData = doc.data();
-      if (videoData == null) {
-        Get.snackbar('Erreur', 'Vidéo introuvable.');
-        return;
-      }
-
-      final reports = List<String>.from(videoData['reports'] ?? []);
-      var reportCount = videoData['reportCount'] ?? 0;
-
-      if (!reports.contains(userId)) {
-        reports.add(userId);
-        reportCount++;
-
-        await FirebaseFirestore.instance
-            .collection('videos')
-            .doc(videoId)
-            .update({'reports': reports, 'reportCount': reportCount});
-
-        Get.snackbar('Succès', 'Vidéo signalée avec succès.');
-      } else {
-        Get.snackbar('Erreur', 'Vous avez déjà signalé cette vidéo.');
-      }
-    } catch (e) {
-      Get.snackbar('Erreur', 'Erreur lors du signalement de la vidéo.');
-    }
   }
 
   Future<void> deleteVideo(String videoId) async {
@@ -249,34 +168,4 @@ class VideoController extends GetxController {
     videoList.removeWhere((video) => video.id == videoId);
   }
 
-  Future<void> updateVideo(
-    String videoId,
-    Map<String, dynamic> newVideoData,
-  ) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('videos')
-          .doc(videoId)
-          .update(newVideoData);
-      Get.snackbar('Succès', 'Vidéo mise à jour avec succès.');
-    } catch (e) {
-      Get.snackbar('Erreur', 'Erreur lors de la mise à jour de la vidéo.');
-    }
-  }
-
-  Future<Video?> getVideoById(String videoId) async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('videos')
-          .doc(videoId)
-          .get();
-      final videoData = doc.data();
-      if (videoData != null) {
-        return Video.fromMap({...videoData, 'id': doc.id});
-      }
-    } catch (e) {
-      Get.snackbar('Erreur', 'Impossible de récupérer la vidéo.');
-    }
-    return null;
-  }
 }

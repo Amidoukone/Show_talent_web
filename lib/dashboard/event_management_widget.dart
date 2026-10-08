@@ -383,6 +383,20 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
               );
             }
 
+            final loadError = _eventController.lastError.value;
+            if (loadError.isNotEmpty) {
+              return AdminEmptyState(
+                title: 'Chargement incomplet',
+                message: loadError,
+                icon: Icons.error_outline_rounded,
+                actionLabel: 'Réessayer',
+                actionIcon: Icons.refresh_rounded,
+                onAction: () {
+                  _eventController.refreshEvents();
+                },
+              );
+            }
+
             if (filtered.isEmpty) {
               if (allEvents.isEmpty) {
                 return AdminEmptyState(

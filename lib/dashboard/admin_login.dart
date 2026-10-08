@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,6 +22,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final AuthController _authController = Get.find<AuthController>();
 
   bool _obscurePassword = true;
+  bool _isSubmitting = false;
+
+  static const Duration _loginTimeout = Duration(seconds: 20);
 
   String _firebaseErrorMessage(FirebaseAuthException error) {
     final normalized = '${error.code} ${error.message ?? ''}'.toLowerCase();
@@ -41,6 +46,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   }
 
   Future<void> _loginAdmin() async {
+    if (_isSubmitting) {
+      return;
+    }
+
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -52,11 +61,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       return;
     }
 
+    setState(() {
+      _isSubmitting = true;
+    });
+
     try {
-      final accessResult = await _authController.loginAdmin(
-        email: email,
-        password: password,
-      );
+      final accessResult = await _authController
+          .loginAdmin(email: email, password: password)
+          .timeout(_loginTimeout);
 
       if (!accessResult.isAuthorized) {
         Get.snackbar('Acc\u00e8s refus\u00e9', accessResult.message ?? 'Acc\u00e8s refus\u00e9.');
@@ -69,8 +81,23 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         'Connexion impossible',
         _firebaseErrorMessage(error),
       );
+    } on TimeoutException {
+      Get.snackbar(
+        'Connexion impossible',
+        'Le service d\u2019authentification ne r\u00e9pond pas. V\u00e9rifiez votre connexion puis r\u00e9essayez.',
+      );
     } catch (error) {
-      Get.snackbar('Connexion impossible', error.toString());
+      debugPrint('Connexion admin \u00e9chou\u00e9e : $error');
+      Get.snackbar(
+        'Connexion impossible',
+        'Une erreur inattendue est survenue. R\u00e9essayez.',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -89,6 +116,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 emailController: _emailController,
                 passwordController: _passwordController,
                 obscurePassword: _obscurePassword,
+                isSubmitting: _isSubmitting,
                 onToggleObscurePassword: () {
                   setState(() {
                     _obscurePassword = !_obscurePassword;
@@ -109,6 +137,7 @@ class _LoginFormPanel extends StatelessWidget {
     required this.emailController,
     required this.passwordController,
     required this.obscurePassword,
+    required this.isSubmitting,
     required this.onToggleObscurePassword,
     required this.onSubmit,
   });
@@ -116,6 +145,7 @@ class _LoginFormPanel extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final bool obscurePassword;
+  final bool isSubmitting;
   final VoidCallback onToggleObscurePassword;
   final VoidCallback onSubmit;
 
@@ -151,6 +181,7 @@ class _LoginFormPanel extends StatelessWidget {
           TextField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
+            enabled: !isSubmitting,
             decoration: const InputDecoration(
               labelText: 'Adresse e-mail',
               prefixIcon: Icon(Icons.mail_outline_rounded),
@@ -159,6 +190,7 @@ class _LoginFormPanel extends StatelessWidget {
           TextField(
             controller: passwordController,
             obscureText: obscurePassword,
+            enabled: !isSubmitting,
             onSubmitted: (_) => onSubmit(),
             decoration: InputDecoration(
               labelText: 'Mot de passe',
@@ -176,9 +208,17 @@ class _LoginFormPanel extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: onSubmit,
-              icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('Ouvrir le tableau de bord'),
+              onPressed: isSubmitting ? null : onSubmit,
+              icon: isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.arrow_forward_rounded),
+              label: Text(
+                isSubmitting ? 'Connexion...' : 'Ouvrir le tableau de bord',
+              ),
             ),
           ),
         ],

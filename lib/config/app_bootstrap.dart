@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -24,10 +23,9 @@ class AppBootstrap {
   }
 
   static void reportZoneError(Object error, StackTrace stack) {
-    if (!kDebugMode) {
-      return;
-    }
-
+    // Volontairement visible en release (pas seulement en debug) : c'est
+    // aujourd'hui le seul filet de sécurité pour détecter une erreur non
+    // interceptée en production (consultable via les devtools navigateur).
     debugPrint('Uncaught zone error: $error\n$stack');
   }
 
@@ -41,9 +39,9 @@ class AppBootstrap {
 
   static void _configureFlutterErrors() {
     FlutterError.onError = (FlutterErrorDetails details) {
-      if (kDebugMode) {
-        FlutterError.dumpErrorToConsole(details);
-      }
+      // Volontairement sans garde kDebugMode : en release, c'est le seul
+      // moyen de voir une erreur de build/widget via la console navigateur.
+      FlutterError.dumpErrorToConsole(details);
     };
   }
 }

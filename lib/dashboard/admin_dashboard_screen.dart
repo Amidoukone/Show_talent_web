@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -27,6 +29,12 @@ class AdminDashboardScreen extends StatefulWidget {
   final bool previewMode;
   final int initialIndex;
 
+  // Source unique pour app_routes.dart (resolveDashboardInitialIndex) :
+  // sans ça, le nombre d'onglets restait dupliqué en dur dans les deux
+  // fichiers, avec un risque de divergence silencieuse si un onglet est
+  // ajouté ou retiré ici sans mettre à jour l'autre fichier.
+  static final int tabCount = _AdminDashboardScreenState._dashboardItems.length;
+
   final AuthController authController = Get.find<AuthController>();
   final UserController userController = Get.find<UserController>();
   final VideoController videoController = Get.find<VideoController>();
@@ -36,9 +44,17 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  // Un retrait de claim admin en cours de session (révocation par un autre
+  // opérateur) ne doit pas laisser l'UI afficher des actions sensibles plus
+  // longtemps que nécessaire : on revalide périodiquement, avec le même
+  // contrôle (et la même déconnexion automatique en cas d'échec) qu'à
+  // l'ouverture du tableau de bord.
+  static const Duration _sessionRevalidationInterval = Duration(minutes: 5);
+
   late int _selectedIndex;
   bool _isAuthorizing = true;
   final ScrollController _mainScrollController = ScrollController();
+  Timer? _sessionRevalidationTimer;
 
   static const List<_DashboardItem> _dashboardItems = [
     _DashboardItem(
@@ -131,6 +147,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   void dispose() {
+    _sessionRevalidationTimer?.cancel();
     _mainScrollController.dispose();
     super.dispose();
   }
@@ -163,6 +180,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() {
       _isAuthorizing = false;
     });
+
+    _sessionRevalidationTimer?.cancel();
+    _sessionRevalidationTimer = Timer.periodic(
+      _sessionRevalidationInterval,
+      (_) => _revalidateSessionInBackground(),
+    );
+  }
+
+  Future<void> _revalidateSessionInBackground() async {
+    if (widget.previewMode) {
+      return;
+    }
+
+    final accessResult = await widget.authController.validateCurrentSession(
+      forceRefresh: true,
+      signOutOnFailure: true,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (!accessResult.isAuthorized) {
+      _sessionRevalidationTimer?.cancel();
+      Get.snackbar(
+        'Session r\u00e9voqu\u00e9e',
+        accessResult.message ??
+            'Vos droits admin ont \u00e9t\u00e9 retir\u00e9s. Reconnectez-vous.',
+      );
+      Get.offAllNamed(AppRoutes.adminLogin);
+    }
   }
 
   Widget _buildSidebarIconBubble({
@@ -545,10 +593,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Chaque onglet reste monté (filtres, pagination, écouteurs Firestore
+  // conservés) : seul l'onglet sélectionné contribue à la taille via Stack,
+  // les autres sont réduits à (0,0) par Visibility(maintainSize: false) pour
+  // éviter que la page n'hérite de la hauteur du plus grand onglet.
   Widget _buildDashboardBody() {
-    return KeyedSubtree(
-      key: ValueKey(_selectedIndex),
-      child: _widgetOptions()[_selectedIndex],
+    final tabs = _widgetOptions();
+    return Stack(
+      children: [
+        for (var index = 0; index < tabs.length; index++)
+          Visibility(
+            visible: index == _selectedIndex,
+            maintainState: true,
+            child: tabs[index],
+          ),
+      ],
     );
   }
 

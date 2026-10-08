@@ -131,6 +131,7 @@ Gestion de comptes (voir `lib/services/managed_account_service.dart`) :
 - `enableManagedAccountAuth`
 - `updateManagedAccountProfile`
 - `setManagedAccountMembership`
+- `withdrawManagedMinorConsent`
 
 Moderation de contenu (voir `lib/services/admin_content_service.dart` et
 [docs/admin-offer-event-rollout-plan.md](docs/admin-offer-event-rollout-plan.md)) :
@@ -146,7 +147,7 @@ Moderation de contenu (voir `lib/services/admin_content_service.dart` et
 - `adminDeleteContactIntake`
 - `adminDeleteContactIntakeConversation`
 
-Ces 18 callables sont catalogues dans
+Ces 19 callables sont catalogues dans
 `lib/utils/admin_callable_action_catalog.dart` et doivent rester en phase
 avec `functions/src/index.ts` cote depot mobile (verifie par
 `npm run contract:mobile`).

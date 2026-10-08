@@ -519,6 +519,13 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                         }
                       : null,
                 ),
+                const SizedBox(height: 10),
+                AdminLoadMoreBar(
+                  loadedCount: allVideos.length,
+                  hasMore: videoController.hasMore.value,
+                  itemLabel: 'vidéos',
+                  onLoadMore: videoController.loadMoreVideos,
+                ),
               ],
             );
           }),

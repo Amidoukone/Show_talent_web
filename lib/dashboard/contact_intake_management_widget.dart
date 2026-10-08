@@ -1013,6 +1013,20 @@ class _ContactIntakeManagementWidgetState
               );
             }
 
+            final loadError = _contactIntakeController.lastError.value;
+            if (loadError.isNotEmpty) {
+              return AdminEmptyState(
+                title: 'Chargement incomplet',
+                message: loadError,
+                icon: Icons.error_outline_rounded,
+                actionLabel: 'Réessayer',
+                actionIcon: Icons.refresh_rounded,
+                onAction: () {
+                  _contactIntakeController.refreshContactIntakes();
+                },
+              );
+            }
+
             if (allIntakes.isEmpty) {
               return AdminEmptyState(
                 title: 'Aucune mise en relation à suivre',
@@ -1347,6 +1361,13 @@ class _ContactIntakeManagementWidgetState
                         : null,
                   ),
                 ],
+                const SizedBox(height: 10),
+                AdminLoadMoreBar(
+                  loadedCount: allIntakes.length,
+                  hasMore: _contactIntakeController.hasMore.value,
+                  itemLabel: 'mises en relation',
+                  onLoadMore: _contactIntakeController.loadMoreContactIntakes,
+                ),
               ],
             );
           }),

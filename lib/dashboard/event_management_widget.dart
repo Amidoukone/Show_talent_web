@@ -635,6 +635,13 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                         }
                       : null,
                 ),
+                const SizedBox(height: 10),
+                AdminLoadMoreBar(
+                  loadedCount: allEvents.length,
+                  hasMore: _eventController.hasMore.value,
+                  itemLabel: 'événements',
+                  onLoadMore: _eventController.loadMoreEvents,
+                ),
               ],
             );
           }),

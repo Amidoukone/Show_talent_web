@@ -33,9 +33,16 @@ class EventController extends GetxController {
     'archive',
   ];
 
+  // Voir OffreController pour le détail du choix (plafond + "charger plus",
+  // tri par documentId pour n'exclure aucun document en silence).
+  static const int _initialLoadLimit = 500;
+  static const int _loadMoreIncrement = 500;
+  int _currentLimit = _initialLoadLimit;
+
   final RxList<Event> events = <Event>[].obs;
   final RxBool isLoading = true.obs;
   final RxString lastError = ''.obs;
+  final RxBool hasMore = false.obs;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _eventsSubscription;
@@ -74,7 +81,12 @@ class EventController extends GetxController {
     isLoading.value = true;
     _eventsSubscription?.cancel();
 
-    _eventsSubscription = _firestore!.collection('events').snapshots().listen(
+    _eventsSubscription = _firestore!
+        .collection('events')
+        .orderBy(FieldPath.documentId)
+        .limit(_currentLimit)
+        .snapshots()
+        .listen(
       (snapshot) {
         final parsed = <Event>[];
 
@@ -88,6 +100,7 @@ class EventController extends GetxController {
 
         parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
         events.assignAll(parsed);
+        hasMore.value = snapshot.docs.length >= _currentLimit;
         lastError.value = '';
         isLoading.value = false;
       },
@@ -99,6 +112,13 @@ class EventController extends GetxController {
         isLoading.value = false;
       },
     );
+  }
+
+  /// Voir OffreController.loadMoreOffres.
+  void loadMoreEvents() {
+    if (!hasMore.value) return;
+    _currentLimit += _loadMoreIncrement;
+    _listenEvents();
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
@@ -118,6 +138,8 @@ class EventController extends GetxController {
       events.clear();
       lastError.value = '';
       isLoading.value = false;
+      hasMore.value = false;
+      _currentLimit = _initialLoadLimit;
     }
   }
 

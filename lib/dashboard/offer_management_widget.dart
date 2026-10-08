@@ -629,6 +629,13 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                         }
                       : null,
                 ),
+                const SizedBox(height: 10),
+                AdminLoadMoreBar(
+                  loadedCount: allOffres.length,
+                  hasMore: _offreController.hasMore.value,
+                  itemLabel: 'offres',
+                  onLoadMore: _offreController.loadMoreOffres,
+                ),
               ],
             );
           }),

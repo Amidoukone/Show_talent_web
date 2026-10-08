@@ -33,9 +33,19 @@ class OffreController extends GetxController {
     'archivee',
   ];
 
+  // Plafond + "charger plus" plutôt qu'une collection entière en mémoire :
+  // voir le même mécanisme sur event/video/contact_intake controllers.
+  // Tri par documentId (et non une date) car c'est le seul champ garanti
+  // présent sur chaque document — trier par une date potentiellement
+  // absente exclurait silencieusement les offres qui ne l'ont pas.
+  static const int _initialLoadLimit = 500;
+  static const int _loadMoreIncrement = 500;
+  int _currentLimit = _initialLoadLimit;
+
   final RxList<Offre> offres = <Offre>[].obs;
   final RxBool isLoading = true.obs;
   final RxString lastError = ''.obs;
+  final RxBool hasMore = false.obs;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _offresSubscription;
@@ -74,7 +84,12 @@ class OffreController extends GetxController {
     isLoading.value = true;
     _offresSubscription?.cancel();
 
-    _offresSubscription = _firestore!.collection('offres').snapshots().listen(
+    _offresSubscription = _firestore!
+        .collection('offres')
+        .orderBy(FieldPath.documentId)
+        .limit(_currentLimit)
+        .snapshots()
+        .listen(
       (snapshot) {
         final parsed = <Offre>[];
 
@@ -88,6 +103,7 @@ class OffreController extends GetxController {
 
         parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
         offres.assignAll(parsed);
+        hasMore.value = snapshot.docs.length >= _currentLimit;
         lastError.value = '';
         isLoading.value = false;
       },
@@ -99,6 +115,15 @@ class OffreController extends GetxController {
         isLoading.value = false;
       },
     );
+  }
+
+  /// Agrandit la fenêtre chargée de [_loadMoreIncrement] offres et
+  /// réabonne le flux — [hasMore] repasse à false tout seul si ce lot
+  /// couvrait déjà toute la collection.
+  void loadMoreOffres() {
+    if (!hasMore.value) return;
+    _currentLimit += _loadMoreIncrement;
+    _listenOffres();
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
@@ -118,6 +143,8 @@ class OffreController extends GetxController {
       offres.clear();
       lastError.value = '';
       isLoading.value = false;
+      hasMore.value = false;
+      _currentLimit = _initialLoadLimit;
     }
   }
 

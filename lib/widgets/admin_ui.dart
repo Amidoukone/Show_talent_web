@@ -1107,6 +1107,52 @@ class AdminPaginationBar extends StatelessWidget {
   }
 }
 
+/// Barre affichée sous une liste chargée par lots bornés (voir
+/// OffreController/EventController/VideoController/ContactIntakeController/
+/// UserController) : annonce ce qui est réellement chargé en mémoire et
+/// permet d'en charger davantage — jamais de troncature silencieuse.
+class AdminLoadMoreBar extends StatelessWidget {
+  const AdminLoadMoreBar({
+    required this.loadedCount,
+    required this.hasMore,
+    required this.onLoadMore,
+    this.itemLabel = 'éléments',
+    super.key,
+  });
+
+  final int loadedCount;
+  final bool hasMore;
+  final VoidCallback onLoadMore;
+  final String itemLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasMore) {
+      return Text(
+        '$loadedCount $itemLabel chargés.',
+        style: const TextStyle(color: AdminTheme.textMuted, fontSize: 13),
+      );
+    }
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          '$loadedCount $itemLabel chargés — d\'autres sont peut-être disponibles.',
+          style: const TextStyle(color: AdminTheme.textMuted, fontSize: 13),
+        ),
+        OutlinedButton.icon(
+          onPressed: onLoadMore,
+          icon: const Icon(Icons.expand_more_rounded, size: 18),
+          label: const Text('Charger plus'),
+        ),
+      ],
+    );
+  }
+}
+
 class _AdminGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

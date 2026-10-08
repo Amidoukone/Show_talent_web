@@ -28,9 +28,16 @@ class ContactIntakeController extends GetxController {
 
   static const List<String> followUpStatuses = AgencyFollowUpStatus.values;
 
+  // Voir OffreController pour le détail du choix (plafond + "charger plus",
+  // tri par documentId pour n'exclure aucun document en silence).
+  static const int _initialLoadLimit = 500;
+  static const int _loadMoreIncrement = 500;
+  int _currentLimit = _initialLoadLimit;
+
   final RxList<ContactIntake> contactIntakes = <ContactIntake>[].obs;
   final RxBool isLoading = true.obs;
   final RxString lastError = ''.obs;
+  final RxBool hasMore = false.obs;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
@@ -70,8 +77,12 @@ class ContactIntakeController extends GetxController {
     isLoading.value = true;
     _contactIntakesSubscription?.cancel();
 
-    _contactIntakesSubscription =
-        _firestore!.collection('contact_intakes').snapshots().listen(
+    _contactIntakesSubscription = _firestore!
+        .collection('contact_intakes')
+        .orderBy(FieldPath.documentId)
+        .limit(_currentLimit)
+        .snapshots()
+        .listen(
       (snapshot) {
         final parsed = <ContactIntake>[];
 
@@ -92,16 +103,25 @@ class ContactIntakeController extends GetxController {
         });
 
         contactIntakes.assignAll(parsed);
+        hasMore.value = snapshot.docs.length >= _currentLimit;
         lastError.value = '';
         isLoading.value = false;
       },
       onError: (Object error) {
         debugPrint('Flux Firestore contact_intakes indisponible : $error');
         contactIntakes.clear();
-        lastError.value = 'contact_intakes_stream_failed';
+        lastError.value =
+            'Impossible de charger les mises en relation. Vérifiez votre connexion puis réessayez.';
         isLoading.value = false;
       },
     );
+  }
+
+  /// Voir OffreController.loadMoreOffres.
+  void loadMoreContactIntakes() {
+    if (!hasMore.value) return;
+    _currentLimit += _loadMoreIncrement;
+    _listenContactIntakes();
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
@@ -121,6 +141,8 @@ class ContactIntakeController extends GetxController {
       contactIntakes.clear();
       lastError.value = '';
       isLoading.value = false;
+      hasMore.value = false;
+      _currentLimit = _initialLoadLimit;
     }
   }
 

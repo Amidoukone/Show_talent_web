@@ -461,6 +461,13 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                         }
                       : null,
                 ),
+                const SizedBox(height: 10),
+                AdminLoadMoreBar(
+                  loadedCount: videoController.videoList.length,
+                  hasMore: videoController.hasMore.value,
+                  itemLabel: 'vidéos au catalogue (signalements compris)',
+                  onLoadMore: videoController.loadMoreVideos,
+                ),
               ],
             );
           }),

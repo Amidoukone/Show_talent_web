@@ -696,6 +696,13 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                         : null,
                   ),
                 ],
+                SizedBox(height: spacing),
+                AdminLoadMoreBar(
+                  loadedCount: allVideos.length,
+                  hasMore: videoController.hasMore.value,
+                  itemLabel: 'vidéos au catalogue',
+                  onLoadMore: videoController.loadMoreVideos,
+                ),
               ],
             );
           }),

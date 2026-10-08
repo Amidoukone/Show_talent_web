@@ -1585,6 +1585,13 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                         }
                       : null,
                 ),
+                const SizedBox(height: 10),
+                AdminLoadMoreBar(
+                  loadedCount: _userController.userList.length,
+                  hasMore: _userController.hasMoreUsers.value,
+                  itemLabel: 'utilisateurs',
+                  onLoadMore: _userController.loadMoreUsers,
+                ),
               ],
             );
           }),

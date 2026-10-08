@@ -19,9 +19,16 @@ class VideoController extends GetxController {
   final AdminContentService _adminContentService;
   final bool _visualQaMode;
 
+  // Voir OffreController pour le détail du choix (plafond + "charger plus",
+  // tri par documentId pour n'exclure aucun document en silence).
+  static const int _initialLoadLimit = 500;
+  static const int _loadMoreIncrement = 500;
+  int _currentLimit = _initialLoadLimit;
+
   var videoList = <Video>[].obs;
   final RxBool isLoading = true.obs;
   final RxString lastError = ''.obs;
+  final RxBool hasMore = false.obs;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _videosSubscription;
@@ -54,6 +61,8 @@ class VideoController extends GetxController {
       _videosSubscription = null;
       videoList.clear();
       lastError.value = '';
+      hasMore.value = false;
+      _currentLimit = _initialLoadLimit;
       isLoading.value = false;
       return;
     }
@@ -80,6 +89,8 @@ class VideoController extends GetxController {
     _videosSubscription?.cancel();
     _videosSubscription = FirebaseFirestore.instance
         .collection('videos')
+        .orderBy(FieldPath.documentId)
+        .limit(_currentLimit)
         .snapshots()
         .listen(
           (snapshot) {
@@ -98,6 +109,7 @@ class VideoController extends GetxController {
                   .whereType<Video>()
                   .toList(),
             );
+            hasMore.value = snapshot.docs.length >= _currentLimit;
             lastError.value = '';
             isLoading.value = false;
           },
@@ -109,6 +121,13 @@ class VideoController extends GetxController {
             isLoading.value = false;
           },
         );
+  }
+
+  /// Voir OffreController.loadMoreOffres.
+  void loadMoreVideos() {
+    if (!hasMore.value) return;
+    _currentLimit += _loadMoreIncrement;
+    fetchVideos();
   }
 
   List<Video> getReportedVideos() {

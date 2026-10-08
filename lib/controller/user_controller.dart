@@ -25,6 +25,18 @@ class UserController extends GetxController {
   bool _hasContactSnapshot = false;
   bool _retryingUsers = false;
 
+  // Plafond + "charger plus" sur la collection users elle-même (voir
+  // OffreController pour le détail du choix : tri par documentId pour
+  // n'exclure aucun document en silence). La lecture collectionGroup
+  // private ci-dessous reste volontairement non plafonnée : chaque document
+  // y est minuscule (contact uniquement) et lui ajouter un orderBy/limit
+  // nécessiterait un index COLLECTION_GROUP côté dépôt mobile qui n'existe
+  // pas encore (voir le commentaire sur _privateContactSubscription).
+  static const int _initialLoadLimit = 500;
+  static const int _loadMoreIncrement = 500;
+  int _currentUsersLimit = _initialLoadLimit;
+  final RxBool hasMoreUsers = false.obs;
+
   Future<void> retryUsers() async {
     if (_retryingUsers) return;
     _retryingUsers = true;
@@ -37,6 +49,16 @@ class UserController extends GetxController {
     } finally {
       _retryingUsers = false;
     }
+  }
+
+  /// Agrandit la fenêtre chargée de [_loadMoreIncrement] utilisateurs.
+  /// Contourne volontairement la garde "déjà abonné" de [fetchUsers] en
+  /// coupant d'abord le flux existant, comme le fait déjà [retryUsers].
+  Future<void> loadMoreUsers() async {
+    if (!hasMoreUsers.value) return;
+    _currentUsersLimit += _loadMoreIncrement;
+    await _stopUsersStream();
+    fetchUsers();
   }
 
   final RxList<String> _grantedAdminClaims = <String>[].obs;
@@ -82,6 +104,8 @@ class UserController extends GetxController {
     isLoading.value = true;
     _usersSubscription = FirebaseFirestore.instance
         .collection('users')
+        .orderBy(FieldPath.documentId)
+        .limit(_currentUsersLimit)
         .snapshots()
         .listen(
           (snapshot) {
@@ -106,6 +130,7 @@ class UserController extends GetxController {
                 ? null
                 : 'Certains profils sont illisibles. La liste ne peut pas être affichée intégralement.';
             _userList.assignAll(parsedUsers);
+            hasMoreUsers.value = snapshot.docs.length >= _currentUsersLimit;
             _applyPrivateContactCache();
             isLoading.value = false;
           },
@@ -198,6 +223,8 @@ class UserController extends GetxController {
       privateContactLoadError.value = null;
       _userList.clear();
       isLoading.value = false;
+      hasMoreUsers.value = false;
+      _currentUsersLimit = _initialLoadLimit;
     }
   }
 

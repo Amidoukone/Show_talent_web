@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AdminTheme {
   static const Color background = Color(0xFF0E1114);
@@ -89,7 +90,12 @@ class AdminTheme {
       outline: border,
     );
 
-    final baseTextTheme = Typography.whiteMountainView;
+    // Deux rôles, pas plus : Space Grotesk porte les titres (une
+    // personnalité technique assumée), Public Sans porte tout le reste —
+    // y compris les TextStyle littéraux qui ne précisent pas de police,
+    // puisqu'ils héritent de bodyMedium via DefaultTextStyle.
+    final displayFont = GoogleFonts.spaceGrotesk();
+    final bodyFont = GoogleFonts.publicSans();
 
     return ThemeData(
       useMaterial3: true,
@@ -100,49 +106,50 @@ class AdminTheme {
       canvasColor: surface,
       dividerColor: borderSoft,
       splashFactory: NoSplash.splashFactory,
-      textTheme: baseTextTheme.copyWith(
-        displaySmall: const TextStyle(
+      textTheme: TextTheme(
+        displaySmall: displayFont.copyWith(
           fontSize: 34,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           letterSpacing: 0,
           color: textPrimary,
           height: 1.05,
         ),
-        headlineMedium: const TextStyle(
+        headlineMedium: displayFont.copyWith(
           fontSize: 28,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
           letterSpacing: 0,
           color: textPrimary,
         ),
-        titleLarge: const TextStyle(
+        titleLarge: displayFont.copyWith(
           fontSize: 22,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           color: textPrimary,
           letterSpacing: 0,
         ),
-        titleMedium: const TextStyle(
+        titleMedium: displayFont.copyWith(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        bodyLarge: const TextStyle(
+        bodyLarge: bodyFont.copyWith(
           fontSize: 15,
+          fontWeight: FontWeight.w500,
           color: textPrimary,
-          height: 1.45,
+          height: 1.5,
         ),
-        bodyMedium: const TextStyle(
+        bodyMedium: bodyFont.copyWith(
           fontSize: 14,
           color: textSecondary,
-          height: 1.45,
+          height: 1.5,
         ),
-        bodySmall: const TextStyle(
+        bodySmall: bodyFont.copyWith(
           fontSize: 12,
           color: textMuted,
-          height: 1.35,
+          height: 1.4,
         ),
-        labelLarge: const TextStyle(
+        labelLarge: bodyFont.copyWith(
           fontSize: 14,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           color: background,
           letterSpacing: 0,
         ),

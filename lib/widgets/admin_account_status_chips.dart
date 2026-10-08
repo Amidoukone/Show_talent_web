@@ -1,9 +1,15 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/user.dart';
 import '../theme/admin_theme.dart';
 import 'admin_ui.dart';
 
+/// Un seul repère de statut par compte plutôt qu'une pile de chips : les
+/// anciennes puces (certifié / droits / auth désactivée / inactif / actif)
+/// pouvaient s'accumuler jusqu'à quatre par ligne, répétant parfois la même
+/// information (ex. "inactif" et "accès limité" en même temps). Les droits
+/// enregistrés restent affichés, mais en second plan — ils ne changent pas
+/// l'accès au compte et ne doivent jamais se confondre avec lui.
 class AdminAccountStatusChips extends StatelessWidget {
   const AdminAccountStatusChips({
     required this.user,
@@ -14,69 +20,62 @@ class AdminAccountStatusChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statuses = <_StatusItem>[];
+    final primary = _primaryStatus(user);
+    final membershipLabel = _membershipLabel(user);
 
-    if (user.profileVerified) {
-      statuses.add(const _StatusItem(
-        label: 'profil certifié',
-        textColor: AdminTheme.success,
-      ));
-    } else if (user.profileVerificationNeedsReview) {
-      statuses.add(const _StatusItem(
-        label: 'à revalider',
-        textColor: AdminTheme.warning,
-      ));
-    }
-
-    // Les droits enregistrés ne changent pas l'accès au compte : ils sont
-    // affichés à côté des statuts d'accès, jamais confondus avec eux.
-    if (user.membership.isRecorded) {
-      final active = user.membership.isActiveAt(DateTime.now());
-      statuses.add(_StatusItem(
-        label: active
-            ? (user.membership.isAgencyPlayer ? 'sous contrat' : 'droits actifs')
-            : 'droits échus',
-        textColor: active ? AdminTheme.accent : AdminTheme.warning,
-      ));
-    }
-
-    if (user.authDisabled) {
-      statuses.add(const _StatusItem(
-        label: 'auth désactivée',
-        textColor: AdminTheme.warning,
-      ));
-    }
-
-    if (!user.isEffectivelyActiveAccount) {
-      statuses.add(const _StatusItem(
-        label: 'inactif',
-        textColor: AdminTheme.textMuted,
-      ));
-    }
-
-    statuses.add(_StatusItem(
-      label: user.isEffectivelyActiveAccount ? 'actif' : 'accès limité',
-      textColor: user.isEffectivelyActiveAccount
-          ? AdminTheme.success
-          : AdminTheme.textMuted,
-    ));
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: statuses.map((status) {
-        return AdminPill(label: status.label, color: status.textColor);
-      }).toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AdminStatusDot(label: primary.label, color: primary.color),
+        if (membershipLabel != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            membershipLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AdminTheme.textMuted,
+              fontSize: 11.5,
+            ),
+          ),
+        ],
+      ],
     );
+  }
+
+  _StatusItem _primaryStatus(AppUser user) {
+    if (user.authDisabled) {
+      return const _StatusItem(label: 'Accès désactivé', color: AdminTheme.warning);
+    }
+    if (!user.isEffectivelyActiveAccount) {
+      return const _StatusItem(label: 'Accès limité', color: AdminTheme.textMuted);
+    }
+    if (user.profileVerified) {
+      return const _StatusItem(label: 'Vérifié', color: AdminTheme.success);
+    }
+    if (user.profileVerificationNeedsReview) {
+      return const _StatusItem(label: 'À revalider', color: AdminTheme.warning);
+    }
+    return const _StatusItem(label: 'Actif', color: AdminTheme.success);
+  }
+
+  String? _membershipLabel(AppUser user) {
+    if (!user.membership.isRecorded) return null;
+    final active = user.membership.isActiveAt(DateTime.now());
+    if (active) {
+      return user.membership.isAgencyPlayer ? 'Sous contrat' : 'Droits actifs';
+    }
+    return 'Droits échus';
   }
 }
 
 class _StatusItem {
   const _StatusItem({
     required this.label,
-    required this.textColor,
+    required this.color,
   });
 
   final String label;
-  final Color textColor;
+  final Color color;
 }

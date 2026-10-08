@@ -219,10 +219,11 @@ class StatisticsOverviewPanel extends StatelessWidget {
 
               final sidePanel = Column(
                 children: [
+                  // Pas de highlight ici : le graphique ci-dessus porte déjà
+                  // l'accent de l'écran, ce second panneau reste au second
+                  // plan plutôt que de rivaliser avec lui.
                   AdminGlassPanel(
                     padding: const EdgeInsets.all(22),
-                    highlight: true,
-                    accentColor: AdminTheme.cyan,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

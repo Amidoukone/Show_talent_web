@@ -1153,6 +1153,47 @@ class AdminLoadMoreBar extends StatelessWidget {
   }
 }
 
+/// Point de couleur + libellé : signale un état sans le poids visuel d'un
+/// badge plein. Prévu pour remplacer plusieurs chips empilées par ligne
+/// (voir AdminAccountStatusChips) par un seul repère net.
+class AdminStatusDot extends StatelessWidget {
+  const AdminStatusDot({
+    required this.label,
+    required this.color,
+    super.key,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AdminTheme.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _AdminGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

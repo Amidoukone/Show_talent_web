@@ -398,10 +398,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildSidebar(bool extendedRail) {
+    // Pas de highlight ici : la navigation est un repère permanent, pas le
+    // contenu à regarder. Un seul accent net par écran — celui du panneau
+    // de contenu — se voit mieux si la coquille autour ne brille pas aussi.
     return AdminGlassPanel(
       padding: EdgeInsets.zero,
-      highlight: true,
-      accentColor: AdminTheme.accent,
       child: Column(
         children: [
           Padding(
@@ -535,10 +536,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _DashboardItem currentItem, {
     required bool isStatisticsTab,
   }) {
+    // Pas de highlight ici non plus : voir _buildSidebar. L'en-tête annonce
+    // l'écran, le panneau de contenu qui suit est ce qui mérite l'accent.
     return AdminGlassPanel(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      highlight: true,
-      accentColor: AdminTheme.cyan,
       child: LayoutBuilder(
         builder: (context, headerConstraints) {
           final stacked = headerConstraints.maxWidth < 840;

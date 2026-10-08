@@ -1340,6 +1340,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             final pendingReview = filteredUsers
                 .where((user) => user.profileVerificationNeedsReview)
                 .length;
+            final suspendedAccess = filteredUsers
+                .where((user) => user.authDisabled)
+                .length;
 
             return Column(
               children: [
@@ -1351,7 +1354,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       label: 'Résultats',
                       value: '${filteredUsers.length}',
                       icon: Icons.groups_2_rounded,
-                      accentColor: AdminTheme.cyan,
+                      accentColor: AdminTheme.textSecondary,
                       subtitle: 'Comptes visibles',
                       minWidth: compact ? 180 : 220,
                     ),
@@ -1359,16 +1362,20 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       label: 'Comptes administrés',
                       value: '$managedUsers',
                       icon: Icons.manage_accounts_outlined,
-                      accentColor: AdminTheme.accent,
+                      accentColor: AdminTheme.textSecondary,
                       subtitle: 'Dans la sélection',
                       minWidth: compact ? 180 : 220,
                     ),
                     AdminMiniStat(
                       label: 'Accès suspendus',
-                      value:
-                          '${filteredUsers.where((user) => user.authDisabled).length}',
+                      value: '$suspendedAccess',
                       icon: Icons.lock_person_outlined,
-                      accentColor: AdminTheme.warning,
+                      // Couleur conditionnée à la valeur plutôt que fixe :
+                      // n'attire l'œil que quand il y a réellement un compte
+                      // suspendu à regarder.
+                      accentColor: suspendedAccess > 0
+                          ? AdminTheme.warning
+                          : AdminTheme.textSecondary,
                       subtitle: 'Accès suspendus',
                       minWidth: compact ? 180 : 220,
                     ),
@@ -1376,6 +1383,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       label: 'Profils certifiés',
                       value: '$verifiedProfiles',
                       icon: Icons.verified_rounded,
+                      // Seul accent "positif" qui reste permanent : c'est un
+                      // vrai signal de confiance affiché publiquement, pas
+                      // juste un compteur parmi d'autres.
                       accentColor: AdminTheme.success,
                       subtitle: 'Signal de confiance',
                       minWidth: compact ? 180 : 220,
@@ -1384,7 +1394,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       label: 'À revalider',
                       value: '$pendingReview',
                       icon: Icons.fact_check_outlined,
-                      accentColor: AdminTheme.warning,
+                      accentColor: pendingReview > 0
+                          ? AdminTheme.warning
+                          : AdminTheme.textSecondary,
                       subtitle: 'Informations à revoir',
                       minWidth: compact ? 180 : 220,
                     ),
@@ -1392,7 +1404,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       label: 'Prêts à vérifier',
                       value: '$readyForVerification',
                       icon: Icons.rule_folder_outlined,
-                      accentColor: AdminTheme.cyan,
+                      accentColor: AdminTheme.textSecondary,
                       subtitle: 'Éligibles',
                       minWidth: compact ? 180 : 220,
                     ),
@@ -1401,7 +1413,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       value:
                           '${filteredUsers.where((user) => user.membership.isActiveAt(DateTime.now())).length}',
                       icon: Icons.workspace_premium_outlined,
-                      accentColor: AdminTheme.accent,
+                      accentColor: AdminTheme.textSecondary,
                       subtitle: 'Dossiers en cours',
                       minWidth: compact ? 180 : 220,
                     ),
@@ -1409,7 +1421,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       label: 'Profils avancés',
                       value: '$advancedProfiles',
                       icon: Icons.verified_outlined,
-                      accentColor: AdminTheme.success,
+                      accentColor: AdminTheme.textSecondary,
                       subtitle: 'Profils complets',
                       minWidth: compact ? 180 : 220,
                     ),
@@ -1417,7 +1429,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                       label: 'Action en cours',
                       value: _actionInFlightUid == null ? '0' : '1',
                       icon: Icons.bolt_rounded,
-                      accentColor: AdminTheme.warning,
+                      accentColor: _actionInFlightUid == null
+                          ? AdminTheme.textSecondary
+                          : AdminTheme.warning,
                       subtitle: _actionInFlightLabel ?? 'Aucune',
                       minWidth: compact ? 180 : 220,
                     ),
@@ -1445,9 +1459,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                           label: Text('Nom', textAlign: TextAlign.center),
                         ),
                         DataColumn(
-                          label: Text('Email', textAlign: TextAlign.center),
-                        ),
-                        DataColumn(
                           label: Text('Rôle', textAlign: TextAlign.center),
                         ),
                         DataColumn(
@@ -1463,7 +1474,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                           cells: [
                             DataCell(
                               SizedBox(
-                                width: compact ? 170 : 190,
+                                width: compact ? 200 : 240,
                                 child: Row(
                                   children: [
                                     Icon(
@@ -1473,23 +1484,32 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: Text(
-                                        displayedUsers[index].nom,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            displayedUsers[index].nom,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            displayedUsers[index].email,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AdminTheme.textMuted,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              SizedBox(
-                                width: compact ? 200 : 240,
-                                child: Text(
-                                  displayedUsers[index].email,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),

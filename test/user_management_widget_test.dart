@@ -260,8 +260,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Le statut "à revalider" de la ligne et le libellé de la tuile de
+    // statistiques partagent maintenant la même casse (voir
+    // AdminAccountStatusChips) : un seul statut par compte plutôt que deux
+    // graphies différentes de la même information.
     expect(find.text('À revalider'), findsWidgets);
-    expect(find.text('à revalider'), findsOneWidget);
 
     final actionMenu = find.byType(PopupMenuButton<String>);
     await tester.ensureVisible(actionMenu);

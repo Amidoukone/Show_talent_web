@@ -41,19 +41,52 @@ class StatisticsOverviewPanel extends StatelessWidget {
       final activeUsers =
           users.where((user) => user.isEffectivelyActiveAccount).length;
 
-      final totalUsers = users.length;
-      final totalVideos = videos.length;
-      final reportRate =
-          totalVideos == 0 ? 0.0 : reportedVideos.length / totalVideos;
-      final cleanVideoRate = totalVideos == 0 ? 0.0 : 1 - reportRate;
-      final managedRate = totalUsers == 0 ? 0.0 : managedUsers / totalUsers;
-      final activeRate = totalUsers == 0 ? 0.0 : activeUsers / totalUsers;
+      // totalUsersSample/totalVideosSample restent la fenêtre chargée
+      // (plafonnée, voir UserController/VideoController) : c'est le seul
+      // dénominateur disponible pour les ratios ci-dessous, qui portent sur
+      // des champs (actif, suspendu, géré, signalé) qu'on ne peut pas agréger
+      // côté Firestore sans lire les documents. Les totaux "Utilisateurs" et
+      // "Vidéos publiées" affichés, eux, viennent d'un compte exact
+      // (totalUsersCount/totalVideosCount) : avant ce correctif, l'écran
+      // affichait silencieusement la taille de la fenêtre chargée comme si
+      // c'était le total de la plateforme.
+      final totalUsersSample = users.length;
+      final totalVideosSample = videos.length;
+      final exactTotalUsers = userController.totalUsersCount.value;
+      final exactTotalVideos = videoController.totalVideosCount.value;
+      final displayedTotalUsers = exactTotalUsers ?? totalUsersSample;
+      final displayedTotalVideos = exactTotalVideos ?? totalVideosSample;
+      final sampleTruncated =
+          userController.hasMoreUsers.value || videoController.hasMore.value;
+
+      final reportRate = totalVideosSample == 0
+          ? 0.0
+          : reportedVideos.length / totalVideosSample;
+      final cleanVideoRate = totalVideosSample == 0 ? 0.0 : 1 - reportRate;
+      final managedRate =
+          totalUsersSample == 0 ? 0.0 : managedUsers / totalUsersSample;
+      final activeRate =
+          totalUsersSample == 0 ? 0.0 : activeUsers / totalUsersSample;
       final disabledRate =
-          totalUsers == 0 ? 0.0 : authDisabledUsers / totalUsers;
+          totalUsersSample == 0 ? 0.0 : authDisabledUsers / totalUsersSample;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (sampleTruncated) ...[
+            AdminInfoBanner(
+              title: 'Indicateurs partiels',
+              message:
+                  'Les totaux « Utilisateurs » et « Vidéos publiées » sont exacts. '
+                  'Les autres chiffres (actifs, gérés, suspendus, signalées) restent '
+                  'calculés sur les $totalUsersSample derniers comptes et '
+                  '$totalVideosSample dernières vidéos chargés — chargez-en davantage '
+                  "depuis les onglets Utilisateurs et Vidéos pour affiner ces ratios.",
+              icon: Icons.warning_amber_rounded,
+              tone: AdminBannerTone.warning,
+            ),
+            const SizedBox(height: 18),
+          ],
           LayoutBuilder(
             builder: (context, constraints) {
               final cardWidth =
@@ -61,23 +94,29 @@ class StatisticsOverviewPanel extends StatelessWidget {
               final metricCards = <Widget>[
                 AdminMetricCard(
                   title: 'Utilisateurs',
-                  value: '$totalUsers',
-                  subtitle: '$activeUsers actifs dans le portail',
+                  value: '$displayedTotalUsers',
+                  subtitle: sampleTruncated
+                      ? '$activeUsers actifs sur $totalUsersSample chargés'
+                      : '$activeUsers actifs dans le portail',
                   icon: Icons.groups_2_rounded,
                   progress: activeRate,
                 ),
                 AdminMetricCard(
                   title: "Comptes créés par l'administration",
                   value: '$managedUsers',
-                  subtitle: 'Comptes administrés',
+                  subtitle: sampleTruncated
+                      ? 'Sur $totalUsersSample comptes chargés'
+                      : 'Comptes administrés',
                   icon: Icons.manage_accounts_rounded,
                   progress: managedRate,
                   accentColor: AdminTheme.cyan,
                 ),
                 AdminMetricCard(
                   title: 'Vidéos publiées',
-                  value: '$totalVideos',
-                  subtitle: '${reportedVideos.length} vidéos signalées',
+                  value: '$displayedTotalVideos',
+                  subtitle: sampleTruncated
+                      ? '${reportedVideos.length} signalées sur $totalVideosSample chargées'
+                      : '${reportedVideos.length} vidéos signalées',
                   icon: Icons.play_circle_outline_rounded,
                   progress: cleanVideoRate,
                   accentColor: AdminTheme.accentSoft,
@@ -85,7 +124,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                 AdminMetricCard(
                   title: 'Accès suspendus',
                   value: '$authDisabledUsers',
-                  subtitle: 'Comptes temporairement bloqués',
+                  subtitle: sampleTruncated
+                      ? 'Sur $totalUsersSample comptes chargés'
+                      : 'Comptes temporairement bloqués',
                   icon: Icons.lock_person_rounded,
                   progress: disabledRate,
                   accentColor: AdminTheme.warning,
@@ -129,9 +170,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                         BarChartData(
                           alignment: BarChartAlignment.spaceAround,
                           maxY: [
-                            totalUsers.toDouble(),
+                            displayedTotalUsers.toDouble(),
                             managedUsers.toDouble(),
-                            totalVideos.toDouble(),
+                            displayedTotalVideos.toDouble(),
                             reportedVideos.length.toDouble(),
                             authDisabledUsers.toDouble(),
                           ].fold<double>(10, (current, value) {
@@ -158,8 +199,9 @@ class StatisticsOverviewPanel extends StatelessWidget {
                                   return Text(
                                     value.toInt().toString(),
                                     style: const TextStyle(
-                                      color: AdminTheme.textMuted,
-                                      fontSize: 11,
+                                      color: AdminTheme.textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   );
                                 },
@@ -193,7 +235,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                                       labels[index],
                                       style: const TextStyle(
                                         color: AdminTheme.textSecondary,
-                                        fontSize: 11,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -203,9 +245,10 @@ class StatisticsOverviewPanel extends StatelessWidget {
                             ),
                           ),
                           barGroups: [
-                            _barGroup(0, totalUsers, AdminTheme.accent),
+                            _barGroup(0, displayedTotalUsers, AdminTheme.accent),
                             _barGroup(1, managedUsers, AdminTheme.cyan),
-                            _barGroup(2, totalVideos, AdminTheme.accentSoft),
+                            _barGroup(
+                                2, displayedTotalVideos, AdminTheme.accentSoft),
                             _barGroup(
                                 3, reportedVideos.length, AdminTheme.warning),
                             _barGroup(4, authDisabledUsers, AdminTheme.danger),

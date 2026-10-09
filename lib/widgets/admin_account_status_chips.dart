@@ -35,8 +35,9 @@ class AdminAccountStatusChips extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AdminTheme.textMuted,
-              fontSize: 11.5,
+              color: AdminTheme.textSecondary,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

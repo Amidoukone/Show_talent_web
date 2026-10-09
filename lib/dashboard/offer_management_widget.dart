@@ -16,7 +16,7 @@ class OfferManagementWidget extends StatefulWidget {
 }
 
 class _OfferManagementWidgetState extends State<OfferManagementWidget> {
-  static const int _rowsPerPage = 5;
+  static const int _rowsPerPage = 10;
 
   final OffreController _offreController = Get.find<OffreController>();
   final TextEditingController _searchController = TextEditingController();
@@ -135,7 +135,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       },
     );
 
-    if (confirmed != true) {
+    if (confirmed != true || !mounted) {
       return;
     }
 
@@ -566,7 +566,8 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: AdminTheme.textSecondary,
-                                          fontSize: 11,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],

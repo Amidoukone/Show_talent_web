@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:show_talent/models/video.dart';
 
@@ -99,6 +100,29 @@ void main() {
       expect(approved.isPendingReview, isFalse);
       expect(approved.isApprovedPublic, isTrue);
       expect(approved.moderationLabel, 'Approuvée');
+    });
+
+    test('createdAt parses a Firestore Timestamp, an ISO string, or absence',
+        () {
+      final fromTimestamp = Video.fromMap({
+        'id': 'video-with-timestamp',
+        'uid': 'player-1',
+        'createdAt': Timestamp.fromDate(DateTime.utc(2026, 1, 15)),
+      });
+      expect(fromTimestamp.createdAt?.toUtc(), DateTime.utc(2026, 1, 15));
+
+      final fromIsoString = Video.fromMap({
+        'id': 'video-with-iso-date',
+        'uid': 'player-1',
+        'createdAt': '2026-02-01T00:00:00.000Z',
+      });
+      expect(fromIsoString.createdAt, DateTime.utc(2026, 2, 1));
+
+      final withoutCreatedAt = Video.fromMap({
+        'id': 'video-without-date',
+        'uid': 'player-1',
+      });
+      expect(withoutCreatedAt.createdAt, isNull);
     });
   });
 }

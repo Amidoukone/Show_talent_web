@@ -32,7 +32,7 @@ class ContactIntakeManagementWidget extends StatefulWidget {
 
 class _ContactIntakeManagementWidgetState
     extends State<ContactIntakeManagementWidget> {
-  static const int _rowsPerPage = 6;
+  static const int _rowsPerPage = 12;
   static const List<_PipelineStage> _pipelineStages = <_PipelineStage>[
     _PipelineStage(
       status: AgencyFollowUpStatus.newLead,
@@ -498,7 +498,7 @@ class _ContactIntakeManagementWidgetState
         ) ??
         false;
 
-    if (!confirmed) {
+    if (!confirmed || !mounted) {
       return;
     }
 
@@ -515,6 +515,92 @@ class _ContactIntakeManagementWidgetState
         title: 'Mise en relation supprimée',
         message:
             'Le dossier de suivi a été supprimé. La conversation liée a été nettoyée si elle existait encore.',
+        tone: AdminBannerTone.success,
+        position: SnackPosition.BOTTOM,
+      );
+    } else {
+      showAdminFeedback(
+        title: 'Suppression impossible',
+        message: response.message,
+        tone: AdminBannerTone.danger,
+        position: SnackPosition.BOTTOM,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _actionIntakeId = null;
+      });
+    }
+  }
+
+  Future<void> _deleteContactIntakeConversation(ContactIntake intake) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Supprimer la conversation'),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
+                      style: const TextStyle(
+                        color: AdminTheme.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Cette action supprime uniquement la conversation liée et ses messages. Le dossier de suivi agence reste en place.',
+                      style: TextStyle(
+                        color: AdminTheme.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Annuler'),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AdminTheme.danger,
+                    foregroundColor: AdminTheme.background,
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Supprimer la conversation'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _actionIntakeId = intake.id;
+    });
+
+    final response = await _contactIntakeController
+        .deleteContactIntakeConversation(intake: intake);
+
+    if (response.success) {
+      showAdminFeedback(
+        title: 'Conversation supprimée',
+        message:
+            'La conversation liée a été supprimée. Le dossier de suivi reste actif.',
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
@@ -790,6 +876,11 @@ class _ContactIntakeManagementWidgetState
           return;
         }
 
+        if (value == 'delete_conversation') {
+          _deleteContactIntakeConversation(intake);
+          return;
+        }
+
         if (value == 'delete') {
           _deleteContactIntake(intake);
         }
@@ -820,6 +911,24 @@ class _ContactIntakeManagementWidgetState
               ],
             ),
           ),
+        if (intake.conversationId != null &&
+            intake.conversationId!.isNotEmpty) ...[
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'delete_conversation',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.forum_outlined,
+                  size: 18,
+                  color: AdminTheme.warning,
+                ),
+                SizedBox(width: 8),
+                Text('Supprimer la conversation'),
+              ],
+            ),
+          ),
+        ],
         const PopupMenuDivider(),
         const PopupMenuItem(
           value: 'delete',

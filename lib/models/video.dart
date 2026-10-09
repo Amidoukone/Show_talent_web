@@ -36,6 +36,15 @@ List<VideoSource> _parseVideoSources(dynamic value) {
 
 bool _isMp4Url(String url) => url.toLowerCase().trim().contains('.mp4');
 
+DateTime? _parseNullableDate(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+  if (value is String) return DateTime.tryParse(value);
+  return null;
+}
+
 List<VideoSource> _dedupeVideoSources(Iterable<VideoSource> sources) {
   final seen = <String>{};
   final deduped = <VideoSource>[];
@@ -197,6 +206,7 @@ class Video {
     this.sources = const [],
     this.playback,
     this.resolvedUrl,
+    this.createdAt,
   });
 
   String id;
@@ -218,6 +228,11 @@ class Video {
   List<VideoSource> sources;
   VideoPlaybackContract? playback;
   String? resolvedUrl;
+
+  /// Horodatage de création (functions/src/upload_session.ts:674 côté mobile,
+  /// `FieldValue.serverTimestamp()`). Nullable : les très anciens documents
+  /// d'avant ce champ n'en portent pas.
+  DateTime? createdAt;
 
   factory Video.fromMap(Map<String, dynamic> map) {
     String readString(dynamic value) =>
@@ -284,6 +299,7 @@ class Video {
       optimized: map['optimized'] == true,
       sources: mergedSources,
       playback: playback,
+      createdAt: _parseNullableDate(map['createdAt']),
     );
   }
 

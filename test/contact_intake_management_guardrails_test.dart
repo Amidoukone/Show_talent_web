@@ -49,6 +49,16 @@ void main() {
       expect(widget, contains('_deleteContactIntake(ContactIntake intake)'));
       expect(widget, contains('_deleteContactIntake(intake)'));
       expect(widget, contains('Icons.delete_outline_rounded'));
+      // deleteContactIntakeConversation existait côté controller/service sans
+      // être appelé depuis aucun widget -- le catalogue
+      // (admin_callable_action_catalog.dart) la décrivait pourtant comme
+      // câblée à l'UI. Verrouille que l'action est bien reliée à un bouton.
+      expect(
+        widget,
+        contains('_deleteContactIntakeConversation(ContactIntake intake)'),
+      );
+      expect(widget, contains('_deleteContactIntakeConversation(intake)'));
+      expect(widget, contains('Supprimer la conversation'));
     });
   });
 }

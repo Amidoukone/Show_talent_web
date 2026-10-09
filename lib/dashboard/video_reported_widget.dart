@@ -19,7 +19,7 @@ class VideoReportedWidget extends StatefulWidget {
 }
 
 class _VideoReportedWidgetState extends State<VideoReportedWidget> {
-  static const int rowsPerPage = 4;
+  static const int rowsPerPage = 10;
 
   final VideoController videoController = Get.find<VideoController>();
   final UserController userController = Get.find<UserController>();
@@ -504,7 +504,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       },
     );
 
-    if (confirmed != true) {
+    if (confirmed != true || !mounted) {
       return false;
     }
 

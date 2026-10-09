@@ -37,6 +37,28 @@ class UserController extends GetxController {
   int _currentUsersLimit = _initialLoadLimit;
   final RxBool hasMoreUsers = false.obs;
 
+  /// Nombre total de comptes, indépendant de la fenêtre chargée ci-dessus.
+  ///
+  /// Une agrégation `count()` plutôt que `userList.length` : l'écran
+  /// Statistiques affichait silencieusement un total tronqué à
+  /// [_initialLoadLimit] dès que la plateforme dépassait 500 comptes. Null
+  /// tant que la première lecture n'a pas répondu, ou si elle a échoué —
+  /// l'appelant retombe alors sur `userList.length` avec un bandeau
+  /// d'avertissement (voir StatisticsOverviewPanel).
+  final Rxn<int> totalUsersCount = Rxn<int>();
+
+  Future<void> _refreshTotalUsersCount() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .count()
+          .get();
+      totalUsersCount.value = snapshot.count;
+    } catch (error) {
+      debugPrint('Comptage total des utilisateurs indisponible : $error');
+    }
+  }
+
   Future<void> retryUsers() async {
     if (_retryingUsers) return;
     _retryingUsers = true;
@@ -100,6 +122,8 @@ class UserController extends GetxController {
     if (_usersSubscription != null) {
       return;
     }
+
+    unawaited(_refreshTotalUsersCount());
 
     isLoading.value = true;
     _usersSubscription = FirebaseFirestore.instance
@@ -225,6 +249,7 @@ class UserController extends GetxController {
       isLoading.value = false;
       hasMoreUsers.value = false;
       _currentUsersLimit = _initialLoadLimit;
+      totalUsersCount.value = null;
     }
   }
 

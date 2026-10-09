@@ -22,8 +22,11 @@ class AdminTheme {
   static const Color danger = Color(0xFFE53935);
   static const Color success = Color(0xFF26C165);
   static const Color textPrimary = Color(0xFFEDEDED);
-  static const Color textSecondary = Color(0xFF9AA3AD);
-  static const Color textMuted = Color(0xFF8F99A3);
+  // Relevés nettement par rapport aux valeurs d'origine (#9AA3AD / #8F99A3) :
+  // trop pâles une fois rendus sur les cartes/tableaux réels (pas seulement
+  // sur le fond de page), le texte secondaire et discret devenait illisible.
+  static const Color textSecondary = Color(0xFFC3CBD3);
+  static const Color textMuted = Color(0xFFA6AFB8);
   static const double contentMaxWidth = 1460;
   static const double readingMaxWidth = 1280;
   static const double breakpointCompact = 1120;
@@ -133,17 +136,19 @@ class AdminTheme {
         ),
         bodyLarge: bodyFont.copyWith(
           fontSize: 15,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: textPrimary,
           height: 1.5,
         ),
         bodyMedium: bodyFont.copyWith(
           fontSize: 14,
+          fontWeight: FontWeight.w500,
           color: textSecondary,
           height: 1.5,
         ),
         bodySmall: bodyFont.copyWith(
-          fontSize: 12,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
           color: textMuted,
           height: 1.4,
         ),

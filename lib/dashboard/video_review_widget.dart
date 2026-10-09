@@ -19,7 +19,7 @@ class VideoReviewWidget extends StatefulWidget {
 }
 
 class _VideoReviewWidgetState extends State<VideoReviewWidget> {
-  static const int rowsPerPage = 5;
+  static const int rowsPerPage = 10;
 
   final VideoController videoController = Get.find<VideoController>();
   final UserController userController = Get.find<UserController>();

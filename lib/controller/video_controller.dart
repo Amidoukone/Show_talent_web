@@ -30,6 +30,23 @@ class VideoController extends GetxController {
   final RxString lastError = ''.obs;
   final RxBool hasMore = false.obs;
 
+  /// Nombre total de vidéos, indépendant de la fenêtre chargée ci-dessus.
+  /// Voir UserController.totalUsersCount pour le détail du problème évité
+  /// (l'écran Statistiques affichait un total tronqué à [_initialLoadLimit]).
+  final Rxn<int> totalVideosCount = Rxn<int>();
+
+  Future<void> _refreshTotalVideosCount() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('videos')
+          .count()
+          .get();
+      totalVideosCount.value = snapshot.count;
+    } catch (error) {
+      debugPrint('Comptage total des vidéos indisponible : $error');
+    }
+  }
+
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _videosSubscription;
 
@@ -63,6 +80,7 @@ class VideoController extends GetxController {
       lastError.value = '';
       hasMore.value = false;
       _currentLimit = _initialLoadLimit;
+      totalVideosCount.value = null;
       isLoading.value = false;
       return;
     }
@@ -85,6 +103,8 @@ class VideoController extends GetxController {
       return;
     }
 
+    unawaited(_refreshTotalVideosCount());
+
     isLoading.value = true;
     _videosSubscription?.cancel();
     _videosSubscription = FirebaseFirestore.instance
@@ -94,21 +114,34 @@ class VideoController extends GetxController {
         .snapshots()
         .listen(
           (snapshot) {
-            videoList.assignAll(
-              snapshot.docs
-                  .map((doc) {
-                    try {
-                      return Video.fromMap({...doc.data(), 'id': doc.id});
-                    } catch (e) {
-                      debugPrint(
-                        'Erreur lors de la récupération de la vidéo : $e',
-                      );
-                      return null;
-                    }
-                  })
-                  .whereType<Video>()
-                  .toList(),
-            );
+            final parsed = snapshot.docs
+                .map((doc) {
+                  try {
+                    return Video.fromMap({...doc.data(), 'id': doc.id});
+                  } catch (e) {
+                    debugPrint(
+                      'Erreur lors de la récupération de la vidéo : $e',
+                    );
+                    return null;
+                  }
+                })
+                .whereType<Video>()
+                .toList();
+
+            // Le flux arrive trié par documentId (voir plafond ci-dessus) :
+            // sans ce tri, les files de modération affichaient les vidéos
+            // dans un ordre arbitraire plutôt que la plus récente en premier.
+            // Même filet que OffreController/EventController/
+            // ContactIntakeController pour les documents sans date.
+            parsed.sort((a, b) {
+              final left =
+                  a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final right =
+                  b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              return right.compareTo(left);
+            });
+
+            videoList.assignAll(parsed);
             hasMore.value = snapshot.docs.length >= _currentLimit;
             lastError.value = '';
             isLoading.value = false;

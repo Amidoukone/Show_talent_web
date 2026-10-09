@@ -36,7 +36,7 @@ class UserManagementWidget extends StatefulWidget {
 }
 
 class _UserManagementWidgetState extends State<UserManagementWidget> {
-  static const int rowsPerPage = 4;
+  static const int rowsPerPage = 10;
 
   static const String _actionDelete = 'delete';
   static const String _actionDisableAuth = 'disable_auth';
@@ -1502,8 +1502,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AdminTheme.textMuted,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w500,
+                                              color: AdminTheme.textSecondary,
                                             ),
                                           ),
                                         ],
@@ -1530,7 +1531,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w500,
                                         color: AdminTheme.textSecondary,
                                       ),
                                     ),

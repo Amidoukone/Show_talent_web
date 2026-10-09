@@ -16,7 +16,7 @@ class EventManagementWidget extends StatefulWidget {
 }
 
 class _EventManagementWidgetState extends State<EventManagementWidget> {
-  static const int _rowsPerPage = 5;
+  static const int _rowsPerPage = 10;
 
   final EventController _eventController = Get.find<EventController>();
   final TextEditingController _searchController = TextEditingController();
@@ -136,7 +136,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       },
     );
 
-    if (confirmed != true) {
+    if (confirmed != true || !mounted) {
       return;
     }
 
@@ -542,7 +542,8 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: AdminTheme.textSecondary,
-                                          fontSize: 11,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
@@ -585,7 +586,8 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: AdminTheme.textSecondary,
-                                          fontSize: 11,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],

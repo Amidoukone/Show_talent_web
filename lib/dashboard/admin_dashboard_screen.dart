@@ -300,8 +300,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         style: TextStyle(
                           color: selected
                               ? AdminTheme.accentSoft
-                              : AdminTheme.textMuted,
-                          fontSize: 11,
+                              : AdminTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],

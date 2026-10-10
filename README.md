@@ -217,6 +217,37 @@ et doit rester desactive pour les callables admin tant que le token envoye
 par ce portail n a pas ete valide en staging. Voir le suivi dedie avant de
 modifier ce fichier.
 
+## Telemetrie d'erreur (Sentry)
+
+Les erreurs non interceptees (`AppBootstrap.reportZoneError`,
+`FlutterError.onError`) sont toujours loguees dans la console du navigateur,
+mais ce n'etait jusqu'ici le seul filet de securite en production -- aucune
+alerte, aucun historique. `ErrorReportingService`
+(`lib/services/error_reporting_service.dart`) ajoute Sentry en complement,
+desactive par defaut : aucun comportement existant ne change tant que les
+deux dart-define suivants ne sont pas fournis au build :
+
+- `SENTRY_ENABLED=true`
+- `SENTRY_DSN=<DSN du projet Sentry>`
+
+Ce n'est pas un secret au sens strict (le DSN est concu pour etre expose
+cote client, comme `APP_CHECK_WEB_RECAPTCHA_SITE_KEY` ci-dessus) : il vit
+directement dans `package.json` / `config/web-staging.json`.
+
+Active depuis le 2026-10-09 (projet Sentry `adfoot-admin`, org `adfoot`,
+plan Developer gratuit, un seul projet pour les deux environnements --
+distingues via le tag `environment` que le code envoie deja) :
+
+- production : `build:web:production` dans `package.json` porte
+  `SENTRY_ENABLED=true` et le DSN en dur.
+- staging : le champ `sentryDsn` dans `config/web-staging.json` (local, non
+  versionne -- voir `config/web-staging.example.json` pour le modele) porte
+  le meme DSN. `build_web_staging.ps1` et `run_web_staging.ps1` l'activent
+  automatiquement quand ce champ est rempli.
+
+Pour retrouver ou faire tourner le DSN : Sentry -> Settings -> Projects ->
+`adfoot-admin` -> Client Keys (DSN).
+
 ## Firebase Hosting (portail admin)
 
 Deux sites Hosting dedies existent, distincts des sites marketing mobile

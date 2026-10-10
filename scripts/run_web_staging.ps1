@@ -19,6 +19,12 @@ foreach ($field in $required) {
     }
 }
 
+# sentryDsn est facultatif -- voir build_web_staging.ps1. On le laisse
+# generalement vide en local : pas besoin d'envoyer les erreurs de dev a
+# Sentry, la console du navigateur suffit pendant le hot-reload.
+$sentryDsn = $config.sentryDsn
+$sentryEnabled = if ([string]::IsNullOrWhiteSpace($sentryDsn)) { "false" } else { "true" }
+
 # flutter run (debug, hot-reload) contre le projet Firebase adfoot-staging.
 # Contrairement a build_web_staging.ps1 (build release pour Hosting), ce
 # script sert a reproduire un bug localement dans Chrome, DevTools ouverts,
@@ -31,6 +37,8 @@ flutter run -d chrome `
     --dart-define=FIREBASE_WEB_APP_ID=$($config.appId) `
     --dart-define=FIREBASE_WEB_AUTH_DOMAIN=$($config.authDomain) `
     --dart-define=FIREBASE_STORAGE_BUCKET=$($config.storageBucket) `
-    --dart-define=FIREBASE_MESSAGING_SENDER_ID=$($config.messagingSenderId)
+    --dart-define=FIREBASE_MESSAGING_SENDER_ID=$($config.messagingSenderId) `
+    --dart-define=SENTRY_ENABLED=$sentryEnabled `
+    --dart-define=SENTRY_DSN=$sentryDsn
 
 exit $LASTEXITCODE

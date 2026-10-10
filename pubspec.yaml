@@ -46,6 +46,7 @@ dependencies:
   fl_chart: ^1.2.0
   firebase_app_check: ^0.4.6
   google_fonts: ^6.3.3
+  sentry_flutter: ^8.14.2
 
 
   

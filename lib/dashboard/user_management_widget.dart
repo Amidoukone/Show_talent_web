@@ -14,6 +14,7 @@ import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/admin_callable_action_catalog.dart';
 import '../utils/firebase_functions_error.dart';
+import '../utils/player_age.dart';
 import '../widgets/admin_account_status_chips.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
@@ -1735,13 +1736,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     if (date == null) {
       return false;
     }
-    final now = DateTime.now();
-    var age = now.year - date.year;
-    if (now.month < date.month ||
-        (now.month == date.month && now.day < date.day)) {
-      age--;
-    }
-    return age < 18;
+    return isMinorPlayer(date);
   }
 
   bool get _requiresGuardianConsent =>
@@ -1782,12 +1777,11 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
   }
 
   Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final latestEligibleDate = DateTime(now.year - 12, now.month, now.day);
+    final latestEligibleDate = latestEligibleBirthDate();
     final currentBirthDate = _birthDate;
     final initialDate =
         currentBirthDate == null || currentBirthDate.isAfter(latestEligibleDate)
-        ? DateTime(now.year - 18, 1, 1)
+        ? defaultBirthDatePickerDate()
         : currentBirthDate;
     final picked = await showDatePicker(
       context: context,
@@ -1914,13 +1908,8 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final date = _birthDate;
     if (date != null) {
-      final now = DateTime.now();
-      var age = now.year - date.year;
-      if (now.month < date.month ||
-          (now.month == date.month && now.day < date.day)) {
-        age--;
-      }
-      if (age < 13) {
+      final age = playerAgeOn(date);
+      if (age < kMinimumPlayerAge) {
         showAdminFeedback(
           title: 'Date de naissance invalide',
           message: 'Adfoot accueille les joueurs à partir de 13 ans.',
@@ -1930,7 +1919,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
       }
       final changed =
           widget.contactLoaded && !_isSameDay(date, _user.birthDate);
-      if (changed && age < 18 && !_hasValidGuardianConsent()) {
+      if (changed && age < kAdultAge && !_hasValidGuardianConsent()) {
         showAdminFeedback(
           title: 'Accord parental requis',
           message:

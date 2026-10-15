@@ -9,6 +9,7 @@ import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/firebase_functions_error.dart';
+import '../utils/player_age.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/managed_account_invite_result_dialog.dart';
@@ -64,33 +65,15 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
 
   bool get _isMinor {
     final date = _birthDate;
-    if (date == null) return false;
-    final today = DateTime.now();
-    var age = today.year - date.year;
-    if (today.month < date.month ||
-        (today.month == date.month && today.day < date.day)) {
-      age--;
-    }
-    return age < 18;
-  }
-
-  bool _isBelowMinimumPlayerAge(DateTime date) {
-    final today = DateTime.now();
-    var age = today.year - date.year;
-    if (today.month < date.month ||
-        (today.month == date.month && today.day < date.day)) {
-      age--;
-    }
-    return age < 13;
+    return date != null && isMinorPlayer(date);
   }
 
   Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final latestEligibleDate = DateTime(now.year - 12, now.month, now.day);
+    final latestEligibleDate = latestEligibleBirthDate();
     final currentBirthDate = _birthDate;
     final initialDate = currentBirthDate == null ||
             currentBirthDate.isAfter(latestEligibleDate)
-        ? DateTime(now.year - 18, 1, 1)
+        ? defaultBirthDatePickerDate()
         : currentBirthDate;
     final picked = await showDatePicker(
       context: context,
@@ -134,7 +117,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
           'La date de naissance est requise pour vérifier l’âge du joueur.');
       return;
     }
-    if (_selectedRole == 'joueur' && _isBelowMinimumPlayerAge(_birthDate!)) {
+    if (_selectedRole == 'joueur' && isBelowMinimumPlayerAge(_birthDate!)) {
       setState(() => _errorMessage =
           'Adfoot accueille les joueurs à partir de 13 ans.');
       return;

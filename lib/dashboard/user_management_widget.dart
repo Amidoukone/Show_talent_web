@@ -1920,10 +1920,10 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
           (now.month == date.month && now.day < date.day)) {
         age--;
       }
-      if (age < 12) {
+      if (age < 13) {
         showAdminFeedback(
           title: 'Date de naissance invalide',
-          message: 'Adfoot accueille les joueurs à partir de 12 ans.',
+          message: 'Adfoot accueille les joueurs à partir de 13 ans.',
           tone: AdminBannerTone.warning,
         );
         return;

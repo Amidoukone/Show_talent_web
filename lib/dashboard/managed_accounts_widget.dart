@@ -81,7 +81,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
         (today.month == date.month && today.day < date.day)) {
       age--;
     }
-    return age < 12;
+    return age < 13;
   }
 
   Future<void> _pickBirthDate() async {
@@ -136,7 +136,7 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     }
     if (_selectedRole == 'joueur' && _isBelowMinimumPlayerAge(_birthDate!)) {
       setState(() => _errorMessage =
-          'Adfoot accueille les joueurs à partir de 12 ans.');
+          'Adfoot accueille les joueurs à partir de 13 ans.');
       return;
     }
     if (_isMinor && _guardianConsentReceived &&

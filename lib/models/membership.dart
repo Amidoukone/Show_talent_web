@@ -119,7 +119,7 @@ class Membership {
   static String tierDescriptionOf(MembershipTier tier) {
     switch (tier) {
       case MembershipTier.adfoot:
-        return "Le compte est suivi par l'agence et ne paie rien.";
+        return "Le compte est suivi par l’agence et ne paie rien.";
       case MembershipTier.external:
         return 'Le compte règle les services utilisés, hors de la plateforme.';
       case MembershipTier.none:
@@ -136,7 +136,7 @@ class Membership {
     final until = validUntil;
     if (until == null) return '$tierLabel, sans terme';
     if (until.isAfter(now)) {
-      return "$tierLabel, jusqu'au ${formatDate(until)}";
+      return "$tierLabel, jusqu’au ${formatDate(until)}";
     }
     return '$tierLabel, échu le ${formatDate(until)}';
   }

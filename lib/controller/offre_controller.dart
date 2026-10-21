@@ -165,7 +165,7 @@ class OffreController extends GetxController {
     if (!moderationStatuses.contains(normalized)) {
       return AdminActionResponse.failure(
         code: 'invalid_status',
-        message: "Statut d'offre invalide.",
+        message: "Statut d’offre invalide.",
       );
     }
 

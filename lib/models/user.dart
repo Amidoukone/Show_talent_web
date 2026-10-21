@@ -475,28 +475,32 @@ class AppUser {
         isMvpProfileComplete;
   }
 
+  /// L'état de certification du profil, et rien d'autre.
+  ///
+  /// Ne rapporte pas si le compte peut se connecter : c'est le rôle du
+  /// repère d'accès (`AdminAccountStatusChips`). Les deux se recouvraient,
+  /// au point d'afficher le même mot dans deux colonnes voisines.
   String get profileTrustLabel {
     if (isProfileTrusted) return 'Profil certifié';
     if (profileVerified && !isEffectivelyActiveAccount) {
       return 'Certification suspendue';
     }
-    if (!isEffectivelyActiveAccount) return 'Compte à activer';
     if (profileVerificationNeedsReview) return 'À revalider';
-    if (isMvpProfileComplete) return 'Prêt à vérifier';
+    if (isMvpProfileComplete) return 'Prêt à certifier';
     return 'Profil à compléter';
   }
 
   String get profileVerificationStatusLabel {
     switch (profileVerificationStatus) {
       case 'verified':
-        return 'Vérifié par admin';
+        return 'Certifié par l’administration';
       case 'rejected':
-        return 'Vérification refusée';
+        return 'Certification refusée';
       case 'pending':
-        return 'Vérification à refaire';
+        return 'Certification à revalider';
       case 'unverified':
       default:
-        return 'Non vérifié';
+        return 'Non certifié';
     }
   }
 
@@ -605,8 +609,8 @@ class AppUser {
   }
 
   String get profileLevelLabel {
-    if (hasScoutReadyProfile) return 'Profil elite';
-    if (hasAdvancedProfile) return 'Profil avance';
+    if (hasScoutReadyProfile) return 'Profil élite';
+    if (hasAdvancedProfile) return 'Profil avancé';
     if (isMvpProfileComplete) return 'Profil complet';
     return 'Profil basique';
   }

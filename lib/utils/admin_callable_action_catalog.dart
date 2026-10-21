@@ -24,7 +24,7 @@ const AdminCallableActionDescriptor provisionManagedAccountAction =
   label: 'Provisionner un compte',
   callableName: 'provisionManagedAccount',
   summary:
-      "Création ou mise à jour d'un compte joueur, fan, club, recruteur ou agent.",
+      "Création ou mise à jour d’un compte joueur, fan, club, recruteur ou agent.",
   uiSurfaces: ['Provisionnement des comptes'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -35,7 +35,7 @@ const AdminCallableActionDescriptor deleteManagedAccountAction =
   id: 'delete_managed_account',
   label: 'Supprimer un compte',
   callableName: 'deleteManagedAccount',
-  summary: "Suppression traitée par le service sécurisé de l'administration.",
+  summary: "Suppression traitée par le service sécurisé de l’administration.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -46,7 +46,7 @@ const AdminCallableActionDescriptor changeManagedAccountRoleAction =
   id: 'change_managed_account_role',
   label: 'Changer le rôle',
   callableName: 'changeManagedAccountRole',
-  summary: "Change le rôle d'un compte créé ou suivi par l'administration.",
+  summary: "Change le rôle d’un compte créé ou suivi par l’administration.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -55,9 +55,9 @@ const AdminCallableActionDescriptor changeManagedAccountRoleAction =
 const AdminCallableActionDescriptor resendManagedAccountInviteAction =
     AdminCallableActionDescriptor(
   id: 'resend_managed_account_invite',
-  label: "Renvoyer l'invitation",
+  label: "Renvoyer l’invitation",
   callableName: 'resendManagedAccountInvite',
-  summary: "Régénérer ou renvoyer les liens d'onboarding d'un compte.",
+  summary: "Régénérer ou renvoyer les liens d’onboarding d’un compte.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -68,7 +68,7 @@ const AdminCallableActionDescriptor disableManagedAccountAuthAction =
   id: 'disable_managed_account_auth',
   label: 'Suspendre l’accès',
   callableName: 'disableManagedAccountAuth',
-  summary: "Suspend l'accès au compte et bloque les prochaines connexions.",
+  summary: "Suspend l’accès au compte et bloque les prochaines connexions.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -79,7 +79,7 @@ const AdminCallableActionDescriptor enableManagedAccountAuthAction =
   id: 'enable_managed_account_auth',
   label: 'Réactiver l’accès',
   callableName: 'enableManagedAccountAuth',
-  summary: "Rétablit l'accès du compte aux prochaines connexions.",
+  summary: "Rétablit l’accès du compte aux prochaines connexions.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -113,7 +113,7 @@ const AdminCallableActionDescriptor setManagedAccountMembershipAction =
   label: 'Gérer les droits',
   callableName: 'setManagedAccountMembership',
   summary:
-      "Enregistre ou retire les droits d'un compte suivi par l'agence, sans aucun montant.",
+      "Enregistre ou retire les droits d’un compte suivi par l’agence, sans aucun montant.",
   uiSurfaces: ['Gestion des utilisateurs'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
@@ -122,7 +122,7 @@ const AdminCallableActionDescriptor setManagedAccountMembershipAction =
 const AdminCallableActionDescriptor setOfferStatusAction =
     AdminCallableActionDescriptor(
   id: 'admin_set_offer_status',
-  label: "Changer le statut d'une offre",
+  label: "Changer le statut d’une offre",
   callableName: 'adminSetOfferStatus',
   summary: "Publie, suspend ou archive une offre.",
   uiSurfaces: ['OfferManagementWidget'],
@@ -144,7 +144,7 @@ const AdminCallableActionDescriptor deleteOfferAction =
 const AdminCallableActionDescriptor setEventStatusAction =
     AdminCallableActionDescriptor(
   id: 'admin_set_event_status',
-  label: "Changer le statut d'un événement",
+  label: "Changer le statut d’un événement",
   callableName: 'adminSetEventStatus',
   summary: "Publie, suspend ou archive un événement.",
   uiSurfaces: ['EventManagementWidget'],
@@ -201,7 +201,7 @@ const AdminCallableActionDescriptor setContactIntakeFollowUpAction =
   id: 'admin_set_contact_intake_follow_up',
   label: 'Mettre à jour le suivi agence',
   callableName: 'adminSetContactIntakeFollowUp',
-  summary: "Met à jour le statut de suivi agence d'une mise en relation.",
+  summary: "Met à jour le statut de suivi agence d’une mise en relation.",
   uiSurfaces: ['ContactIntakeManagementWidget'],
   isAvailableInBackend: true,
   isConnectedInUi: true,

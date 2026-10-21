@@ -60,6 +60,7 @@ correction faite par un administrateur (aucune erreur visible nulle part).
 
 Ici :
 - `README.md` (section "Admin / Mobile Shared Backend Contract")
+- `docs/admin-design-system.md` (socle visuel et gabarit des ecrans)
 - `docs/prd-runbook-exploitation-inter-depots.md`
 - `docs/runbook-production-admin-mobile.md`
 - `docs/admin-offer-event-rollout-plan.md`

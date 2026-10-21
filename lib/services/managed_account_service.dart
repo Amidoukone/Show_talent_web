@@ -194,7 +194,7 @@ class ManagedAccountService {
       throw ArgumentError.value(
         validUntil,
         'validUntil',
-        "L'échéance doit être dans le futur. Pour retirer un droit, "
+        "L’échéance doit être dans le futur. Pour retirer un droit, "
             'utilisez MembershipTier.none.',
       );
     }

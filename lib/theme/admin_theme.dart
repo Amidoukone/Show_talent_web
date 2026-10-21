@@ -1,82 +1,122 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Socle visuel du portail admin.
+///
+/// Parti pris : des surfaces **pleines**, une bordure d'un pixel, aucune
+/// ombre portée. La hiérarchie se lit par le fond et par l'espacement, pas
+/// par une lueur. L'accent vert est réservé à une seule chose par écran —
+/// l'action primaire — pour qu'il veuille encore dire quelque chose.
 class AdminTheme {
+  // --------------------------------------------------------------------
+  // Surfaces : quatre niveaux, du plus profond au plus proche du lecteur.
+  // Aucun dégradé, aucune ombre : deux surfaces voisines se distinguent
+  // par leur valeur, ce qui suffit sur un fond sombre.
+  // --------------------------------------------------------------------
+
+  /// Fond de page.
   static const Color background = Color(0xFF0E1114);
-  static const Color surface = Color(0xFF12161C);
-  // Même valeur que `surface` : alias explicite plutôt que deux littéraux
-  // identiques par coïncidence (qui divergeraient silencieusement si l'un
-  // des deux était modifié sans l'autre).
-  static const Color backgroundSecondary = surface;
-  static const Color surfaceRaised = Color(0xFF1A1F26);
-  static const Color surfaceSoft = Color(0xFF202632);
-  static const Color surfaceHighlight = Color(0xFF26313D);
-  static const Color surfaceOverlay = Color(0xFF18212B);
-  static const Color border = Color(0xFF2E3A45);
-  // Même valeur que `surfaceSoft` : alias explicite, voir backgroundSecondary.
-  static const Color borderSoft = surfaceSoft;
+
+  /// Zone en creux : en-tête de tableau, piste de jauge, encart interne.
+  static const Color surfaceSunken = Color(0xFF10151B);
+
+  /// Carte, panneau, barre d'outils — le niveau de travail courant.
+  static const Color surface = Color(0xFF141922);
+
+  /// Élément au-dessus de la carte : ligne survolée, menu, boîte de
+  /// dialogue, panneau latéral.
+  static const Color surfaceRaised = Color(0xFF1A2029);
+
+  /// Remplissage des champs de saisie et des pastilles d'icône.
+  static const Color surfaceSoft = Color(0xFF1A2029);
+
+  /// Alias conservé pour les en-têtes de tableau existants, qui veulent la
+  /// surface en creux. Voir [surfaceSunken].
+  static const Color surfaceHighlight = surfaceSunken;
+
+  /// Filet par défaut entre deux surfaces.
+  static const Color border = Color(0xFF232B36);
+
+  /// Filet appuyé : séparateur de section, bordure d'un élément actif.
+  static const Color borderStrong = Color(0xFF2E3A45);
+
+  /// Alias conservé pour les séparateurs existants. Voir [border].
+  static const Color borderSoft = border;
+
+  // --------------------------------------------------------------------
+  // Couleurs de sens. `accent` porte l'action primaire et rien d'autre ;
+  // les couleurs d'état ne signalent qu'un état réel, jamais une décoration.
+  // --------------------------------------------------------------------
+
   static const Color accent = Color(0xFF2ED573);
   static const Color accentSoft = Color(0xFFB6F04A);
   static const Color cyan = Color(0xFF4EA8FF);
   static const Color warning = Color(0xFFE6C75A);
   static const Color danger = Color(0xFFE53935);
   static const Color success = Color(0xFF26C165);
+
   static const Color textPrimary = Color(0xFFEDEDED);
   // Relevés nettement par rapport aux valeurs d'origine (#9AA3AD / #8F99A3) :
   // trop pâles une fois rendus sur les cartes/tableaux réels (pas seulement
   // sur le fond de page), le texte secondaire et discret devenait illisible.
   static const Color textSecondary = Color(0xFFC3CBD3);
   static const Color textMuted = Color(0xFFA6AFB8);
+
+  // --------------------------------------------------------------------
+  // Échelle d'espacement. Un seul jeu de valeurs pour tout le portail :
+  // sans ça, chaque écran réinventait ses 10/12/14/18/22 et plus rien ne
+  // s'alignait d'un onglet à l'autre.
+  // --------------------------------------------------------------------
+
+  static const double space1 = 4;
+  static const double space2 = 8;
+  static const double space3 = 12;
+  static const double space4 = 16;
+  static const double space5 = 20;
+  static const double space6 = 24;
+  static const double space8 = 32;
+
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 16;
+  static const double radiusPill = 999;
+
+  /// Hauteur commune des contrôles d'une barre d'outils (champ de
+  /// recherche, menu déroulant, bouton) : ils doivent s'aligner sur une
+  /// même ligne de base, sinon la barre paraît bancale.
+  static const double controlHeight = 38;
+
+  /// Lignes de tableau. Resserrées par rapport aux 78-84 px d'origine :
+  /// une ligne porte un enregistrement, pas une fiche.
+  static const double tableHeaderHeight = 40;
+  static const double tableRowHeight = 52;
+
   static const double contentMaxWidth = 1460;
   static const double readingMaxWidth = 1280;
   static const double breakpointCompact = 1120;
   static const double breakpointShellCompact = 1160;
-  static const double breakpointExtendedRail = 1420;
+  static const double breakpointExtendedRail = 1280;
 
-  static const LinearGradient pageGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF0E1114),
-      Color(0xFF10161B),
-      Color(0xFF0E1114),
-    ],
-  );
+  /// Largeur du panneau latéral de consultation d'un enregistrement.
+  static const double detailPanelWidth = 440;
 
+  /// Décoration d'une carte : surface pleine, filet d'un pixel, rien de
+  /// plus. [accentColor] ne colore qu'une bordure d'état (erreur, alerte),
+  /// jamais un halo décoratif.
   static BoxDecoration panelDecoration({
     Color? accentColor,
     bool highlight = false,
-    double radius = 18,
+    double radius = radiusMd,
+    Color? color,
   }) {
-    final glow = accentColor ?? accent;
-
     return BoxDecoration(
+      color: color ?? surface,
       borderRadius: BorderRadius.circular(radius),
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          surfaceRaised.withValues(alpha: 0.97),
-          surface.withValues(alpha: 0.95),
-        ],
-      ),
       border: Border.all(
-        color: highlight
-            ? glow.withValues(alpha: 0.28)
-            : border.withValues(alpha: 0.82),
+        color: highlight && accentColor != null
+            ? accentColor.withValues(alpha: 0.42)
+            : border,
       ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.22),
-          blurRadius: 28,
-          offset: const Offset(0, 14),
-        ),
-        BoxShadow(
-          color: glow.withValues(alpha: highlight ? 0.1 : 0.03),
-          blurRadius: 16,
-          spreadRadius: 0.5,
-        ),
-      ],
     );
   }
 
@@ -107,60 +147,66 @@ class AdminTheme {
       primaryColor: accent,
       scaffoldBackgroundColor: background,
       canvasColor: surface,
-      dividerColor: borderSoft,
+      dividerColor: border,
       splashFactory: NoSplash.splashFactory,
+      // Sept crans pour tout le portail : 11, 12, 13, 15, 17, 22, 28. Les
+      // rôles de corps vivent dans AdminType ; les rôles de titre restent
+      // ici parce qu'eux doivent nommer Space Grotesk.
       textTheme: TextTheme(
         displaySmall: displayFont.copyWith(
-          fontSize: 34,
+          fontSize: 28,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0,
+          letterSpacing: -0.4,
           color: textPrimary,
-          height: 1.05,
+          height: 1.1,
         ),
         headlineMedium: displayFont.copyWith(
-          fontSize: 28,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0,
-          color: textPrimary,
-        ),
-        titleLarge: displayFont.copyWith(
           fontSize: 22,
           fontWeight: FontWeight.w600,
+          letterSpacing: -0.2,
           color: textPrimary,
-          letterSpacing: 0,
+          height: 1.2,
         ),
-        titleMedium: displayFont.copyWith(
-          fontSize: 18,
+        titleLarge: displayFont.copyWith(
+          fontSize: 17,
           fontWeight: FontWeight.w600,
           color: textPrimary,
+          letterSpacing: -0.1,
+          height: 1.25,
         ),
-        bodyLarge: bodyFont.copyWith(
+        titleMedium: displayFont.copyWith(
           fontSize: 15,
           fontWeight: FontWeight.w600,
           color: textPrimary,
-          height: 1.5,
+          height: 1.3,
+        ),
+        bodyLarge: bodyFont.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+          height: 1.35,
         ),
         bodyMedium: bodyFont.copyWith(
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
           color: textSecondary,
-          height: 1.5,
+          height: 1.45,
         ),
         bodySmall: bodyFont.copyWith(
-          fontSize: 12.5,
+          fontSize: 12,
           fontWeight: FontWeight.w500,
           color: textMuted,
-          height: 1.4,
+          height: 1.35,
         ),
         labelLarge: bodyFont.copyWith(
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           color: background,
           letterSpacing: 0,
         ),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: background,
         foregroundColor: textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -170,47 +216,54 @@ class AdminTheme {
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
-        shadowColor: Colors.black.withValues(alpha: 0.18),
+        shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: border.withValues(alpha: 0.8)),
+          borderRadius: BorderRadius.circular(radiusMd),
+          side: const BorderSide(color: border),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: surface,
+        backgroundColor: surfaceRaised,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: accent.withValues(alpha: 0.18)),
+          borderRadius: BorderRadius.circular(radiusLg),
+          side: const BorderSide(color: borderStrong),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceSoft.withValues(alpha: 0.72),
-        labelStyle: const TextStyle(color: textSecondary),
-        hintStyle: const TextStyle(color: textMuted),
-        prefixIconColor: textSecondary,
-        suffixIconColor: textSecondary,
+        fillColor: surfaceSoft,
+        isDense: true,
+        labelStyle: const TextStyle(color: textSecondary, fontSize: 13),
+        floatingLabelStyle: const TextStyle(color: textSecondary),
+        hintStyle: const TextStyle(color: textMuted, fontSize: 13),
+        prefixIconColor: textMuted,
+        suffixIconColor: textMuted,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
+          horizontal: space3,
+          vertical: 10,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: border.withValues(alpha: 0.8)),
+          borderRadius: BorderRadius.circular(radiusSm),
+          borderSide: const BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: border.withValues(alpha: 0.8)),
+          borderRadius: BorderRadius.circular(radiusSm),
+          borderSide: const BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusSm),
           borderSide: const BorderSide(color: accent, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radiusSm),
           borderSide: const BorderSide(color: danger, width: 1.2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusSm),
+          borderSide: const BorderSide(color: danger, width: 1.4),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -218,149 +271,158 @@ class AdminTheme {
           elevation: const WidgetStatePropertyAll(0),
           backgroundColor: const WidgetStatePropertyAll(accent),
           foregroundColor: const WidgetStatePropertyAll(background),
-          minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+          minimumSize: const WidgetStatePropertyAll(Size(0, controlHeight)),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            EdgeInsets.symmetric(horizontal: space4),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(radiusSm),
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
           foregroundColor: const WidgetStatePropertyAll(textPrimary),
-          backgroundColor: WidgetStatePropertyAll(
-            surfaceSoft.withValues(alpha: 0.2),
-          ),
-          side: WidgetStatePropertyAll(
-            BorderSide(color: accent.withValues(alpha: 0.32)),
-          ),
-          minimumSize: const WidgetStatePropertyAll(Size(0, 46)),
+          backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+          side: const WidgetStatePropertyAll(BorderSide(color: borderStrong)),
+          minimumSize: const WidgetStatePropertyAll(Size(0, controlHeight)),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            EdgeInsets.symmetric(horizontal: space3),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(radiusSm),
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: const WidgetStatePropertyAll(accentSoft),
+          foregroundColor: const WidgetStatePropertyAll(cyan),
+          minimumSize: const WidgetStatePropertyAll(Size(0, 32)),
           padding: const WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            EdgeInsets.symmetric(horizontal: space2),
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(radiusSm),
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
         ),
       ),
-      navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: Colors.transparent,
-        selectedIconTheme: const IconThemeData(color: background, size: 22),
-        unselectedIconTheme:
-            const IconThemeData(color: textSecondary, size: 20),
-        selectedLabelTextStyle: const TextStyle(
-          color: textPrimary,
-          fontWeight: FontWeight.w700,
+      iconButtonTheme: IconButtonThemeData(
+        style: ButtonStyle(
+          foregroundColor: const WidgetStatePropertyAll(textSecondary),
+          minimumSize: const WidgetStatePropertyAll(Size(32, 32)),
+          padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radiusSm),
+            ),
+          ),
         ),
-        unselectedLabelTextStyle: const TextStyle(
-          color: textSecondary,
+      ),
+      navigationRailTheme: const NavigationRailThemeData(
+        backgroundColor: Colors.transparent,
+        selectedIconTheme: IconThemeData(color: textPrimary, size: 20),
+        unselectedIconTheme: IconThemeData(color: textMuted, size: 20),
+        selectedLabelTextStyle: TextStyle(
+          color: textPrimary,
           fontWeight: FontWeight.w600,
         ),
-        indicatorColor: accent,
+        unselectedLabelTextStyle: TextStyle(
+          color: textSecondary,
+          fontWeight: FontWeight.w500,
+        ),
+        indicatorColor: surfaceRaised,
         groupAlignment: -0.7,
         labelType: NavigationRailLabelType.all,
       ),
-      dataTableTheme: DataTableThemeData(
-        headingRowColor: WidgetStatePropertyAll(
-          surfaceHighlight.withValues(alpha: 0.72),
-        ),
-        dataRowColor: WidgetStatePropertyAll(
-          surface.withValues(alpha: 0.16),
-        ),
-        dividerThickness: 0.35,
-        headingTextStyle: const TextStyle(
-          color: textPrimary,
+      dataTableTheme: const DataTableThemeData(
+        headingRowColor: WidgetStatePropertyAll(surfaceSunken),
+        dataRowColor: WidgetStatePropertyAll(Colors.transparent),
+        dividerThickness: 1,
+        headingRowHeight: tableHeaderHeight,
+        dataRowMinHeight: tableRowHeight,
+        dataRowMaxHeight: tableRowHeight,
+        horizontalMargin: space4,
+        columnSpacing: space5,
+        headingTextStyle: TextStyle(
+          color: textMuted,
           fontWeight: FontWeight.w700,
-          fontSize: 14,
+          fontSize: 11,
+          letterSpacing: 0.6,
         ),
-        dataTextStyle: const TextStyle(
-          color: textSecondary,
-          fontSize: 13.5,
-        ),
+        dataTextStyle: TextStyle(color: textSecondary, fontSize: 13),
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: surfaceRaised,
         surfaceTintColor: Colors.transparent,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: border.withValues(alpha: 0.9)),
+          borderRadius: BorderRadius.circular(radiusSm),
+          side: const BorderSide(color: borderStrong),
         ),
-        textStyle: const TextStyle(color: textPrimary),
+        textStyle: const TextStyle(color: textPrimary, fontSize: 13),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surfaceRaised,
-        contentTextStyle: const TextStyle(color: textPrimary),
+        contentTextStyle: const TextStyle(color: textPrimary, fontSize: 13),
         behavior: SnackBarBehavior.floating,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: accent.withValues(alpha: 0.18)),
+          borderRadius: BorderRadius.circular(radiusSm),
+          side: const BorderSide(color: borderStrong),
         ),
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
-          color: surfaceRaised.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: border.withValues(alpha: 0.9)),
+          color: surfaceRaised,
+          borderRadius: BorderRadius.circular(radiusSm),
+          border: Border.all(color: borderStrong),
         ),
         textStyle: const TextStyle(
           color: textPrimary,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
           fontSize: 12,
         ),
-        waitDuration: const Duration(milliseconds: 280),
+        waitDuration: const Duration(milliseconds: 400),
       ),
-      scrollbarTheme: ScrollbarThemeData(
-        thumbColor: WidgetStatePropertyAll(
-          accent.withValues(alpha: 0.54),
-        ),
-        thickness: const WidgetStatePropertyAll(8),
-        radius: const Radius.circular(999),
+      scrollbarTheme: const ScrollbarThemeData(
+        thumbColor: WidgetStatePropertyAll(Color(0xFF39434F)),
+        thickness: WidgetStatePropertyAll(8),
+        radius: Radius.circular(radiusPill),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: accent,
-        linearTrackColor: borderSoft,
-        circularTrackColor: borderSoft,
+        linearTrackColor: surfaceSunken,
+        circularTrackColor: surfaceSunken,
       ),
-      dividerTheme: DividerThemeData(
-        color: borderSoft.withValues(alpha: 0.7),
-        thickness: 0.6,
+      dividerTheme: const DividerThemeData(
+        color: border,
+        thickness: 1,
         space: 0,
       ),
-      drawerTheme: DrawerThemeData(
+      drawerTheme: const DrawerThemeData(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: Border(
-          right: BorderSide(color: border.withValues(alpha: 0.82)),
-        ),
+        shape: Border(right: BorderSide(color: border)),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        side: const BorderSide(color: borderStrong, width: 1.4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
     );
   }

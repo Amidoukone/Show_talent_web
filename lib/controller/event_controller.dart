@@ -160,7 +160,7 @@ class EventController extends GetxController {
     if (!moderationStatuses.contains(normalized)) {
       return AdminActionResponse.failure(
         code: 'invalid_status',
-        message: "Statut d'événement invalide.",
+        message: "Statut d’événement invalide.",
       );
     }
 

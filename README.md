@@ -117,6 +117,10 @@ Le portail admin :
 - ne cree plus d admins cote client
 - provisionne tous les comptes metier via `provisionManagedAccount`
 
+Pour la mise en page et les regles visuelles des ecrans (surfaces,
+espacement, gabarit d'un ecran de liste, modele d'actions, fiche laterale),
+voir `docs/admin-design-system.md`.
+
 ## Cloud Functions admin
 
 Toutes les operations sensibles passent par les callables backend partagees :

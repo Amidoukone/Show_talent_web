@@ -4,8 +4,12 @@ import 'package:get/get.dart';
 import '../controller/event_controller.dart';
 import '../models/event.dart';
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 import '../utils/admin_date_format.dart';
+import '../widgets/admin_detail_panel.dart';
 import '../widgets/admin_feedback.dart';
+import '../widgets/admin_page.dart';
+import '../widgets/admin_table.dart';
 import '../widgets/admin_ui.dart';
 
 class EventManagementWidget extends StatefulWidget {
@@ -16,7 +20,11 @@ class EventManagementWidget extends StatefulWidget {
 }
 
 class _EventManagementWidgetState extends State<EventManagementWidget> {
-  static const int _rowsPerPage = 10;
+  static const int _rowsPerPage = 25;
+
+  /// Largeur en deçà de laquelle le tableau défile horizontalement. Sert
+  /// aussi à AdminWorkspace pour décider si la fiche tient à côté.
+  static const double _tableMinWidth = 1040;
 
   final EventController _eventController = Get.find<EventController>();
   final TextEditingController _searchController = TextEditingController();
@@ -25,6 +33,11 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
   String _selectedStatus = 'Tous';
   int _currentPage = 0;
   String? _actionEventId;
+
+  /// Événement ouvert dans la fiche latérale. On garde l'identifiant
+  /// plutôt que l'objet : la liste se rafraîchit en continu depuis
+  /// Firestore, et une copie figée afficherait un statut périmé.
+  String? _selectedEventId;
 
   bool _isCompactLayout(BuildContext context) =>
       MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
@@ -41,6 +54,13 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       _selectedStatus = 'Tous';
       _currentPage = 0;
       _searchController.clear();
+    });
+  }
+
+  void _toggleStatusFilter(String status) {
+    setState(() {
+      _selectedStatus = _selectedStatus == status ? 'Tous' : status;
+      _currentPage = 0;
     });
   }
 
@@ -153,6 +173,11 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
         tone: AdminBannerTone.success,
         position: SnackPosition.BOTTOM,
       );
+      if (mounted && _selectedEventId == event.id) {
+        setState(() {
+          _selectedEventId = null;
+        });
+      }
     } else {
       showAdminFeedback(
         title: 'Suppression impossible',
@@ -169,96 +194,79 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
     }
   }
 
-  Widget _buildActionMenu(Event event, bool isActionInFlight) {
-    if (isActionInFlight) {
-      return const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
+  /// Actions d'une ligne : la bascule ouvert/fermé et l'archivage en
+  /// clair, les quatre statuts explicites et la suppression sous « … ».
+  AdminRowActions _buildRowActions(Event event) {
+    final status = Event.normalizeStatus(event.statut);
+    final isOpen = status == 'ouvert';
 
-    return PopupMenuButton<String>(
-      tooltip: 'Actions événement',
-      onSelected: (value) {
-        if (value.startsWith('status:')) {
-          final status = value.split(':').last;
-          _updateStatus(event: event, nextStatus: status);
-          return;
-        }
-
-        if (value == 'delete') {
-          _confirmDelete(event);
-        }
-      },
-      itemBuilder: (context) {
-        return [
-          ...EventController.moderationStatuses.map(
-            (status) => PopupMenuItem(
-              value: 'status:$status',
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.flag_outlined,
-                    color: _statusColor(status),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text('Statut : ${_statusLabel(status)}'),
-                ],
-              ),
-            ),
+    return AdminRowActions(
+      busy: _actionEventId == event.id,
+      primary: [
+        AdminRowAction(
+          icon: isOpen
+              ? Icons.event_busy_outlined
+              : Icons.event_available_outlined,
+          label: isOpen ? 'Fermer l’événement' : 'Ouvrir l’événement',
+          color: isOpen ? AdminTheme.warning : AdminTheme.success,
+          onPressed: () => _updateStatus(
+            event: event,
+            nextStatus: isOpen ? 'ferme' : 'ouvert',
           ),
-          const PopupMenuDivider(),
-          const PopupMenuItem(
-            value: 'delete',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.delete_outline_rounded,
-                  color: AdminTheme.danger,
-                  size: 18,
-                ),
-                SizedBox(width: 8),
-                Text('Supprimer'),
-              ],
-            ),
+        ),
+        AdminRowAction(
+          icon: Icons.archive_outlined,
+          label: 'Archiver',
+          onPressed: status == 'archive'
+              ? null
+              : () => _updateStatus(event: event, nextStatus: 'archive'),
+        ),
+      ],
+      overflow: [
+        for (final candidate in EventController.moderationStatuses)
+          AdminRowAction(
+            icon: Icons.flag_outlined,
+            label: 'Statut : ${_statusLabel(candidate)}',
+            color: _statusColor(candidate),
+            onPressed: candidate == status
+                ? null
+                : () => _updateStatus(event: event, nextStatus: candidate),
           ),
-        ];
-      },
+        AdminRowAction(
+          icon: Icons.delete_outline_rounded,
+          label: 'Supprimer',
+          color: AdminTheme.danger,
+          onPressed: () => _confirmDelete(event),
+        ),
+      ],
     );
   }
 
+  String _tagsLabel(Event event) =>
+      event.tags
+          ?.where((value) => value.trim().isNotEmpty)
+          .take(3)
+          .join(' · ') ??
+      '';
+
+  String _capacityLabel(Event event) => event.capaciteMax == null
+      ? '${event.participants.length}'
+      : '${event.participants.length}/${event.capaciteMax}';
+
   Widget _buildEventCard(Event event) {
     final status = Event.normalizeStatus(event.statut);
-    final color = _statusColor(status);
-    final isActionInFlight = _actionEventId == event.id;
-    final tagsLabel = event.tags
-        ?.where((value) => value.trim().isNotEmpty)
-        .take(3)
-        .join(' | ');
-    final capacityLabel = event.capaciteMax == null
-        ? '${event.participants.length}'
-        : '${event.participants.length}/${event.capaciteMax} places';
+    final tagsLabel = _tagsLabel(event);
 
     return AdminDataCard(
-      title: Text(
-        event.titre,
-        style: const TextStyle(
-          color: AdminTheme.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
+      onTap: () => setState(() => _selectedEventId = event.id),
+      title: Text(event.titre, style: AdminType.bodyStrong),
+      subtitle: tagsLabel.isEmpty
+          ? null
+          : Text(tagsLabel, style: AdminType.caption),
+      trailing: AdminPill(
+        label: _statusLabel(status),
+        color: _statusColor(status),
       ),
-      subtitle: tagsLabel?.isNotEmpty == true
-          ? Text(
-              tagsLabel!,
-              style: const TextStyle(
-                color: AdminTheme.textSecondary,
-                fontSize: 12,
-              ),
-            )
-          : null,
-      trailing: AdminPill(label: _statusLabel(status), color: color),
       fields: [
         AdminDataCardField(
           label: 'Organisateur',
@@ -274,9 +282,107 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
           ),
         ),
         AdminDataCardField(label: 'Lieu', value: Text(event.lieu)),
-        AdminDataCardField(label: 'Participants', value: Text(capacityLabel)),
+        AdminDataCardField(
+          label: 'Participants',
+          value: Text(_capacityLabel(event)),
+        ),
       ],
-      actions: _buildActionMenu(event, isActionInFlight),
+      actions: _buildRowActions(event),
+    );
+  }
+
+  /// Fiche latérale d'un événement : la description, le flyer et le lien
+  /// de diffusion n'apparaissaient nulle part dans le portail. Tout vient
+  /// de l'événement déjà chargé, sans lecture supplémentaire.
+  Widget _buildDetailPanel(Event event, List<Event> queue) {
+    final index = queue.indexWhere((item) => item.id == event.id);
+    final status = Event.normalizeStatus(event.statut);
+
+    return AdminDetailPanel(
+      title: event.titre,
+      subtitle: event.organisateur.nom.isEmpty ? null : event.organisateur.nom,
+      position: index < 0 ? null : '${index + 1} / ${queue.length}',
+      onPrevious: index > 0
+          ? () => setState(() => _selectedEventId = queue[index - 1].id)
+          : null,
+      onNext: index >= 0 && index < queue.length - 1
+          ? () => setState(() => _selectedEventId = queue[index + 1].id)
+          : null,
+      onClose: () => setState(() => _selectedEventId = null),
+      actions: [
+        OutlinedButton(
+          onPressed: _actionEventId == event.id
+              ? null
+              : () => _confirmDelete(event),
+          child: const Text('Supprimer'),
+        ),
+        ElevatedButton(
+          onPressed: _actionEventId == event.id
+              ? null
+              : () => _updateStatus(
+                  event: event,
+                  nextStatus: status == 'ouvert' ? 'ferme' : 'ouvert',
+                ),
+          child: Text(status == 'ouvert' ? 'Fermer' : 'Ouvrir'),
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AdminDetailSection(
+            title: 'Statut',
+            children: [
+              AdminDetailField(
+                label: 'Statut',
+                value: _statusLabel(status),
+                child: AdminPill(
+                  label: _statusLabel(status),
+                  color: _statusColor(status),
+                ),
+              ),
+              AdminDetailField(
+                label: 'Période',
+                value:
+                    '${formatAdminDate(event.dateDebut)} - '
+                    '${formatAdminDate(event.dateFin)}',
+              ),
+              AdminDetailField(label: 'Lieu', value: event.lieu),
+              AdminDetailField(
+                label: 'Participants',
+                value: _capacityLabel(event),
+              ),
+              AdminDetailField(label: 'Vues', value: '${event.views ?? 0}'),
+            ],
+          ),
+          AdminDetailSection(
+            title: 'Diffusion',
+            children: [
+              AdminDetailField(
+                label: 'Lien de diffusion',
+                value: event.streamingUrl ?? '',
+              ),
+              AdminDetailField(label: 'Flyer', value: event.flyerUrl ?? ''),
+              AdminDetailField(label: 'Tags', value: _tagsLabel(event)),
+            ],
+          ),
+          AdminDetailSection(
+            title: 'Description',
+            children: [
+              SelectableText(
+                event.description.isEmpty
+                    ? 'Aucune description fournie.'
+                    : event.description,
+                style: AdminType.prose.copyWith(
+                  color: event.description.isEmpty
+                      ? AdminTheme.textMuted
+                      : AdminTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -286,130 +392,140 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
     final hasFilters =
         _searchQuery.trim().isNotEmpty || _selectedStatus != 'Tous';
     final statusItems = <String>['Tous', ...EventController.moderationStatuses];
-    final statusDropdown = DropdownButtonFormField<String>(
-      initialValue: _selectedStatus,
-      isExpanded: true,
-      decoration: const InputDecoration(labelText: 'Statut'),
-      items: statusItems
-          .map(
-            (status) => DropdownMenuItem(
-              value: status,
-              child: Text(status == 'Tous' ? status : _statusLabel(status)),
-            ),
-          )
-          .toList(),
-      onChanged: (value) {
-        if (value == null) return;
-        setState(() {
-          _selectedStatus = value;
-          _currentPage = 0;
-        });
-      },
+
+    final toolbar = AdminToolbar(
+      flexes: const [3, 2],
+      trailing: [
+        IconButton(
+          onPressed: hasFilters ? _clearFilters : null,
+          icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
+          tooltip: 'Réinitialiser les filtres',
+        ),
+        IconButton(
+          onPressed: _eventController.refreshEvents,
+          icon: const Icon(Icons.refresh_rounded, size: 17),
+          tooltip: 'Recharger',
+        ),
+      ],
+      filters: [
+        AdminSearchField(
+          controller: _searchController,
+          hintText: 'Rechercher un événement',
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value.trim().toLowerCase();
+              _currentPage = 0;
+            });
+          },
+        ),
+        AdminFilterDropdown<String>(
+          label: 'Statut',
+          value: _selectedStatus,
+          items: statusItems,
+          labelBuilder: (status) =>
+              status == 'Tous' ? status : _statusLabel(status),
+          onChanged: (value) {
+            setState(() {
+              _selectedStatus = value;
+              _currentPage = 0;
+            });
+          },
+        ),
+      ],
     );
 
-    return AdminGlassPanel(
-      padding: EdgeInsets.all(compact ? 16 : 22),
-      highlight: true,
-      accentColor: AdminTheme.accent,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AdminFilterBar(
-            maxWidth: 900,
-            flexes: const [3, 2, 2],
-            children: [
-              AdminSearchField(
-                controller: _searchController,
-                hintText: 'Rechercher un événement',
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.trim().toLowerCase();
-                    _currentPage = 0;
-                  });
-                },
-              ),
-              statusDropdown,
-              SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: hasFilters ? _clearFilters : null,
-                  icon: const Icon(Icons.filter_alt_off_rounded),
-                  label: const Text('Réinitialiser'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Obx(() {
-            final allEvents = _eventController.events;
+    return Obx(() {
+      final allEvents = _eventController.events;
 
-            final filtered = allEvents.where((event) {
-              final status = Event.normalizeStatus(event.statut);
-              final statusMatch =
-                  _selectedStatus == 'Tous' || status == _selectedStatus;
-              final searchMatch =
-                  _searchQuery.isEmpty ||
-                  [
-                    event.titre,
-                    event.description,
-                    event.organisateur.nom,
-                    event.lieu,
-                    event.streamingUrl,
-                    event.flyerUrl,
-                    ...?event.tags,
-                  ].whereType<String>().any(
-                    (value) => value.toLowerCase().contains(_searchQuery),
-                  );
-              return statusMatch && searchMatch;
-            }).toList();
+      if (_eventController.isLoading.value) {
+        return const AdminLoadingState(message: 'Chargement des événements…');
+      }
 
-            final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
-            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
-            final safePage = _currentPage >= totalPages
-                ? totalPages - 1
-                : _currentPage.clamp(0, totalPages - 1);
-            final startIndex = safePage * _rowsPerPage;
-            final endIndex = (startIndex + _rowsPerPage).clamp(
-              0,
-              filtered.length,
+      final loadError = _eventController.lastError.value;
+      if (loadError.isNotEmpty) {
+        return AdminEmptyState(
+          title: 'Chargement incomplet',
+          message: loadError,
+          icon: Icons.error_outline_rounded,
+          actionLabel: 'Réessayer',
+          actionIcon: Icons.refresh_rounded,
+          onAction: _eventController.refreshEvents,
+        );
+      }
+
+      final filtered = allEvents.where((event) {
+        final status = Event.normalizeStatus(event.statut);
+        final statusMatch =
+            _selectedStatus == 'Tous' || status == _selectedStatus;
+        final searchMatch =
+            _searchQuery.isEmpty ||
+            [
+              event.titre,
+              event.description,
+              event.organisateur.nom,
+              event.lieu,
+              event.streamingUrl,
+              event.flyerUrl,
+              ...?event.tags,
+            ].whereType<String>().any(
+              (value) => value.toLowerCase().contains(_searchQuery),
             );
-            final displayed = filtered.sublist(startIndex, endIndex);
+        return statusMatch && searchMatch;
+      }).toList();
 
-            if (_eventController.isLoading.value) {
-              return const Center(
-                child: AdminLoadingState(
-                  message: 'Chargement des événements...',
-                ),
-              );
-            }
+      final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
+      final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+      final safePage = _currentPage >= totalPages
+          ? totalPages - 1
+          : _currentPage.clamp(0, totalPages - 1);
+      final startIndex = safePage * _rowsPerPage;
+      final endIndex = (startIndex + _rowsPerPage).clamp(0, filtered.length);
+      final displayed = filtered.sublist(startIndex, endIndex);
 
-            final loadError = _eventController.lastError.value;
-            if (loadError.isNotEmpty) {
-              return AdminEmptyState(
-                title: 'Chargement incomplet',
-                message: loadError,
-                icon: Icons.error_outline_rounded,
-                actionLabel: 'Réessayer',
+      final openedCount = allEvents
+          .where((event) => Event.normalizeStatus(event.statut) == 'ouvert')
+          .length;
+      final archivedCount = allEvents
+          .where((event) => Event.normalizeStatus(event.statut) == 'archive')
+          .length;
+      final totalViews = allEvents.fold<int>(
+        0,
+        (sum, event) => sum + (event.views ?? 0),
+      );
+
+      final stats = AdminStatStrip(
+        stats: [
+          AdminStat(label: 'affichés', value: '${filtered.length}'),
+          AdminStat(
+            label: 'ouverts',
+            value: '$openedCount',
+            selected: _selectedStatus == 'ouvert',
+            onTap: () => _toggleStatusFilter('ouvert'),
+            tooltip: 'Ne montrer que les événements ouverts',
+          ),
+          AdminStat(
+            label: 'archivés',
+            value: '$archivedCount',
+            selected: _selectedStatus == 'archive',
+            onTap: () => _toggleStatusFilter('archive'),
+            tooltip: 'Ne montrer que les événements archivés',
+          ),
+          AdminStat(label: 'vues cumulées', value: '$totalViews'),
+        ],
+      );
+
+      final Widget body;
+      if (filtered.isEmpty) {
+        body = allEvents.isEmpty
+            ? AdminEmptyState(
+                title: 'Aucun événement à modérer',
+                message: 'Aucun événement n’a encore été créé.',
+                icon: Icons.event_busy_rounded,
+                actionLabel: 'Recharger',
                 actionIcon: Icons.refresh_rounded,
-                onAction: () {
-                  _eventController.refreshEvents();
-                },
-              );
-            }
-
-            if (filtered.isEmpty) {
-              if (allEvents.isEmpty) {
-                return AdminEmptyState(
-                  title: 'Aucun événement à modérer',
-                  message: 'Aucun événement n\'a encore été créé.',
-                  icon: Icons.event_busy_rounded,
-                  actionLabel: 'Recharger',
-                  actionIcon: Icons.refresh_rounded,
-                  onAction: _eventController.refreshEvents,
-                );
-              }
-
-              return AdminEmptyState(
+                onAction: _eventController.refreshEvents,
+              )
+            : AdminEmptyState(
                 title: 'Aucun événement dans cette vue',
                 message: 'Aucun événement ne correspond aux filtres actuels.',
                 icon: Icons.filter_alt_off_outlined,
@@ -417,238 +533,98 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                 actionIcon: Icons.filter_alt_off_rounded,
                 onAction: _clearFilters,
               );
-            }
+      } else if (compact) {
+        body = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final event in displayed) ...[
+              _buildEventCard(event),
+              const SizedBox(height: AdminTheme.space2),
+            ],
+          ],
+        );
+      } else {
+        body = AdminTable(
+          minWidth: _tableMinWidth,
+          columns: const [
+            AdminColumn(label: 'Événement', flex: 4),
+            AdminColumn(label: 'Organisateur', flex: 2),
+            AdminColumn(label: 'Période', width: 190),
+            AdminColumn(label: 'Lieu', flex: 2),
+            AdminColumn(label: 'Places', width: 80, alignRight: true),
+            AdminColumn(label: 'Statut', width: 104),
+            AdminColumn(label: '', width: 96, alignRight: true),
+          ],
+          rowCount: displayed.length,
+          selectedRow: _selectedEventId == null
+              ? null
+              : displayed.indexWhere((event) => event.id == _selectedEventId),
+          onRowTap: (index) =>
+              setState(() => _selectedEventId = displayed[index].id),
+          cellsBuilder: (index) {
+            final event = displayed[index];
+            final status = Event.normalizeStatus(event.statut);
 
-            final openedCount = allEvents
-                .where(
-                  (event) => Event.normalizeStatus(event.statut) == 'ouvert',
-                )
-                .length;
-            final archivedCount = allEvents
-                .where(
-                  (event) => Event.normalizeStatus(event.statut) == 'archive',
-                )
-                .length;
-            final totalViews = allEvents.fold<int>(
-              0,
-              (sum, event) => sum + (event.views ?? 0),
-            );
+            return [
+              AdminCellIdentity(
+                title: event.titre,
+                subtitle: _tagsLabel(event),
+              ),
+              Text(
+                event.organisateur.nom.isEmpty
+                    ? 'Inconnu'
+                    : event.organisateur.nom,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '${formatAdminDate(event.dateDebut)} - '
+                '${formatAdminDate(event.dateFin)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(event.lieu, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(_capacityLabel(event)),
+              AdminPill(
+                label: _statusLabel(status),
+                color: _statusColor(status),
+              ),
+              _buildRowActions(event),
+            ];
+          },
+        );
+      }
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    AdminMiniStat(
-                      label: 'Événements visibles',
-                      value: '${filtered.length}',
-                      icon: Icons.filter_alt_outlined,
-                      accentColor: AdminTheme.cyan,
-                      subtitle: 'Après filtres',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Événements ouverts',
-                      value: '$openedCount',
-                      icon: Icons.event_available_outlined,
-                      accentColor: AdminTheme.success,
-                      subtitle: 'Catalogue',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Événements archivés',
-                      value: '$archivedCount',
-                      icon: Icons.archive_outlined,
-                      accentColor: AdminTheme.warning,
-                      subtitle: 'Catalogue',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Vues',
-                      value: '$totalViews',
-                      icon: Icons.visibility_outlined,
-                      accentColor: AdminTheme.accentSoft,
-                      subtitle: 'Côté application',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (compact)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final event in displayed) ...[
-                        _buildEventCard(event),
-                        const SizedBox(height: 12),
-                      ],
-                    ],
-                  )
-                else
-                  AdminDataTableCard(
-                    compact: compact,
-                    child: DataTable(
-                      columnSpacing: compact ? 14 : 22,
-                      horizontalMargin: compact ? 8 : 10,
-                      columns: const [
-                        DataColumn(label: Text('Titre')),
-                        DataColumn(label: Text('Organisateur')),
-                        DataColumn(label: Text('Période')),
-                        DataColumn(label: Text('Lieu')),
-                        DataColumn(label: Text('Participants')),
-                        DataColumn(label: Text('Statut')),
-                        DataColumn(label: Text('Actions')),
-                      ],
-                      rows: List<DataRow>.generate(displayed.length, (index) {
-                        final event = displayed[index];
-                        final status = Event.normalizeStatus(event.statut);
-                        final color = _statusColor(status);
-                        final isActionInFlight = _actionEventId == event.id;
-                        final tagsLabel = event.tags
-                            ?.where((value) => value.trim().isNotEmpty)
-                            .take(3)
-                            .join(' | ');
-                        final capacityLabel = event.capaciteMax == null
-                            ? ''
-                            : '${event.participants.length}/${event.capaciteMax} places';
+      final selected = _selectedEventId == null
+          ? null
+          : filtered.where((event) => event.id == _selectedEventId).firstOrNull;
 
-                        return DataRow(
-                          cells: [
-                            DataCell(
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 220,
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      event.titre,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: AdminTheme.textPrimary,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    if (tagsLabel?.isNotEmpty == true) ...[
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        tagsLabel!,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: AdminTheme.textSecondary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                event.organisateur.nom.isEmpty
-                                    ? 'Inconnu'
-                                    : event.organisateur.nom,
-                              ),
-                            ),
-                            DataCell(
-                              Text(
-                                '${formatAdminDate(event.dateDebut)} - '
-                                '${formatAdminDate(event.dateFin)}',
-                              ),
-                            ),
-                            DataCell(
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 180,
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      event.lieu,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (capacityLabel.isNotEmpty) ...[
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        capacityLabel,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: AdminTheme.textSecondary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataCell(Text('${event.participants.length}')),
-                            DataCell(
-                              AdminPill(
-                                label: _statusLabel(status),
-                                color: color,
-                              ),
-                            ),
-                            DataCell(_buildActionMenu(event, isActionInFlight)),
-                          ],
-                        );
-                      }),
-                      headingRowColor: WidgetStateProperty.all(
-                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                      ),
-                      dataRowColor: WidgetStateProperty.all(
-                        AdminTheme.surface.withValues(alpha: 0.14),
-                      ),
-                      dividerThickness: 1,
-                      dataRowMinHeight: compact ? 62 : 68,
-                      dataRowMaxHeight: compact ? 62 : 68,
-                      headingRowHeight: compact ? 50 : 54,
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                AdminPaginationBar(
-                  currentPage: safePage,
-                  totalPages: totalPages,
-                  onPrevious: safePage > 0
-                      ? () {
-                          setState(() {
-                            _currentPage = safePage - 1;
-                          });
-                        }
-                      : null,
-                  onNext: safePage < totalPages - 1
-                      ? () {
-                          setState(() {
-                            _currentPage = safePage + 1;
-                          });
-                        }
-                      : null,
-                ),
-                const SizedBox(height: 10),
-                AdminLoadMoreBar(
-                  loadedCount: allEvents.length,
-                  hasMore: _eventController.hasMore.value,
-                  itemLabel: 'événements',
-                  onLoadMore: _eventController.loadMoreEvents,
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
-    );
+      return AdminWorkspace(
+        compact: compact,
+        bodyMinWidth: _tableMinWidth,
+        toolbar: toolbar,
+        stats: stats,
+        body: body,
+        detail: selected == null ? null : _buildDetailPanel(selected, filtered),
+        footer: filtered.isEmpty
+            ? null
+            : AdminListFooter(
+                rangeStart: startIndex + 1,
+                rangeEnd: endIndex,
+                filteredCount: filtered.length,
+                currentPage: safePage,
+                totalPages: totalPages,
+                itemLabel: 'événements',
+                hasMore: _eventController.hasMore.value,
+                onLoadMore: _eventController.loadMoreEvents,
+                onPrevious: safePage > 0
+                    ? () => setState(() => _currentPage = safePage - 1)
+                    : null,
+                onNext: safePage < totalPages - 1
+                    ? () => setState(() => _currentPage = safePage + 1)
+                    : null,
+              ),
+      );
+    });
   }
 }

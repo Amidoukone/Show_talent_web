@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 
 enum AdminVideoActionTone { neutral, info, success, warning, danger }
 
@@ -81,51 +82,44 @@ class AdminVideoMetaItem {
   final Color color;
 }
 
+/// Vignette d'une vidéo.
+///
+/// Posée à plat : plus d'ombre portée ni de rayon de 18, et un format
+/// 16/9 franc. Les deux tailles correspondent aux deux usages réels —
+/// [dense] pour une ligne de tableau, la taille pleine pour une fiche ou
+/// une carte en disposition compacte.
 class AdminVideoPreviewCard extends StatelessWidget {
   const AdminVideoPreviewCard({
     required this.thumbnailUrl,
-    required this.statusLabel,
     required this.statusColor,
-    required this.footerLabel,
-    this.compact = false,
-    this.footerIcon,
+    this.dense = false,
     this.fallbackIcon = Icons.video_library_outlined,
     super.key,
   });
 
   final String thumbnailUrl;
-  final String statusLabel;
   final Color statusColor;
-  final String footerLabel;
-  final bool compact;
-  final IconData? footerIcon;
+  final bool dense;
   final IconData fallbackIcon;
 
   @override
   Widget build(BuildContext context) {
-    final width = compact ? 122.0 : 142.0;
-    final height = compact ? 74.0 : 84.0;
+    final width = dense ? 68.0 : 112.0;
+    final height = dense ? 40.0 : 64.0;
 
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: statusColor.withValues(alpha: 0.24)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: AdminTheme.surfaceSunken,
+        borderRadius: BorderRadius.circular(AdminTheme.radiusSm),
+        border: Border.all(color: AdminTheme.border),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AdminTheme.radiusSm - 1),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Container(color: AdminTheme.surfaceSoft),
             Image.network(
               thumbnailUrl,
               fit: BoxFit.cover,
@@ -133,64 +127,24 @@ class AdminVideoPreviewCard extends StatelessWidget {
                 return Center(
                   child: Icon(
                     fallbackIcon,
-                    color: statusColor,
-                    size: compact ? 28 : 32,
+                    color: AdminTheme.textMuted,
+                    size: dense ? 16 : 22,
                   ),
                 );
               },
             ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.06),
-                    Colors.black.withValues(alpha: 0.22),
-                    Colors.black.withValues(alpha: 0.58),
-                  ],
-                  stops: const [0.0, 0.48, 1.0],
-                ),
-              ),
-            ),
-            Positioned(
-              left: 8,
-              right: 8,
-              top: 8,
-              child: Align(
-                alignment: Alignment.topRight,
-                child: _AdminVideoOverlayChip(
-                  label: statusLabel,
-                  color: statusColor,
-                  compact: compact,
-                ),
-              ),
-            ),
-            Positioned(
-              left: 8,
-              bottom: 8,
-              child: _AdminVideoOverlayChip(
-                label: footerLabel,
-                color: Colors.white,
-                icon: footerIcon,
-                compact: compact,
-              ),
-            ),
             Center(
               child: Container(
-                width: compact ? 34 : 38,
-                height: compact ? 34 : 38,
+                width: dense ? 20 : 28,
+                height: dense ? 20 : 28,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.38),
+                  color: Colors.black.withValues(alpha: 0.46),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                  ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.play_arrow_rounded,
                   color: Colors.white,
-                  size: 22,
+                  size: dense ? 14 : 18,
                 ),
               ),
             ),
@@ -201,71 +155,74 @@ class AdminVideoPreviewCard extends StatelessWidget {
   }
 }
 
+/// Cellule « contenu » d'une ligne vidéo : titre, précision, et au plus
+/// un marqueur d'alerte.
+///
+/// Elle empilait jusqu'à quatre pastilles de métadonnées sous deux lignes
+/// de texte, ce qui imposait des lignes de 122 px. Les métadonnées
+/// complètes vivent désormais dans le lecteur, qui les reçoit déjà.
 class AdminVideoTitleCell extends StatelessWidget {
   const AdminVideoTitleCell({
     required this.title,
     required this.subtitle,
-    this.metadata = const <AdminVideoMetaItem>[],
-    this.maxWidth = 320,
+    this.alert,
     super.key,
   });
 
   final String title;
   final String subtitle;
-  final List<AdminVideoMetaItem> metadata;
-  final double maxWidth;
+
+  /// Signalements en attente, visibles sans ouvrir la vidéo.
+  final String? alert;
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AdminTheme.textPrimary,
-              height: 1.2,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AdminType.bodyStrong,
+        ),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AdminType.caption,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AdminTheme.textSecondary,
-              fontSize: 12,
-              height: 1.35,
-            ),
-          ),
-          if (metadata.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: metadata
-                  .map(
-                    (item) => _AdminVideoMetaChip(
-                      label: item.label,
-                      icon: item.icon,
-                      color: item.color,
-                    ),
-                  )
-                  .toList(),
-            ),
+            if (alert != null) ...[
+              const SizedBox(width: AdminTheme.space2),
+              Icon(Icons.flag_outlined, size: 12, color: AdminTheme.warning),
+              const SizedBox(width: 3),
+              Text(
+                alert!,
+                style: AdminType.caption.copyWith(
+                  color: AdminTheme.warning,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
+/// Bouton d'action du lecteur de modération.
+///
+/// Aligné sur les boutons du reste du portail : coins arrondis de
+/// [AdminTheme.radiusSm], hauteur [AdminTheme.controlHeight], remplissage
+/// plein pour la décision principale et contour pour les autres. Le
+/// « stadium » et les 40 px d'origine en faisaient des objets à part.
 class AdminVideoActionButton extends StatelessWidget {
   const AdminVideoActionButton({
     required this.label,
@@ -293,137 +250,42 @@ class AdminVideoActionButton extends StatelessWidget {
       case AdminVideoActionTone.danger:
         return AdminTheme.danger;
       case AdminVideoActionTone.neutral:
-        return AdminTheme.accentSoft;
+        return AdminTheme.textSecondary;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final style = outlined
-        ? OutlinedButton.styleFrom(
-            foregroundColor: _toneColor,
-            side: BorderSide(color: _toneColor.withValues(alpha: 0.36)),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            shape: const StadiumBorder(),
-            minimumSize: const Size(0, 40),
-            visualDensity: VisualDensity.compact,
-          )
-        : FilledButton.styleFrom(
-            backgroundColor: _toneColor.withValues(alpha: 0.14),
-            foregroundColor: _toneColor,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            shape: const StadiumBorder(),
-            minimumSize: const Size(0, 40),
-            visualDensity: VisualDensity.compact,
-          );
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AdminTheme.radiusSm),
+    );
 
     if (outlined) {
       return OutlinedButton.icon(
         onPressed: onPressed,
-        style: style,
-        icon: Icon(icon, size: 18),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _toneColor,
+          side: BorderSide(color: _toneColor.withValues(alpha: 0.42)),
+          padding: const EdgeInsets.symmetric(horizontal: AdminTheme.space3),
+          shape: shape,
+          minimumSize: const Size(0, AdminTheme.controlHeight),
+        ),
+        icon: Icon(icon, size: 16),
         label: Text(label),
       );
     }
 
     return FilledButton.tonalIcon(
       onPressed: onPressed,
-      style: style,
-      icon: Icon(icon, size: 18),
+      style: FilledButton.styleFrom(
+        backgroundColor: _toneColor.withValues(alpha: 0.16),
+        foregroundColor: _toneColor,
+        padding: const EdgeInsets.symmetric(horizontal: AdminTheme.space3),
+        shape: shape,
+        minimumSize: const Size(0, AdminTheme.controlHeight),
+      ),
+      icon: Icon(icon, size: 16),
       label: Text(label),
-    );
-  }
-}
-
-class _AdminVideoMetaChip extends StatelessWidget {
-  const _AdminVideoMetaChip({
-    required this.label,
-    required this.color,
-    this.icon,
-  });
-
-  final String label;
-  final Color color;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 5),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AdminVideoOverlayChip extends StatelessWidget {
-  const _AdminVideoOverlayChip({
-    required this.label,
-    required this.color,
-    this.compact = false,
-    this.icon,
-  });
-
-  final String label;
-  final Color color;
-  final bool compact;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 4 : 5,
-      ),
-      decoration: BoxDecoration(
-        color: color == Colors.white
-            ? Colors.black.withValues(alpha: 0.34)
-            : color.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: color == Colors.white
-              ? Colors.white.withValues(alpha: 0.18)
-              : color.withValues(alpha: 0.28),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: compact ? 11 : 12, color: color),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: compact ? 10 : 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

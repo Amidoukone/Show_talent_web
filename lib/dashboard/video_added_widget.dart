@@ -8,6 +8,8 @@ import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
 import '../widgets/admin_feedback.dart';
+import '../widgets/admin_page.dart';
+import '../widgets/admin_table.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/admin_video_ui.dart';
 
@@ -19,7 +21,7 @@ class VideoAddedWidget extends StatefulWidget {
 }
 
 class _VideoAddedWidgetState extends State<VideoAddedWidget> {
-  static const int rowsPerPage = 10;
+  static const int rowsPerPage = 25;
 
   final VideoController videoController = Get.find<VideoController>();
   final UserController userController = Get.find<UserController>();
@@ -93,7 +95,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     if (trimmed.isEmpty) {
       return 'inconnue';
     }
-    return trimmed.length > 10 ? '${trimmed.substring(0, 10)}...' : trimmed;
+    return trimmed.length > 10 ? '${trimmed.substring(0, 10)}…' : trimmed;
   }
 
   List<AdminVideoMetaItem> _metadata(Video video) {
@@ -127,15 +129,11 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     ];
   }
 
-  Widget _buildPreview(Video video, bool compact) {
+  Widget _buildPreview(Video video, {required bool dense}) {
     return AdminVideoPreviewCard(
       thumbnailUrl: video.thumbnail,
-      statusLabel: video.moderationLabel,
       statusColor: _statusColor(video),
-      footerLabel: _compactVideoId(video.id),
-      footerIcon: Icons.ondemand_video_outlined,
-      fallbackIcon: Icons.video_library_outlined,
-      compact: compact,
+      dense: dense,
     );
   }
 
@@ -143,7 +141,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     return AdminVideoTitleCell(
       title: video.displayTitle,
       subtitle: _secondaryLabel(video),
-      metadata: _metadata(video),
+      alert: video.reportCount > 0 ? '${video.reportCount}' : null,
     );
   }
 
@@ -211,52 +209,47 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
     }
   }
 
-  Widget _buildActions(
-    BuildContext context,
-    Video video,
-    List<Video> queue,
-  ) {
-    if (_deletingVideoId == video.id) {
-      return const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        AdminVideoActionButton(
-          onPressed: () => _openVideo(context, video, queue),
+  /// Actions d'une ligne : lire la vidéo, supprimer.
+  ///
+  /// « Lire » ouvre la file complète à la position de la vidéo cliquée, ce
+  /// qui permet d'enchaîner le catalogue sans revenir à la liste.
+  Widget _buildActions(BuildContext context, Video video, List<Video> queue) {
+    return AdminRowActions(
+      busy: _deletingVideoId == video.id,
+      primary: [
+        AdminRowAction(
           icon: Icons.play_circle_outline_rounded,
           label: 'Lire',
-          tone: AdminVideoActionTone.info,
+          color: AdminTheme.cyan,
+          onPressed: () => _openVideo(context, video, queue),
         ),
-        AdminVideoActionButton(
-          onPressed: () => _confirmDelete(context, video.id),
+        AdminRowAction(
           icon: Icons.delete_outline_rounded,
           label: 'Supprimer',
-          tone: AdminVideoActionTone.danger,
-          outlined: true,
+          color: AdminTheme.danger,
+          onPressed: () => _confirmDelete(context, video.id),
         ),
       ],
     );
   }
 
-  Widget _buildVideoCard(
-    BuildContext context,
-    Video video,
-    List<Video> queue,
-  ) {
+  Widget _buildVideoCard(BuildContext context, Video video, List<Video> queue) {
     return AdminDataCard(
-      leading: _buildPreview(video, true),
+      onTap: () => _openVideo(context, video, queue),
+      leading: _buildPreview(video, dense: false),
       title: _buildTitleCell(video),
+      trailing: AdminPill(
+        label: video.moderationLabel,
+        color: _statusColor(video),
+      ),
       fields: [
         AdminDataCardField(
           label: 'Ajoutée par',
           value: Text(_resolveUserName(video.uid)),
+        ),
+        AdminDataCardField(
+          label: 'Référence',
+          value: Text(_compactVideoId(video.id)),
         ),
       ],
       actions: _buildActions(context, video, queue),
@@ -266,272 +259,204 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
-    final panelPadding = compact ? 16.0 : 22.0;
-    final spacing = compact ? 12.0 : 16.0;
-    final tableColumnSpacing = compact ? 16.0 : 24.0;
-    final rowHeight = compact ? 112.0 : 122.0;
 
-    return AdminGlassPanel(
-      padding: EdgeInsets.all(panelPadding),
-      highlight: true,
-      accentColor: AdminTheme.accentSoft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: compact ? 10 : 12),
-            child: AdminSearchField(
-              controller: _searchController,
-              maxWidth: 640,
-              hintText: 'Rechercher par titre, statut ou joueur',
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value.toLowerCase();
-                  currentPage = 0;
-                });
-              },
-            ),
-          ),
-          Obx(() {
-            final allVideos = videoController.getAllVideos();
-            final filteredVideos = allVideos.where((video) {
-              final normalizedQuery = searchQuery.trim().toLowerCase();
-              if (normalizedQuery.isEmpty) {
-                return true;
-              }
-
-              return [
-                video.displayTitle,
-                video.songName,
-                video.uid,
-                _resolveUserName(video.uid),
-                video.status,
-                video.moderationStatus,
-                video.id,
-              ].any((value) => value.toLowerCase().contains(normalizedQuery));
-            }).toList();
-
-            final totalPagesRaw = (filteredVideos.length / rowsPerPage).ceil();
-            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
-            final safePage = currentPage >= totalPages
-                ? totalPages - 1
-                : currentPage.clamp(0, totalPages - 1);
-            final startIndex = safePage * rowsPerPage;
-            final endIndex = (startIndex + rowsPerPage).clamp(
-              0,
-              filteredVideos.length,
-            );
-            final displayedVideos = filteredVideos.sublist(
-              startIndex,
-              endIndex,
-            );
-
-            if (videoController.isLoading.value) {
-              return const Center(
-                child: AdminLoadingState(message: 'Chargement des vidéos...'),
-              );
-            }
-
-            final loadError = videoController.lastError.value;
-            if (loadError.isNotEmpty) {
-              return AdminEmptyState(
-                title: 'Chargement incomplet',
-                message: loadError,
-                icon: Icons.error_outline_rounded,
-                actionLabel: 'Réessayer',
-                actionIcon: Icons.refresh_rounded,
-                onAction: () {
-                  videoController.fetchVideos();
-                },
-              );
-            }
-
-            if (filteredVideos.isEmpty) {
-              final hasSearch = searchQuery.trim().isNotEmpty;
-
-              return AdminEmptyState(
-                title: 'Aucune vidéo disponible',
-                message: hasSearch
-                    ? 'Aucun élément du catalogue ne correspond à cette recherche.'
-                    : 'Le catalogue ne contient encore aucune vidéo.',
-                icon: Icons.slow_motion_video_rounded,
-                actionLabel: hasSearch
-                    ? 'Effacer la recherche'
-                    : 'Recharger le catalogue',
-                actionIcon: hasSearch
-                    ? Icons.filter_alt_off_rounded
-                    : Icons.refresh_rounded,
-                onAction: () {
-                  if (hasSearch) {
-                    setState(() {
-                      searchQuery = '';
-                      currentPage = 0;
-                      _searchController.clear();
-                    });
-                  } else {
-                    videoController.fetchVideos();
-                  }
-                },
-              );
-            }
-
-            final reportedCount = allVideos
-                .where((video) => video.reportCount > 0)
-                .length;
-            final multiSourceCount = allVideos
-                .where((video) => video.hasMultipleMp4Sources)
-                .length;
-            final publicCount = allVideos
-                .where((video) => video.isApprovedPublic)
-                .length;
-            final pendingCount = allVideos
-                .where((video) => video.isPendingReview)
-                .length;
-
-            return Column(
-              children: [
-                Wrap(
-                  spacing: compact ? 10 : 12,
-                  runSpacing: compact ? 10 : 12,
-                  children: [
-                    AdminMiniStat(
-                      label: 'Vidéos visibles',
-                      value: '${filteredVideos.length}',
-                      icon: Icons.video_collection_outlined,
-                      accentColor: AdminTheme.cyan,
-                      subtitle: 'Après recherche',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Total vidéos',
-                      value: '${allVideos.length}',
-                      icon: Icons.ondemand_video_outlined,
-                      accentColor: AdminTheme.accent,
-                      subtitle: 'Catalogue global',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Signalées',
-                      value: '$reportedCount',
-                      icon: Icons.flag_outlined,
-                      accentColor: AdminTheme.warning,
-                      subtitle: 'Dans le catalogue',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Publiques',
-                      value: '$publicCount',
-                      icon: Icons.public_rounded,
-                      accentColor: AdminTheme.success,
-                      subtitle: 'Visibles recruteurs',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'En attente',
-                      value: '$pendingCount',
-                      icon: Icons.pending_actions_rounded,
-                      accentColor: AdminTheme.warning,
-                      subtitle: 'Revue admin',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Sources prêtes',
-                      value: '$multiSourceCount',
-                      icon: Icons.dynamic_feed_outlined,
-                      accentColor: AdminTheme.success,
-                      subtitle: 'Lecture multi-support',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                  ],
-                ),
-                SizedBox(height: spacing),
-                if (compact)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final video in displayedVideos) ...[
-                        _buildVideoCard(context, video, filteredVideos),
-                        const SizedBox(height: 12),
-                      ],
-                    ],
-                  )
-                else
-                  AdminDataTableCard(
-                    compact: compact,
-                    child: DataTable(
-                      columnSpacing: tableColumnSpacing,
-                      horizontalMargin: compact ? 10 : 12,
-                      columns: const [
-                        DataColumn(label: Text('Aperçu')),
-                        DataColumn(label: Text('Contenu')),
-                        DataColumn(label: Text('Ajoutée par')),
-                        DataColumn(label: Text('Statut')),
-                        DataColumn(label: Text('Actions')),
-                      ],
-                      rows: List<DataRow>.generate(displayedVideos.length, (
-                        index,
-                      ) {
-                        final video = displayedVideos[index];
-                        return DataRow(
-                          cells: [
-                            DataCell(_buildPreview(video, compact)),
-                            DataCell(_buildTitleCell(video)),
-                            DataCell(Text(_resolveUserName(video.uid))),
-                            DataCell(
-                              AdminPill(
-                                label: video.moderationLabel,
-                                icon: Icons.fact_check_outlined,
-                                color: _statusColor(video),
-                              ),
-                            ),
-                            DataCell(_buildActions(context, video, filteredVideos)),
-                          ],
-                        );
-                      }),
-                      headingRowColor: WidgetStateProperty.all(
-                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                      ),
-                      dataRowColor: WidgetStateProperty.all(
-                        AdminTheme.surface.withValues(alpha: 0.14),
-                      ),
-                      dividerThickness: 1,
-                      dataRowMinHeight: rowHeight,
-                      dataRowMaxHeight: rowHeight,
-                      headingRowHeight: compact ? 50 : 54,
-                    ),
-                  ),
-                SizedBox(height: spacing),
-                AdminPaginationBar(
-                  currentPage: safePage,
-                  totalPages: totalPages,
-                  onPrevious: safePage > 0
-                      ? () {
-                          setState(() {
-                            currentPage = safePage - 1;
-                          });
-                        }
-                      : null,
-                  onNext: safePage < totalPages - 1
-                      ? () {
-                          setState(() {
-                            currentPage = safePage + 1;
-                          });
-                        }
-                      : null,
-                ),
-                const SizedBox(height: 10),
-                AdminLoadMoreBar(
-                  loadedCount: allVideos.length,
-                  hasMore: videoController.hasMore.value,
-                  itemLabel: 'vidéos',
-                  onLoadMore: videoController.loadMoreVideos,
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
+    final toolbar = AdminToolbar(
+      filters: [
+        AdminSearchField(
+          controller: _searchController,
+          hintText: 'Rechercher par titre, statut ou joueur',
+          onChanged: (value) {
+            setState(() {
+              searchQuery = value.toLowerCase();
+              currentPage = 0;
+            });
+          },
+        ),
+      ],
+      trailing: [
+        IconButton(
+          onPressed: videoController.fetchVideos,
+          icon: const Icon(Icons.refresh_rounded, size: 17),
+          tooltip: 'Recharger le catalogue',
+        ),
+      ],
     );
+
+    return Obx(() {
+      final allVideos = videoController.getAllVideos();
+
+      if (videoController.isLoading.value) {
+        return const AdminLoadingState(message: 'Chargement des vidéos…');
+      }
+
+      final loadError = videoController.lastError.value;
+      if (loadError.isNotEmpty) {
+        return AdminEmptyState(
+          title: 'Chargement incomplet',
+          message: loadError,
+          icon: Icons.error_outline_rounded,
+          actionLabel: 'Réessayer',
+          actionIcon: Icons.refresh_rounded,
+          onAction: videoController.fetchVideos,
+        );
+      }
+
+      final filteredVideos = allVideos.where((video) {
+        final normalizedQuery = searchQuery.trim().toLowerCase();
+        if (normalizedQuery.isEmpty) {
+          return true;
+        }
+
+        return [
+          video.displayTitle,
+          video.songName,
+          video.uid,
+          _resolveUserName(video.uid),
+          video.status,
+          video.moderationStatus,
+          video.id,
+        ].any((value) => value.toLowerCase().contains(normalizedQuery));
+      }).toList();
+
+      final totalPagesRaw = (filteredVideos.length / rowsPerPage).ceil();
+      final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+      final safePage = currentPage >= totalPages
+          ? totalPages - 1
+          : currentPage.clamp(0, totalPages - 1);
+      final startIndex = safePage * rowsPerPage;
+      final endIndex = (startIndex + rowsPerPage).clamp(
+        0,
+        filteredVideos.length,
+      );
+      final displayedVideos = filteredVideos.sublist(startIndex, endIndex);
+
+      final reportedCount = allVideos
+          .where((video) => video.reportCount > 0)
+          .length;
+      final publicCount = allVideos
+          .where((video) => video.isApprovedPublic)
+          .length;
+      final pendingCount = allVideos
+          .where((video) => video.isPendingReview)
+          .length;
+
+      // « Sources prêtes » et « Vidéos visibles » ont disparu : la
+      // première décrivait un détail technique de lecture, la seconde
+      // répétait le compte déjà donné par le pied de liste.
+      final stats = AdminStatStrip(
+        stats: [
+          AdminStat(label: 'au catalogue', value: '${allVideos.length}'),
+          AdminStat(label: 'publiques', value: '$publicCount'),
+          AdminStat(
+            label: 'en attente',
+            value: '$pendingCount',
+            tone: pendingCount > 0 ? AdminTheme.warning : null,
+          ),
+          AdminStat(
+            label: 'signalées',
+            value: '$reportedCount',
+            tone: reportedCount > 0 ? AdminTheme.warning : null,
+          ),
+        ],
+      );
+
+      final Widget body;
+      if (filteredVideos.isEmpty) {
+        final hasSearch = searchQuery.trim().isNotEmpty;
+        body = AdminEmptyState(
+          title: 'Aucune vidéo disponible',
+          message: hasSearch
+              ? 'Aucun élément du catalogue ne correspond à cette recherche.'
+              : 'Le catalogue ne contient encore aucune vidéo.',
+          icon: Icons.slow_motion_video_rounded,
+          actionLabel: hasSearch
+              ? 'Effacer la recherche'
+              : 'Recharger le catalogue',
+          actionIcon: hasSearch
+              ? Icons.filter_alt_off_rounded
+              : Icons.refresh_rounded,
+          onAction: () {
+            if (hasSearch) {
+              setState(() {
+                searchQuery = '';
+                currentPage = 0;
+                _searchController.clear();
+              });
+            } else {
+              videoController.fetchVideos();
+            }
+          },
+        );
+      } else if (compact) {
+        body = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final video in displayedVideos) ...[
+              _buildVideoCard(context, video, filteredVideos),
+              const SizedBox(height: AdminTheme.space2),
+            ],
+          ],
+        );
+      } else {
+        body = AdminTable(
+          rowHeight: 56,
+          columns: const [
+            AdminColumn(label: '', width: 80),
+            AdminColumn(label: 'Contenu', flex: 4),
+            AdminColumn(label: 'Ajoutée par', flex: 2),
+            AdminColumn(label: 'Statut', width: 124),
+            AdminColumn(label: '', width: 72, alignRight: true),
+          ],
+          rowCount: displayedVideos.length,
+          onRowTap: (index) =>
+              _openVideo(context, displayedVideos[index], filteredVideos),
+          cellsBuilder: (index) {
+            final video = displayedVideos[index];
+
+            return [
+              _buildPreview(video, dense: true),
+              _buildTitleCell(video),
+              Text(
+                _resolveUserName(video.uid),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              AdminPill(
+                label: video.moderationLabel,
+                color: _statusColor(video),
+              ),
+              _buildActions(context, video, filteredVideos),
+            ];
+          },
+        );
+      }
+
+      return AdminWorkspace(
+        compact: compact,
+        bodyMinWidth: 880,
+        toolbar: toolbar,
+        stats: stats,
+        body: body,
+        footer: filteredVideos.isEmpty
+            ? null
+            : AdminListFooter(
+                rangeStart: startIndex + 1,
+                rangeEnd: endIndex,
+                filteredCount: filteredVideos.length,
+                currentPage: safePage,
+                totalPages: totalPages,
+                itemLabel: 'vidéos',
+                hasMore: videoController.hasMore.value,
+                onLoadMore: videoController.loadMoreVideos,
+                onPrevious: safePage > 0
+                    ? () => setState(() => currentPage = safePage - 1)
+                    : null,
+                onNext: safePage < totalPages - 1
+                    ? () => setState(() => currentPage = safePage + 1)
+                    : null,
+              ),
+      );
+    });
   }
 
   /// Rend `true` quand la vidéo a réellement été supprimée.

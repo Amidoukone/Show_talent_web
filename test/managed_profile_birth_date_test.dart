@@ -39,7 +39,7 @@ void main() {
   }
 
   Future<void> openEditDialog(WidgetTester tester) async {
-    final actionMenu = find.byType(PopupMenuButton<String>);
+    final actionMenu = find.byType(PopupMenuButton<int>);
     await tester.ensureVisible(actionMenu);
     await tester.tap(actionMenu);
     await tester.pumpAndSettle();

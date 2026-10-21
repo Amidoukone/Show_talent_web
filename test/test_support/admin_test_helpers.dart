@@ -130,13 +130,16 @@ AppUser buildTestUser({
   );
 }
 
+/// Reproduit ce que la coquille d'administration donne à un onglet : une
+/// zone de taille bornée. Les écrans de liste y placent une barre d'outils
+/// fixe, une liste qui défile et un pied de liste fixe — un
+/// `SingleChildScrollView` ici leur donnerait une hauteur infinie, ce que
+/// la production ne fait jamais.
 Widget buildAdminTestApp(Widget child) {
   return GetMaterialApp(
     theme: AdminTheme.buildTheme(),
     home: Scaffold(
-      body: SingleChildScrollView(
-        child: Center(child: SizedBox(width: 1440, child: child)),
-      ),
+      body: Center(child: SizedBox(width: 1440, height: 2400, child: child)),
     ),
   );
 }

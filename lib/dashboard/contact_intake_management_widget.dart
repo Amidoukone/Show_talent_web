@@ -4,8 +4,12 @@ import 'package:get/get.dart';
 import '../controller/contact_intake_controller.dart';
 import '../models/contact_intake.dart';
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 import '../utils/admin_date_format.dart';
+import '../widgets/admin_detail_panel.dart';
 import '../widgets/admin_feedback.dart';
+import '../widgets/admin_page.dart';
+import '../widgets/admin_table.dart';
 import '../widgets/admin_ui.dart';
 
 class _PipelineStage {
@@ -32,7 +36,11 @@ class ContactIntakeManagementWidget extends StatefulWidget {
 
 class _ContactIntakeManagementWidgetState
     extends State<ContactIntakeManagementWidget> {
-  static const int _rowsPerPage = 12;
+  static const int _rowsPerPage = 25;
+
+  /// Largeur en deçà de laquelle le tableau défile horizontalement. Sert
+  /// aussi à AdminWorkspace pour décider si la fiche tient à côté.
+  static const double _tableMinWidth = 1020;
   static const List<_PipelineStage> _pipelineStages = <_PipelineStage>[
     _PipelineStage(
       status: AgencyFollowUpStatus.newLead,
@@ -74,6 +82,11 @@ class _ContactIntakeManagementWidgetState
   String _selectedFollowUpStatus = 'Tous';
   int _currentPage = 0;
   String? _actionIntakeId;
+
+  /// Dossier ouvert dans la fiche latérale. On garde l'identifiant plutôt
+  /// que l'objet : la liste se rafraîchit en continu depuis Firestore, et
+  /// une copie figée afficherait un suivi périmé après une mise à jour.
+  String? _selectedIntakeId;
 
   bool _isCompactLayout(BuildContext context) =>
       MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
@@ -230,7 +243,7 @@ class _ContactIntakeManagementWidgetState
   String _activityLabel(ContactIntake intake) {
     final days = _daysSinceLastActivity(intake);
     if (days == 0) {
-      return 'Mis à jour aujourd\'hui';
+      return 'Mis à jour aujourd’hui';
     }
     if (days == 1) {
       return 'Mis à jour hier';
@@ -259,7 +272,7 @@ class _ContactIntakeManagementWidgetState
               title: Text(
                 initialStatus == null
                     ? 'Mettre à jour le suivi agence'
-                    : 'Avancer l\'opportunité',
+                    : 'Avancer l’opportunité',
               ),
               content: SizedBox(
                 width: 560,
@@ -359,11 +372,7 @@ class _ContactIntakeManagementWidgetState
                         _requiresFollowUpNote(selectedStatus)
                             ? 'Note requise pour garder une trace exploitable de la décision.'
                             : 'La note reste optionnelle au stade nouveau lead.',
-                        style: const TextStyle(
-                          color: AdminTheme.textMuted,
-                          fontSize: 12,
-                          height: 1.35,
-                        ),
+                        style: AdminType.caption,
                       ),
                     ],
                   ),
@@ -645,92 +654,35 @@ class _ContactIntakeManagementWidgetState
     return haystack.contains(_searchQuery);
   }
 
+  /// Cellule « acteur » : le nom, puis le rôle et l'organisation sur une
+  /// seule ligne discrète.
   Widget _buildActorCell({
     required String name,
     required String roleLabel,
     String? organization,
   }) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 190),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AdminTheme.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            organization?.trim().isNotEmpty == true
-                ? '$roleLabel  -  ${organization!.trim()}'
-                : roleLabel,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AdminTheme.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    final detail = organization?.trim().isNotEmpty == true
+        ? '$roleLabel · ${organization!.trim()}'
+        : roleLabel;
 
-  Widget _buildFollowUpCell(ContactIntake intake) {
-    final color = _followUpColor(intake.agencyFollowUpStatus);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 220),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AdminPill(label: intake.followUpLabel, color: color),
-          if (intake.hasAgencyNote) ...[
-            const SizedBox(height: 6),
-            Text(
-              intake.agencyFollowUpNote!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AdminTheme.textSecondary,
-                fontSize: 12,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriorityCell(ContactIntake intake) {
-    final color = _priorityColor(intake);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 150),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AdminPill(label: _priorityLabel(intake), color: color),
-          const SizedBox(height: 6),
-          Text(
-            _activityLabel(intake),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AdminTheme.textMuted,
-              fontSize: 12,
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AdminType.bodyStrong,
+        ),
+        Text(
+          detail,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AdminType.caption,
+        ),
+      ],
     );
   }
 
@@ -753,294 +705,281 @@ class _ContactIntakeManagementWidgetState
     }
   }
 
+  /// Retour du participant, réduit à son état. L'auteur et la note
+  /// complète sont dans la fiche : trois lignes de texte par cellule
+  /// imposaient des lignes de 140 px et restaient tronquées.
   Widget _buildParticipantSignalCell(ContactIntake intake) {
     if (!intake.hasParticipantFeedback) {
-      return ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 180),
-        child: const Text(
-          'En attente de retour',
-          style: TextStyle(
-            color: AdminTheme.textMuted,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+      return const Text('En attente', style: AdminType.caption);
     }
 
-    final color = _participantSignalColor(intake);
-    final note = intake.latestParticipantFeedbackNote?.trim();
-    final actor = intake.participantFeedbackActorLabel;
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 220),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AdminPill(label: intake.participantFeedbackLabel, color: color),
-          const SizedBox(height: 6),
-          Text(
-            'Signalé par : $actor',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AdminTheme.textMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (note?.isNotEmpty == true) ...[
-            const SizedBox(height: 4),
-            Text(
-              note!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AdminTheme.textSecondary,
-                fontSize: 12,
-                height: 1.3,
-              ),
-            ),
-          ],
-        ],
-      ),
+    return AdminPill(
+      label: intake.participantFeedbackLabel,
+      color: _participantSignalColor(intake),
     );
   }
 
-  Widget _buildActionCell(ContactIntake intake) {
-    final isActionInFlight = _actionIntakeId == intake.id;
-    if (isActionInFlight) {
-      return const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
-    return _buildActionMenuCell(intake);
+  /// Actions d'une ligne : faire avancer le dossier d'une étape, ouvrir la
+  /// mise à jour du suivi. Les suppressions restent sous « … ».
+  Widget _buildActionMenuCell(ContactIntake intake) {
+    final nextStatus = _nextStatus(intake.agencyFollowUpStatus);
+    final conversationId = intake.conversationId;
+
+    return AdminRowActions(
+      busy: _actionIntakeId == intake.id,
+      primary: [
+        AdminRowAction(
+          icon: Icons.arrow_forward_rounded,
+          label: nextStatus == null
+              ? 'Dossier au dernier statut'
+              : _nextActionLabel(intake.agencyFollowUpStatus),
+          color: AdminTheme.accent,
+          onPressed: nextStatus == null
+              ? null
+              : () => _updateFollowUp(intake, initialStatus: nextStatus),
+        ),
+        AdminRowAction(
+          icon: Icons.edit_note_rounded,
+          label: 'Mettre à jour le suivi',
+          color: AdminTheme.cyan,
+          onPressed: () => _updateFollowUp(intake),
+        ),
+      ],
+      overflow: [
+        if (conversationId != null && conversationId.isNotEmpty)
+          AdminRowAction(
+            icon: Icons.forum_outlined,
+            label: 'Supprimer la conversation',
+            color: AdminTheme.warning,
+            onPressed: () => _deleteContactIntakeConversation(intake),
+          ),
+        AdminRowAction(
+          icon: Icons.delete_outline_rounded,
+          label: 'Supprimer',
+          color: AdminTheme.danger,
+          onPressed: () => _deleteContactIntake(intake),
+        ),
+      ],
+    );
   }
 
   Widget _buildIntakeCard(ContactIntake intake) {
     return AdminDataCard(
+      onTap: () => setState(() => _selectedIntakeId = intake.id),
       title: Text(
+        '${intake.requesterDisplayName} → ${intake.targetDisplayName}',
+        style: AdminType.bodyStrong,
+      ),
+      subtitle: Text(
         'Créé le ${_formatDate(intake.createdAt)}',
-        style: const TextStyle(
-          color: AdminTheme.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
+        style: AdminType.caption,
+      ),
+      trailing: AdminPill(
+        label: intake.followUpLabel,
+        color: _followUpColor(intake.agencyFollowUpStatus),
       ),
       fields: [
-        AdminDataCardField(
-          label: 'Demandeur',
-          value: _buildActorCell(
-            name: intake.requesterDisplayName,
-            roleLabel: intake.requesterRoleLabel,
-            organization: intake.requesterOrganization,
-          ),
-        ),
-        AdminDataCardField(
-          label: 'Cible',
-          value: _buildActorCell(
-            name: intake.targetDisplayName,
-            roleLabel: intake.targetRoleLabel,
-            organization: intake.targetOrganization,
-          ),
-        ),
-        AdminDataCardField(label: 'Suivi', value: _buildFollowUpCell(intake)),
         AdminDataCardField(
           label: 'Retour utilisateur',
           value: _buildParticipantSignalCell(intake),
         ),
         AdminDataCardField(
           label: 'Priorité',
-          value: _buildPriorityCell(intake),
+          value: AdminPill(
+            label: _priorityLabel(intake),
+            color: _priorityColor(intake),
+          ),
         ),
       ],
-      actions: _buildActionCell(intake),
+      actions: _buildActionMenuCell(intake),
     );
   }
 
-  Widget _buildActionMenuCell(ContactIntake intake) {
+  /// Fiche d'un dossier de mise en relation.
+  ///
+  /// Le motif, le contexte, le message d'introduction et la note de suivi
+  /// vivaient dans quatre colonnes tronquées à deux ou trois lignes. Ils
+  /// sont ici en entier, et la file s'enchaîne avec les flèches.
+  Widget _buildDetailPanel(ContactIntake intake, List<ContactIntake> queue) {
+    final index = queue.indexWhere((item) => item.id == intake.id);
+    final note = intake.latestParticipantFeedbackNote?.trim();
     final nextStatus = _nextStatus(intake.agencyFollowUpStatus);
 
-    return PopupMenuButton<String>(
-      tooltip: 'Actions mise en relation',
-      onSelected: (value) {
-        if (value == 'follow_up') {
-          _updateFollowUp(intake);
-          return;
-        }
-
-        if (value == 'next_status' && nextStatus != null) {
-          _updateFollowUp(intake, initialStatus: nextStatus);
-          return;
-        }
-
-        if (value == 'delete_conversation') {
-          _deleteContactIntakeConversation(intake);
-          return;
-        }
-
-        if (value == 'delete') {
-          _deleteContactIntake(intake);
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: 'follow_up',
-          child: Row(
-            children: [
-              Icon(Icons.edit_note_rounded, size: 18, color: AdminTheme.cyan),
-              SizedBox(width: 8),
-              Text('Mettre à jour le suivi'),
-            ],
-          ),
+    return AdminDetailPanel(
+      title: '${intake.requesterDisplayName} → ${intake.targetDisplayName}',
+      subtitle: 'Créé le ${_formatDate(intake.createdAt)}',
+      position: index < 0 ? null : '${index + 1} / ${queue.length}',
+      onPrevious: index > 0
+          ? () => setState(() => _selectedIntakeId = queue[index - 1].id)
+          : null,
+      onNext: index >= 0 && index < queue.length - 1
+          ? () => setState(() => _selectedIntakeId = queue[index + 1].id)
+          : null,
+      onClose: () => setState(() => _selectedIntakeId = null),
+      actions: [
+        OutlinedButton(
+          onPressed: _actionIntakeId == intake.id
+              ? null
+              : () => _updateFollowUp(intake),
+          child: const Text('Mettre à jour'),
         ),
         if (nextStatus != null)
-          PopupMenuItem(
-            value: 'next_status',
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 18,
-                  color: AdminTheme.accent,
-                ),
-                const SizedBox(width: 8),
-                Text(_nextActionLabel(intake.agencyFollowUpStatus)),
-              ],
-            ),
+          ElevatedButton(
+            onPressed: _actionIntakeId == intake.id
+                ? null
+                : () => _updateFollowUp(intake, initialStatus: nextStatus),
+            child: Text(_nextActionLabel(intake.agencyFollowUpStatus)),
           ),
-        if (intake.conversationId != null &&
-            intake.conversationId!.isNotEmpty) ...[
-          const PopupMenuDivider(),
-          const PopupMenuItem(
-            value: 'delete_conversation',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.forum_outlined,
-                  size: 18,
-                  color: AdminTheme.warning,
-                ),
-                SizedBox(width: 8),
-                Text('Supprimer la conversation'),
-              ],
-            ),
-          ),
-        ],
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'delete',
-          child: Row(
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AdminDetailSection(
+            title: 'Suivi',
             children: [
-              Icon(
-                Icons.delete_outline_rounded,
-                size: 18,
-                color: AdminTheme.danger,
+              AdminDetailField(
+                label: 'Statut',
+                value: intake.followUpLabel,
+                child: AdminPill(
+                  label: intake.followUpLabel,
+                  color: _followUpColor(intake.agencyFollowUpStatus),
+                ),
               ),
-              SizedBox(width: 8),
-              Text('Supprimer'),
+              AdminDetailField(
+                label: 'Priorité',
+                value: _priorityLabel(intake),
+                child: AdminPill(
+                  label: _priorityLabel(intake),
+                  color: _priorityColor(intake),
+                ),
+              ),
+              AdminDetailField(
+                label: 'Activité',
+                value: _activityLabel(intake),
+              ),
+              AdminDetailField(
+                label: 'Note de suivi',
+                value: intake.agencyFollowUpNote ?? '',
+              ),
             ],
           ),
-        ),
-      ],
+          AdminDetailSection(
+            title: 'Demandeur',
+            children: [
+              AdminDetailField(
+                label: 'Nom',
+                value: intake.requesterDisplayName,
+              ),
+              AdminDetailField(label: 'Rôle', value: intake.requesterRoleLabel),
+              AdminDetailField(
+                label: 'Organisation',
+                value: intake.requesterOrganization ?? '',
+              ),
+            ],
+          ),
+          AdminDetailSection(
+            title: 'Cible',
+            children: [
+              AdminDetailField(label: 'Nom', value: intake.targetDisplayName),
+              AdminDetailField(label: 'Rôle', value: intake.targetRoleLabel),
+              AdminDetailField(
+                label: 'Organisation',
+                value: intake.targetOrganization ?? '',
+              ),
+            ],
+          ),
+          AdminDetailSection(
+            title: 'Demande',
+            children: [
+              AdminDetailField(label: 'Motif', value: intake.reasonLabel),
+              AdminDetailField(
+                label: 'Contexte',
+                value: intake.contextTitle?.trim().isNotEmpty == true
+                    ? '${intake.contextLabel} - ${intake.contextTitle!.trim()}'
+                    : intake.contextLabel,
+              ),
+            ],
+          ),
+          AdminDetailSection(
+            title: 'Message d’introduction',
+            children: [
+              SelectableText(
+                intake.introMessage.isEmpty
+                    ? 'Aucun message transmis.'
+                    : intake.introMessage,
+                style: AdminType.prose.copyWith(
+                  color: intake.introMessage.isEmpty
+                      ? AdminTheme.textMuted
+                      : AdminTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          AdminDetailSection(
+            title: 'Retour utilisateur',
+            children: [
+              AdminDetailField(
+                label: 'Signal',
+                value: intake.participantFeedbackLabel,
+                child: _buildParticipantSignalCell(intake),
+              ),
+              if (intake.hasParticipantFeedback)
+                AdminDetailField(
+                  label: 'Signalé par',
+                  value: intake.participantFeedbackActorLabel,
+                ),
+              if (note != null && note.isNotEmpty)
+                AdminDetailField(label: 'Commentaire', value: note),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPipelineOverview({
-    required List<ContactIntake> intakes,
+  /// Le parcours de suivi, en une ligne de compteurs cliquables.
+  ///
+  /// Il occupait cinq cartes de 238 px sur deux rangées, sous sept tuiles
+  /// de statistiques — soit douze encadrés avant d'atteindre le tableau.
+  /// Les compteurs filtrent toujours la liste au clic, ce qui était déjà
+  /// la seule chose utile que faisaient les cartes.
+  AdminStatStrip _buildPipelineStrip({
     required Map<String, int> stageCounts,
-    required bool compact,
+    required int strongSignalCount,
+    required int issueSignalCount,
   }) {
-    final openCount = intakes.where((intake) {
-      return AgencyFollowUpStatus.normalize(intake.agencyFollowUpStatus) !=
-          AgencyFollowUpStatus.closed;
-    }).length;
-
-    return AdminSubsectionCard(
-      title: 'Parcours de suivi',
-      subtitle:
-          '$openCount dossier(s) ouvert(s). Sélectionnez une étape pour filtrer la liste.',
-      accentColor: AdminTheme.cyan,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stacked = constraints.maxWidth < 780;
-          final cardWidth = stacked
-              ? constraints.maxWidth
-              : (compact ? 218.0 : 238.0);
-          final cards = _pipelineStages.map((stage) {
-            final count = stageCounts[stage.status] ?? 0;
-            return SizedBox(
-              width: cardWidth,
-              child: _PipelineStageCard(
-                stage: stage,
-                count: count,
-                total: intakes.length,
-                color: _followUpColor(stage.status),
-                selected: _selectedFollowUpStatus == stage.status,
-                onTap: () {
-                  setState(() {
-                    _selectedFollowUpStatus =
-                        _selectedFollowUpStatus == stage.status
-                        ? 'Tous'
-                        : stage.status;
-                    _currentPage = 0;
-                  });
-                },
-              ),
-            );
-          }).toList();
-
-          final resetButton = Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: _selectedFollowUpStatus == 'Tous'
-                  ? null
-                  : () {
-                      setState(() {
-                        _selectedFollowUpStatus = 'Tous';
-                        _currentPage = 0;
-                      });
-                    },
-              icon: const Icon(Icons.layers_clear_outlined, size: 18),
-              label: const Text('Voir tout'),
-            ),
-          );
-
-          if (stacked) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                resetButton,
-                const SizedBox(height: 8),
-                Wrap(spacing: 10, runSpacing: 10, children: cards),
-              ],
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              resetButton,
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: cards
-                      .map(
-                        (card) => Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: card,
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+    return AdminStatStrip(
+      stats: [
+        for (final stage in _pipelineStages)
+          AdminStat(
+            label: stage.title.toLowerCase(),
+            value: '${stageCounts[stage.status] ?? 0}',
+            tooltip: stage.description,
+            selected: _selectedFollowUpStatus == stage.status,
+            onTap: () {
+              setState(() {
+                _selectedFollowUpStatus =
+                    _selectedFollowUpStatus == stage.status
+                    ? 'Tous'
+                    : stage.status;
+                _currentPage = 0;
+              });
+            },
+          ),
+        AdminStat(
+          label: 'signaux forts',
+          value: '$strongSignalCount',
+          tone: strongSignalCount > 0 ? AdminTheme.success : null,
+          tooltip: 'Essai programmé ou opportunité jugée sérieuse',
+        ),
+        AdminStat(
+          label: 'alertes',
+          value: '$issueSignalCount',
+          tone: issueSignalCount > 0 ? AdminTheme.warning : null,
+          tooltip: 'Problème signalé par un participant',
+        ),
+      ],
     );
   }
 
@@ -1051,542 +990,248 @@ class _ContactIntakeManagementWidgetState
       'Tous',
       ...ContactIntakeController.followUpStatuses,
     ];
-    final statusDropdown = DropdownButtonFormField<String>(
-      initialValue: _selectedFollowUpStatus,
-      isExpanded: true,
-      decoration: const InputDecoration(labelText: 'Suivi'),
-      items: statusItems
-          .map(
-            (status) => DropdownMenuItem(
-              value: status,
-              child: Text(
-                status == 'Tous' ? status : AgencyFollowUpStatus.label(status),
-              ),
-            ),
-          )
-          .toList(),
-      onChanged: (value) {
-        if (value == null) {
-          return;
-        }
-        setState(() {
-          _selectedFollowUpStatus = value;
-          _currentPage = 0;
-        });
-      },
-    );
 
-    return AdminGlassPanel(
-      padding: EdgeInsets.all(compact ? 16 : 22),
-      highlight: true,
-      accentColor: AdminTheme.accentSoft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AdminFilterBar(
-            maxWidth: 900,
-            flexes: const [3, 2],
-            children: [
-              AdminSearchField(
-                controller: _searchController,
-                hintText: 'Rechercher un contact, un contexte ou une note',
-                onChanged: (value) {
+    final toolbar = AdminToolbar(
+      flexes: const [3, 2],
+      trailing: [
+        IconButton(
+          onPressed: _selectedFollowUpStatus == 'Tous' && _searchQuery.isEmpty
+              ? null
+              : () {
                   setState(() {
-                    _searchQuery = value.trim().toLowerCase();
+                    _selectedFollowUpStatus = 'Tous';
+                    _searchQuery = '';
+                    _searchController.clear();
                     _currentPage = 0;
                   });
                 },
-              ),
-              statusDropdown,
-            ],
-          ),
-          const SizedBox(height: 12),
-          Obx(() {
-            final allIntakes = _contactIntakeController.contactIntakes;
-            final filtered = allIntakes.where((intake) {
-              final normalizedStatus = AgencyFollowUpStatus.normalize(
-                intake.agencyFollowUpStatus,
-              );
-              final matchesStatus =
-                  _selectedFollowUpStatus == 'Tous' ||
-                  normalizedStatus == _selectedFollowUpStatus;
-              return matchesStatus && _matchesSearch(intake);
-            }).toList();
-            final stageCounts = _buildStageCounts(allIntakes);
-
-            if (_contactIntakeController.isLoading.value) {
-              return const Center(
-                child: AdminLoadingState(
-                  message: 'Chargement des mises en relation...',
-                ),
-              );
-            }
-
-            final loadError = _contactIntakeController.lastError.value;
-            if (loadError.isNotEmpty) {
-              return AdminEmptyState(
-                title: 'Chargement incomplet',
-                message: loadError,
-                icon: Icons.error_outline_rounded,
-                actionLabel: 'Réessayer',
-                actionIcon: Icons.refresh_rounded,
-                onAction: () {
-                  _contactIntakeController.refreshContactIntakes();
-                },
-              );
-            }
-
-            if (allIntakes.isEmpty) {
-              return AdminEmptyState(
-                title: 'Aucune mise en relation à suivre',
-                message:
-                    'Les premiers contacts qualifiés apparaîtront ici dès qu\'un utilisateur lancera une mise en relation.',
-                icon: Icons.support_agent_outlined,
-                actionLabel: 'Recharger',
-                actionIcon: Icons.refresh_rounded,
-                onAction: () {
-                  _contactIntakeController.refreshContactIntakes();
-                },
-              );
-            }
-
-            final newLeadCount = stageCounts[AgencyFollowUpStatus.newLead] ?? 0;
-            final activeCount = allIntakes.where((item) {
-              final normalized = AgencyFollowUpStatus.normalize(
-                item.agencyFollowUpStatus,
-              );
-              return normalized == AgencyFollowUpStatus.reviewing ||
-                  normalized == AgencyFollowUpStatus.inProgress;
-            }).length;
-            final qualifiedCount =
-                stageCounts[AgencyFollowUpStatus.qualified] ?? 0;
-            final closedCount = stageCounts[AgencyFollowUpStatus.closed] ?? 0;
-            final strongSignalCount = allIntakes.where((item) {
-              final signal = ParticipantFeedbackStatus.normalize(
-                item.latestParticipantFeedbackStatus,
-              );
-              return signal == ParticipantFeedbackStatus.trialScheduled ||
-                  signal == ParticipantFeedbackStatus.opportunitySerious;
-            }).length;
-            final issueSignalCount = allIntakes
-                .where(
-                  (item) =>
-                      ParticipantFeedbackStatus.normalize(
-                        item.latestParticipantFeedbackStatus,
-                      ) ==
-                      ParticipantFeedbackStatus.issueReported,
-                )
-                .length;
-
-            final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
-            final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
-            final safePage = _currentPage >= totalPages
-                ? totalPages - 1
-                : _currentPage.clamp(0, totalPages - 1);
-            final start = safePage * _rowsPerPage;
-            final end = (start + _rowsPerPage).clamp(0, filtered.length);
-            final displayed = filtered.sublist(start, end);
-            final tableColumns = compact
-                ? const <DataColumn>[
-                    DataColumn(label: Text('Créé le')),
-                    DataColumn(label: Text('Demandeur')),
-                    DataColumn(label: Text('Cible')),
-                    DataColumn(label: Text('Suivi')),
-                    DataColumn(label: Text('Retour utilisateur')),
-                    DataColumn(label: Text('Priorité')),
-                    DataColumn(label: Text('Actions')),
-                  ]
-                : const <DataColumn>[
-                    DataColumn(label: Text('Créé le')),
-                    DataColumn(label: Text('Demandeur')),
-                    DataColumn(label: Text('Cible')),
-                    DataColumn(label: Text('Motif')),
-                    DataColumn(label: Text('Contexte')),
-                    DataColumn(label: Text('Suivi')),
-                    DataColumn(label: Text('Retour utilisateur')),
-                    DataColumn(label: Text('Priorité')),
-                    DataColumn(label: Text('Introduction')),
-                    DataColumn(label: Text('Actions')),
-                  ];
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    AdminMiniStat(
-                      label: 'Résultats',
-                      value: '${filtered.length}',
-                      icon: Icons.filter_alt_outlined,
-                      accentColor: AdminTheme.cyan,
-                      subtitle: 'Après filtres',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Nouveaux contacts',
-                      value: '$newLeadCount',
-                      icon: Icons.fiber_new_rounded,
-                      accentColor: AdminTheme.accent,
-                      subtitle: 'À traiter',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Suivis actifs',
-                      value: '$activeCount',
-                      icon: Icons.track_changes_rounded,
-                      accentColor: AdminTheme.warning,
-                      subtitle: 'En cours de suivi',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Qualifiées',
-                      value: '$qualifiedCount',
-                      icon: Icons.verified_rounded,
-                      accentColor: AdminTheme.success,
-                      subtitle: 'Dossiers validés',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Signaux forts',
-                      value: '$strongSignalCount',
-                      icon: Icons.insights_rounded,
-                      accentColor: AdminTheme.success,
-                      subtitle: 'Retours positifs',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Alertes',
-                      value: '$issueSignalCount',
-                      icon: Icons.report_problem_outlined,
-                      accentColor: AdminTheme.warning,
-                      subtitle: 'Problèmes signalés',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Clôturées',
-                      value: '$closedCount',
-                      icon: Icons.archive_outlined,
-                      accentColor: AdminTheme.textMuted,
-                      subtitle: 'Historique',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildPipelineOverview(
-                  intakes: allIntakes,
-                  stageCounts: stageCounts,
-                  compact: compact,
-                ),
-                const SizedBox(height: 12),
-                if (filtered.isEmpty)
-                  AdminEmptyState(
-                    title: 'Aucune opportunité dans cette vue',
-                    message:
-                        'Aucun dossier ne correspond aux filtres actuels. Changez de statut ou élargissez la recherche.',
-                    icon: Icons.filter_alt_off_outlined,
-                    actionLabel: 'Voir tout',
-                    actionIcon: Icons.layers_clear_outlined,
-                    onAction: () {
-                      setState(() {
-                        _selectedFollowUpStatus = 'Tous';
-                        _searchQuery = '';
-                        _searchController.clear();
-                        _currentPage = 0;
-                      });
-                    },
-                  )
-                else if (compact)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final intake in displayed) ...[
-                        _buildIntakeCard(intake),
-                        const SizedBox(height: 12),
-                      ],
-                    ],
-                  )
-                else
-                  AdminDataTableCard(
-                    compact: compact,
-                    child: DataTable(
-                      columnSpacing: compact ? 14 : 20,
-                      horizontalMargin: compact ? 8 : 10,
-                      columns: tableColumns,
-                      rows: List<DataRow>.generate(displayed.length, (index) {
-                        final intake = displayed[index];
-                        final isActionInFlight = _actionIntakeId == intake.id;
-                        final actionCell = DataCell(
-                          isActionInFlight
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : _buildActionMenuCell(intake),
-                        );
-
-                        return DataRow(
-                          cells: compact
-                              ? <DataCell>[
-                                  DataCell(
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 140,
-                                      ),
-                                      child: Text(
-                                        _formatDate(intake.createdAt),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    _buildActorCell(
-                                      name: intake.requesterDisplayName,
-                                      roleLabel: intake.requesterRoleLabel,
-                                      organization:
-                                          intake.requesterOrganization,
-                                    ),
-                                  ),
-                                  DataCell(
-                                    _buildActorCell(
-                                      name: intake.targetDisplayName,
-                                      roleLabel: intake.targetRoleLabel,
-                                      organization: intake.targetOrganization,
-                                    ),
-                                  ),
-                                  DataCell(_buildFollowUpCell(intake)),
-                                  DataCell(_buildParticipantSignalCell(intake)),
-                                  DataCell(_buildPriorityCell(intake)),
-                                  actionCell,
-                                ]
-                              : <DataCell>[
-                                  DataCell(
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 150,
-                                      ),
-                                      child: Text(
-                                        _formatDate(intake.createdAt),
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    _buildActorCell(
-                                      name: intake.requesterDisplayName,
-                                      roleLabel: intake.requesterRoleLabel,
-                                      organization:
-                                          intake.requesterOrganization,
-                                    ),
-                                  ),
-                                  DataCell(
-                                    _buildActorCell(
-                                      name: intake.targetDisplayName,
-                                      roleLabel: intake.targetRoleLabel,
-                                      organization: intake.targetOrganization,
-                                    ),
-                                  ),
-                                  DataCell(
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 160,
-                                      ),
-                                      child: Text(
-                                        intake.reasonLabel,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 180,
-                                      ),
-                                      child: Text(
-                                        intake.contextTitle
-                                                    ?.trim()
-                                                    .isNotEmpty ==
-                                                true
-                                            ? '${intake.contextLabel} - ${intake.contextTitle!.trim()}'
-                                            : intake.contextLabel,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                  DataCell(_buildFollowUpCell(intake)),
-                                  DataCell(_buildParticipantSignalCell(intake)),
-                                  DataCell(_buildPriorityCell(intake)),
-                                  DataCell(
-                                    ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 260,
-                                      ),
-                                      child: Text(
-                                        intake.introMessage,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                  actionCell,
-                                ],
-                        );
-                      }),
-                      headingRowColor: WidgetStateProperty.all(
-                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                      ),
-                      dataRowColor: WidgetStateProperty.all(
-                        AdminTheme.surface.withValues(alpha: 0.14),
-                      ),
-                      dividerThickness: 1,
-                      dataRowMinHeight: compact ? 94 : 124,
-                      dataRowMaxHeight: compact ? 112 : 140,
-                      headingRowHeight: compact ? 50 : 54,
-                    ),
-                  ),
-                if (filtered.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  AdminPaginationBar(
-                    currentPage: safePage,
-                    totalPages: totalPages,
-                    onPrevious: safePage > 0
-                        ? () {
-                            setState(() {
-                              _currentPage = safePage - 1;
-                            });
-                          }
-                        : null,
-                    onNext: safePage < totalPages - 1
-                        ? () {
-                            setState(() {
-                              _currentPage = safePage + 1;
-                            });
-                          }
-                        : null,
-                  ),
-                ],
-                const SizedBox(height: 10),
-                AdminLoadMoreBar(
-                  loadedCount: allIntakes.length,
-                  hasMore: _contactIntakeController.hasMore.value,
-                  itemLabel: 'mises en relation',
-                  onLoadMore: _contactIntakeController.loadMoreContactIntakes,
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
+          icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
+          tooltip: 'Voir tout',
+        ),
+        IconButton(
+          onPressed: _contactIntakeController.refreshContactIntakes,
+          icon: const Icon(Icons.refresh_rounded, size: 17),
+          tooltip: 'Recharger',
+        ),
+      ],
+      filters: [
+        AdminSearchField(
+          controller: _searchController,
+          hintText: 'Rechercher un contact, un contexte ou une note',
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value.trim().toLowerCase();
+              _currentPage = 0;
+            });
+          },
+        ),
+        AdminFilterDropdown<String>(
+          label: 'Suivi',
+          value: _selectedFollowUpStatus,
+          items: statusItems,
+          labelBuilder: (status) =>
+              status == 'Tous' ? status : AgencyFollowUpStatus.label(status),
+          onChanged: (value) {
+            setState(() {
+              _selectedFollowUpStatus = value;
+              _currentPage = 0;
+            });
+          },
+        ),
+      ],
     );
-  }
-}
 
-class _PipelineStageCard extends StatelessWidget {
-  const _PipelineStageCard({
-    required this.stage,
-    required this.count,
-    required this.total,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
+    return Obx(() {
+      final allIntakes = _contactIntakeController.contactIntakes;
 
-  final _PipelineStage stage;
-  final int count;
-  final int total;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
+      if (_contactIntakeController.isLoading.value) {
+        return const AdminLoadingState(
+          message: 'Chargement des mises en relation…',
+        );
+      }
 
-  @override
-  Widget build(BuildContext context) {
-    final ratio = total == 0 ? 0.0 : count / total;
+      final loadError = _contactIntakeController.lastError.value;
+      if (loadError.isNotEmpty) {
+        return AdminEmptyState(
+          title: 'Chargement incomplet',
+          message: loadError,
+          icon: Icons.error_outline_rounded,
+          actionLabel: 'Réessayer',
+          actionIcon: Icons.refresh_rounded,
+          onAction: _contactIntakeController.refreshContactIntakes,
+        );
+      }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: selected
-                ? color.withValues(alpha: 0.15)
-                : AdminTheme.surfaceSoft.withValues(alpha: 0.36),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? color.withValues(alpha: 0.72)
-                  : AdminTheme.border.withValues(alpha: 0.72),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(stage.icon, color: color, size: 19),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '$count',
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 22,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+      if (allIntakes.isEmpty) {
+        return AdminEmptyState(
+          title: 'Aucune mise en relation à suivre',
+          message:
+              'Les premiers contacts qualifiés apparaîtront ici dès qu’un '
+              'utilisateur lancera une mise en relation.',
+          icon: Icons.support_agent_outlined,
+          actionLabel: 'Recharger',
+          actionIcon: Icons.refresh_rounded,
+          onAction: _contactIntakeController.refreshContactIntakes,
+        );
+      }
+
+      final filtered = allIntakes.where((intake) {
+        final normalizedStatus = AgencyFollowUpStatus.normalize(
+          intake.agencyFollowUpStatus,
+        );
+        final matchesStatus =
+            _selectedFollowUpStatus == 'Tous' ||
+            normalizedStatus == _selectedFollowUpStatus;
+        return matchesStatus && _matchesSearch(intake);
+      }).toList();
+
+      final stageCounts = _buildStageCounts(allIntakes);
+      final strongSignalCount = allIntakes.where((item) {
+        final signal = ParticipantFeedbackStatus.normalize(
+          item.latestParticipantFeedbackStatus,
+        );
+        return signal == ParticipantFeedbackStatus.trialScheduled ||
+            signal == ParticipantFeedbackStatus.opportunitySerious;
+      }).length;
+      final issueSignalCount = allIntakes
+          .where(
+            (item) =>
+                ParticipantFeedbackStatus.normalize(
+                  item.latestParticipantFeedbackStatus,
+                ) ==
+                ParticipantFeedbackStatus.issueReported,
+          )
+          .length;
+
+      final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
+      final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
+      final safePage = _currentPage >= totalPages
+          ? totalPages - 1
+          : _currentPage.clamp(0, totalPages - 1);
+      final start = safePage * _rowsPerPage;
+      final end = (start + _rowsPerPage).clamp(0, filtered.length);
+      final displayed = filtered.sublist(start, end);
+
+      final Widget body;
+      if (filtered.isEmpty) {
+        body = AdminEmptyState(
+          title: 'Aucune opportunité dans cette vue',
+          message:
+              'Aucun dossier ne correspond aux filtres actuels. Changez '
+              'd’étape ou élargissez la recherche.',
+          icon: Icons.filter_alt_off_outlined,
+          actionLabel: 'Voir tout',
+          actionIcon: Icons.layers_clear_outlined,
+          onAction: () {
+            setState(() {
+              _selectedFollowUpStatus = 'Tous';
+              _searchQuery = '';
+              _searchController.clear();
+              _currentPage = 0;
+            });
+          },
+        );
+      } else if (compact) {
+        body = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final intake in displayed) ...[
+              _buildIntakeCard(intake),
+              const SizedBox(height: AdminTheme.space2),
+            ],
+          ],
+        );
+      } else {
+        body = AdminTable(
+          minWidth: _tableMinWidth,
+          columns: const [
+            AdminColumn(label: 'Créé le', width: 108),
+            AdminColumn(label: 'Demandeur', flex: 3),
+            AdminColumn(label: 'Cible', flex: 3),
+            AdminColumn(label: 'Suivi', width: 140),
+            AdminColumn(label: 'Retour utilisateur', width: 150),
+            AdminColumn(label: 'Priorité', width: 120),
+            AdminColumn(label: '', width: 96, alignRight: true),
+          ],
+          rowCount: displayed.length,
+          selectedRow: _selectedIntakeId == null
+              ? null
+              : displayed.indexWhere(
+                  (intake) => intake.id == _selectedIntakeId,
+                ),
+          onRowTap: (index) =>
+              setState(() => _selectedIntakeId = displayed[index].id),
+          cellsBuilder: (index) {
+            final intake = displayed[index];
+
+            return [
               Text(
-                stage.title,
+                _formatDate(intake.createdAt),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AdminTheme.textPrimary,
-                  fontWeight: FontWeight.w800,
-                ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                stage.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AdminTheme.textSecondary,
-                  fontSize: 12,
-                  height: 1.35,
-                ),
+              _buildActorCell(
+                name: intake.requesterDisplayName,
+                roleLabel: intake.requesterRoleLabel,
+                organization: intake.requesterOrganization,
               ),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  minHeight: 6,
-                  value: ratio.clamp(0.0, 1.0).toDouble(),
-                  backgroundColor: AdminTheme.borderSoft.withValues(alpha: 0.5),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
+              _buildActorCell(
+                name: intake.targetDisplayName,
+                roleLabel: intake.targetRoleLabel,
+                organization: intake.targetOrganization,
               ),
-            ],
-          ),
+              AdminPill(
+                label: intake.followUpLabel,
+                color: _followUpColor(intake.agencyFollowUpStatus),
+              ),
+              _buildParticipantSignalCell(intake),
+              AdminPill(
+                label: _priorityLabel(intake),
+                color: _priorityColor(intake),
+              ),
+              _buildActionMenuCell(intake),
+            ];
+          },
+        );
+      }
+
+      final selected = _selectedIntakeId == null
+          ? null
+          : filtered
+                .where((intake) => intake.id == _selectedIntakeId)
+                .firstOrNull;
+
+      return AdminWorkspace(
+        compact: compact,
+        bodyMinWidth: _tableMinWidth,
+        toolbar: toolbar,
+        stats: _buildPipelineStrip(
+          stageCounts: stageCounts,
+          strongSignalCount: strongSignalCount,
+          issueSignalCount: issueSignalCount,
         ),
-      ),
-    );
+        body: body,
+        detail: selected == null ? null : _buildDetailPanel(selected, filtered),
+        footer: filtered.isEmpty
+            ? null
+            : AdminListFooter(
+                rangeStart: start + 1,
+                rangeEnd: end,
+                filteredCount: filtered.length,
+                currentPage: safePage,
+                totalPages: totalPages,
+                itemLabel: 'mises en relation',
+                hasMore: _contactIntakeController.hasMore.value,
+                onLoadMore: _contactIntakeController.loadMoreContactIntakes,
+                onPrevious: safePage > 0
+                    ? () => setState(() => _currentPage = safePage - 1)
+                    : null,
+                onNext: safePage < totalPages - 1
+                    ? () => setState(() => _currentPage = safePage + 1)
+                    : null,
+              ),
+      );
+    });
   }
 }
 

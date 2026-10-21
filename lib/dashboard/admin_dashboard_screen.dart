@@ -8,6 +8,8 @@ import '../controller/auth_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
+import '../widgets/admin_page.dart';
 import '../widgets/admin_ui.dart';
 import 'contact_intake_management_widget.dart';
 import 'event_management_widget.dart';
@@ -51,36 +53,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // l'ouverture du tableau de bord.
   static const Duration _sessionRevalidationInterval = Duration(minutes: 5);
 
+  static const double _railWidth = 232;
+  static const double _railWidthCollapsed = 56;
+
   late int _selectedIndex;
   bool _isAuthorizing = true;
-  final ScrollController _mainScrollController = ScrollController();
   Timer? _sessionRevalidationTimer;
 
   static const List<_DashboardItem> _dashboardItems = [
     _DashboardItem(
       title: 'Utilisateurs',
-      subtitle: 'Gestion compl\u00e8te des profils, r\u00f4les et statuts.',
+      subtitle: 'Gestion complète des profils, rôles et statuts.',
       icon: Icons.groups_rounded,
     ),
     _DashboardItem(
-      title: 'Comptes administr\u00e9s',
+      title: 'Comptes administrés',
       subtitle:
-          "Provisionnement et suivi des comptes cr\u00e9\u00e9s par l'administration.",
+          "Provisionnement et suivi des comptes créés par l’administration.",
       icon: Icons.manage_accounts_rounded,
     ),
     _DashboardItem(
-      title: 'Vid\u00e9os \u00e0 valider',
+      title: 'Vidéos à valider',
       subtitle: 'Validation avant publication publique.',
       icon: Icons.fact_check_rounded,
     ),
     _DashboardItem(
-      title: 'Vid\u00e9os ajout\u00e9es',
-      subtitle: 'Lecture, tri et mod\u00e9ration du catalogue vid\u00e9o.',
+      title: 'Vidéos ajoutées',
+      subtitle: 'Lecture, tri et modération du catalogue vidéo.',
       icon: Icons.play_circle_outline_rounded,
     ),
     _DashboardItem(
-      title: 'Vid\u00e9os signal\u00e9es',
-      subtitle: 'Traitement prioritaire des contenus remont\u00e9s.',
+      title: 'Vidéos signalées',
+      subtitle: 'Traitement prioritaire des contenus remontés.',
       icon: Icons.report_gmailerrorred_rounded,
     ),
     _DashboardItem(
@@ -89,20 +93,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       icon: Icons.work_outline_rounded,
     ),
     _DashboardItem(
-      title: '\u00c9v\u00e9nements',
-      subtitle: 'Suivi des \u00e9v\u00e9nements, statuts et participants.',
+      title: 'Événements',
+      subtitle: 'Suivi des événements, statuts et participants.',
       icon: Icons.event_note_rounded,
     ),
     _DashboardItem(
       title: 'Mise en relation',
-      subtitle: 'Suivi des premiers contacts qualifi\u00e9s.',
+      subtitle: 'Suivi des premiers contacts qualifiés.',
       icon: Icons.support_agent_rounded,
     ),
     _DashboardItem(
       title: 'Statistiques',
-      subtitle: "Lecture visuelle de l'activit\u00e9 et des ratios du portail.",
+      subtitle: "Lecture visuelle de l’activité et des ratios du portail.",
       icon: Icons.insights_rounded,
     ),
+  ];
+
+  // Neuf entrées à plat, c'était une liste à relire à chaque fois. Les
+  // regrouper par métier donne quatre blocs qu'on repère d'un coup d'oeil.
+  // Les index pointent vers _dashboardItems : l'ordre des onglets et les
+  // liens profonds de app_routes.dart restent inchangés.
+  static const List<_DashboardGroup> _dashboardGroups = [
+    _DashboardGroup(label: 'Communauté', indices: [0, 1]),
+    _DashboardGroup(label: 'Modération', indices: [2, 3, 4]),
+    _DashboardGroup(label: 'Activité', indices: [5, 6, 7]),
+    _DashboardGroup(label: 'Analyse', indices: [8]),
   ];
 
   @override
@@ -137,18 +152,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() {
       _selectedIndex = index;
     });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_mainScrollController.hasClients) {
-        _mainScrollController.jumpTo(0);
-      }
-    });
   }
 
   @override
   void dispose() {
     _sessionRevalidationTimer?.cancel();
-    _mainScrollController.dispose();
     super.dispose();
   }
 
@@ -169,10 +177,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     if (!accessResult.isAuthorized) {
-      Get.snackbar(
-        'Acc\u00e8s refus\u00e9',
-        accessResult.message ?? 'Acc\u00e8s refus\u00e9.',
-      );
+      Get.snackbar('Accès refusé', accessResult.message ?? 'Accès refusé.');
       Get.offAllNamed(AppRoutes.adminLogin);
       return;
     }
@@ -205,403 +210,295 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (!accessResult.isAuthorized) {
       _sessionRevalidationTimer?.cancel();
       Get.snackbar(
-        'Session r\u00e9voqu\u00e9e',
+        'Session révoquée',
         accessResult.message ??
-            'Vos droits admin ont \u00e9t\u00e9 retir\u00e9s. Reconnectez-vous.',
+            'Vos droits admin ont été retirés. Reconnectez-vous.',
       );
       Get.offAllNamed(AppRoutes.adminLogin);
     }
   }
 
-  Widget _buildSidebarIconBubble({
-    required IconData icon,
-    required bool selected,
-  }) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: selected
-            ? AdminTheme.accent
-            : AdminTheme.surfaceSoft.withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: selected
-              ? AdminTheme.accentSoft.withValues(alpha: 0.36)
-              : AdminTheme.border.withValues(alpha: 0.72),
-        ),
-      ),
-      child: Icon(
-        icon,
-        color: selected ? AdminTheme.background : AdminTheme.textSecondary,
-        size: 20,
-      ),
-    );
+  Future<void> _signOut() async {
+    await widget.authController.signOut();
+    Get.offAllNamed(AppRoutes.adminLogin);
   }
 
   Widget _buildNavTile({
     required int index,
-    required bool extendedRail,
+    required bool expanded,
     required VoidCallback onTap,
   }) {
     final item = _dashboardItems[index];
     final selected = index == _selectedIndex;
 
-    final navTile = Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: extendedRail ? 10 : 7,
-        vertical: 8,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: selected
-              ? AdminTheme.accent.withValues(alpha: 0.34)
-              : AdminTheme.borderSoft.withValues(alpha: 0.68),
-        ),
-        gradient: selected
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AdminTheme.accent.withValues(alpha: 0.28),
-                  AdminTheme.cyan.withValues(alpha: 0.12),
-                ],
-              )
-            : null,
-        color: selected ? null : AdminTheme.surface.withValues(alpha: 0.22),
-      ),
-      child: extendedRail
-          ? Row(
-              children: [
-                _buildSidebarIconBubble(icon: item.icon, selected: selected),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: selected
-                              ? AdminTheme.textPrimary
-                              : AdminTheme.textSecondary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: selected
-                              ? AdminTheme.accentSoft
-                              : AdminTheme.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : Center(
-              child: _buildSidebarIconBubble(
-                icon: item.icon,
-                selected: selected,
-              ),
-            ),
+    final tile = _NavTile(
+      icon: item.icon,
+      label: item.title,
+      expanded: expanded,
+      selected: selected,
+      onTap: onTap,
     );
 
-    return Tooltip(
-      message: item.title,
-      waitDuration: const Duration(milliseconds: 350),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: navTile,
+    if (expanded) {
+      return tile;
+    }
+
+    return Tooltip(message: item.title, child: tile);
+  }
+
+  Widget _buildNavList({required bool expanded}) {
+    final children = <Widget>[];
+
+    for (final group in _dashboardGroups) {
+      if (expanded) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AdminTheme.space3,
+              AdminTheme.space4,
+              AdminTheme.space3,
+              AdminTheme.space1 + 2,
+            ),
+            child: Text(group.label.toUpperCase(), style: AdminType.overline),
+          ),
+        );
+      } else if (children.isNotEmpty) {
+        children.add(
+          const Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AdminTheme.space3,
+              vertical: AdminTheme.space2,
+            ),
+            child: Divider(height: 1),
+          ),
+        );
+      }
+
+      for (final index in group.indices) {
+        children.add(
+          _buildNavTile(
+            index: index,
+            expanded: expanded,
+            onTap: () => _onItemTapped(index),
+          ),
+        );
+      }
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: AdminTheme.space3),
+      children: children,
+    );
+  }
+
+  Widget _buildBrand({required bool expanded}) {
+    if (!expanded) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AdminTheme.space4),
+        child: Center(child: AdminBrandMark(size: 30)),
+      );
+    }
+
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(
+        AdminTheme.space3,
+        AdminTheme.space4,
+        AdminTheme.space3,
+        AdminTheme.space4,
+      ),
+      child: Row(
+        children: [
+          AdminBrandMark(size: 30),
+          SizedBox(width: AdminTheme.space3),
+          Expanded(child: Text('Adfoot', style: AdminType.brand)),
+        ],
+      ),
+    );
+  }
+
+  /// Pied du rail : l'identité de la session et la déconnexion.
+  ///
+  /// La déconnexion était auparavant un bouton vert plein répété en haut
+  /// de chaque écran. Elle appartient au compte, pas à la page.
+  Widget _buildSessionFooter({required bool expanded}) {
+    return Obx(() {
+      final adminUser = widget.userController.user;
+      final claimCount = widget.userController.grantedAdminClaims.length;
+      final name = widget.previewMode
+          ? 'Revue locale'
+          : (adminUser?.nom.isNotEmpty == true
+                ? adminUser!.nom
+                : 'Compte admin');
+      final detail = widget.previewMode
+          ? 'Prévisualisation'
+          : '$claimCount droit(s) validés';
+
+      final menu = PopupMenuButton<String>(
+        tooltip: 'Compte',
+        position: PopupMenuPosition.over,
+        offset: const Offset(0, -8),
+        onSelected: (value) {
+          if (value == 'signOut') {
+            _signOut();
+          }
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem<String>(
+            value: 'signOut',
+            height: 36,
+            child: Row(
+              children: const [
+                Icon(
+                  Icons.logout_rounded,
+                  size: 16,
+                  color: AdminTheme.textMuted,
+                ),
+                SizedBox(width: AdminTheme.space3),
+                Text('Déconnexion', style: AdminType.body),
+              ],
+            ),
+          ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.all(AdminTheme.space2),
+          decoration: BoxDecoration(
+            color: AdminTheme.surfaceSunken,
+            borderRadius: BorderRadius.circular(AdminTheme.radiusSm),
+            border: Border.all(color: AdminTheme.border),
+          ),
+          child: expanded
+              ? Row(
+                  children: [
+                    Icon(
+                      widget.previewMode
+                          ? Icons.visibility_outlined
+                          : Icons.verified_user_outlined,
+                      size: 16,
+                      color: widget.previewMode
+                          ? AdminTheme.warning
+                          : AdminTheme.textMuted,
+                    ),
+                    const SizedBox(width: AdminTheme.space2),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AdminType.labelStrong,
+                          ),
+                          Text(
+                            detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AdminType.caption,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.unfold_more_rounded,
+                      size: 14,
+                      color: AdminTheme.textMuted,
+                    ),
+                  ],
+                )
+              : Icon(
+                  widget.previewMode
+                      ? Icons.visibility_outlined
+                      : Icons.verified_user_outlined,
+                  size: 16,
+                  color: widget.previewMode
+                      ? AdminTheme.warning
+                      : AdminTheme.textMuted,
+                ),
         ),
+      );
+
+      return Padding(
+        padding: const EdgeInsets.all(AdminTheme.space2),
+        child: expanded ? menu : Tooltip(message: name, child: menu),
+      );
+    });
+  }
+
+  Widget _buildRail({required bool expanded}) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(right: BorderSide(color: AdminTheme.border)),
+      ),
+      child: Column(
+        children: [
+          _buildBrand(expanded: expanded),
+          Expanded(child: _buildNavList(expanded: expanded)),
+          const Divider(height: 1),
+          _buildSessionFooter(expanded: expanded),
+        ],
       ),
     );
   }
 
   Widget _buildDrawer(BuildContext context) {
     return Drawer(
-      width: 300,
+      width: 260,
       child: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Row(
+            _buildBrand(expanded: true),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: AdminTheme.space3),
                 children: [
-                  const AdminBrandMark(size: 44, width: 84),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Adfoot',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: AdminTheme.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Espace admin',
-                          style: TextStyle(
-                            color: AdminTheme.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                  for (final group in _dashboardGroups) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AdminTheme.space3,
+                        AdminTheme.space4,
+                        AdminTheme.space3,
+                        AdminTheme.space1 + 2,
+                      ),
+                      child: Text(
+                        group.label.toUpperCase(),
+                        style: AdminType.overline,
+                      ),
                     ),
-                  ),
+                    for (final index in group.indices)
+                      _NavTile(
+                        icon: _dashboardItems[index].icon,
+                        label: _dashboardItems[index].title,
+                        expanded: true,
+                        selected: index == _selectedIndex,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _onItemTapped(index);
+                        },
+                      ),
+                  ],
                 ],
               ),
             ),
-            Divider(
-              color: AdminTheme.borderSoft.withValues(alpha: 0.6),
-              indent: 12,
-              endIndent: 12,
-            ),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(8, 10, 8, 16),
-                itemCount: _dashboardItems.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 6),
-                itemBuilder: (context, index) {
-                  return _buildNavTile(
-                    index: index,
-                    extendedRail: true,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _onItemTapped(index);
-                    },
-                  );
-                },
-              ),
-            ),
+            const Divider(height: 1),
+            _buildSessionFooter(expanded: true),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSidebar(bool extendedRail) {
-    // Pas de highlight ici : la navigation est un repère permanent, pas le
-    // contenu à regarder. Un seul accent net par écran — celui du panneau
-    // de contenu — se voit mieux si la coquille autour ne brille pas aussi.
-    return AdminGlassPanel(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-            child: extendedRail
-                ? Row(
-                    children: [
-                      const AdminBrandMark(
-                        size: 44,
-                        width: 84,
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Adfoot',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: AdminTheme.textPrimary,
-                              ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Espace admin',
-                              style: TextStyle(
-                                color: AdminTheme.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  )
-                : Center(
-                    child: const AdminBrandMark(
-                      size: 50,
-                      width: 74,
-                    ),
-                  ),
-          ),
-          Divider(
-            color: AdminTheme.borderSoft.withValues(alpha: 0.6),
-            indent: 12,
-            endIndent: 12,
-          ),
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(8, 10, 8, 16),
-              itemCount: _dashboardItems.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 6),
-              itemBuilder: (context, index) {
-                return _buildNavTile(
-                  index: index,
-                  extendedRail: extendedRail,
-                  onTap: () => _onItemTapped(index),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-            child: Obx(() {
-              final adminUser = widget.userController.user;
-              final claimCount =
-                  widget.userController.grantedAdminClaims.length;
-
-              return AdminGlassPanel(
-                padding: const EdgeInsets.all(12),
-                radius: 20,
-                accentColor: AdminTheme.cyan,
-                child: extendedRail
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AdminPill(
-                            label: widget.previewMode
-                                ? 'Pr\u00e9visualisation'
-                                : 'Session',
-                            icon: widget.previewMode
-                                ? Icons.visibility_outlined
-                                : Icons.verified_user_outlined,
-                            color: widget.previewMode
-                                ? AdminTheme.warning
-                                : AdminTheme.cyan,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            widget.previewMode
-                                ? 'Revue locale'
-                                : adminUser?.nom.isNotEmpty == true
-                                ? adminUser!.nom
-                                : 'Compte admin',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AdminTheme.textPrimary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.previewMode
-                                ? 'Navigation de contr\u00f4le'
-                                : '$claimCount droit(s) valid\u00e9s',
-                            style: const TextStyle(
-                              color: AdminTheme.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      )
-                    : const Center(
-                        child: Icon(
-                          Icons.verified_user_outlined,
-                          color: AdminTheme.cyan,
-                        ),
-                      ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDashboardHeader(
-    _DashboardItem currentItem, {
-    required bool isStatisticsTab,
-  }) {
-    // Pas de highlight ici non plus : voir _buildSidebar. L'en-tête annonce
-    // l'écran, le panneau de contenu qui suit est ce qui mérite l'accent.
-    return AdminGlassPanel(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      child: LayoutBuilder(
-        builder: (context, headerConstraints) {
-          final stacked = headerConstraints.maxWidth < 840;
-
-          final intro = AdminSectionHeader(
-            badge: 'Espace actif',
-            title: currentItem.title,
-            subtitle: currentItem.subtitle,
-          );
-
-          final actions = Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            alignment: WrapAlignment.end,
-            children: [
-              if (!isStatisticsTab)
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      _onItemTapped(_dashboardItems.length - 1),
-                  icon: const Icon(Icons.auto_graph_rounded),
-                  label: const Text('Vue statistiques'),
-                ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  await widget.authController.signOut();
-                  Get.offAllNamed(AppRoutes.adminLogin);
-                },
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('D\u00e9connexion'),
-              ),
-            ],
-          );
-
-          if (stacked) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [intro, const SizedBox(height: 16), actions],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: intro),
-              const SizedBox(width: 14),
-              actions,
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   // Chaque onglet reste monté (filtres, pagination, écouteurs Firestore
-  // conservés) : seul l'onglet sélectionné contribue à la taille via Stack,
-  // les autres sont réduits à (0,0) par Visibility(maintainSize: false) pour
-  // éviter que la page n'hérite de la hauteur du plus grand onglet.
+  // conservés) : seul l'onglet sélectionné est visible, les autres sont
+  // réduits à (0,0) par Visibility.
   Widget _buildDashboardBody() {
     final tabs = _widgetOptions();
+    // StackFit.expand : un onglet qui rend directement un état vide ou un
+    // état de chargement doit occuper toute la zone de contenu, sinon il
+    // se tasse en haut à gauche au lieu d'être centré.
     return Stack(
+      fit: StackFit.expand,
       children: [
         for (var index = 0; index < tabs.length; index++)
           Visibility(
@@ -610,44 +507,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: tabs[index],
           ),
       ],
-    );
-  }
-
-  Widget _buildScrollableMainContent({
-    required _DashboardItem currentItem,
-    required bool compactLayout,
-  }) {
-    return LayoutBuilder(
-      builder: (context, mainConstraints) {
-        return Scrollbar(
-          controller: _mainScrollController,
-          thumbVisibility: true,
-          child: SingleChildScrollView(
-            controller: _mainScrollController,
-            padding: const EdgeInsets.only(right: 2, bottom: 8),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: mainConstraints.maxHeight),
-              child: AdminContentFrame(
-                maxWidth: compactLayout
-                    ? AdminTheme.readingMaxWidth
-                    : AdminTheme.contentMaxWidth,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildDashboardHeader(
-                      currentItem,
-                      isStatisticsTab:
-                          _selectedIndex == _dashboardItems.length - 1,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDashboardBody(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -663,63 +522,148 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     final compactShell =
         MediaQuery.sizeOf(context).width < AdminTheme.breakpointShellCompact;
+    final currentItem = _dashboardItems[_selectedIndex];
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!compactShell) ...[
+          AdminPageBar(
+            title: currentItem.title,
+            subtitle: currentItem.subtitle,
+          ),
+          const SizedBox(height: AdminTheme.space1),
+        ],
+        Expanded(child: _buildDashboardBody()),
+      ],
+    );
 
     return Scaffold(
       appBar: compactShell
           ? AppBar(
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  AdminBrandMark(size: 32, width: 32),
-                  SizedBox(width: 10),
-                  Text(
-                    'Adfoot Admin',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AdminTheme.textPrimary,
-                    ),
-                  ),
-                ],
+              titleSpacing: 0,
+              title: Text(
+                currentItem.title,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
+              shape: const Border(bottom: BorderSide(color: AdminTheme.border)),
             )
           : null,
       drawer: compactShell ? _buildDrawer(context) : null,
       body: AdminAppBackground(
-        padding: EdgeInsets.all(compactShell ? 16 : 18),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final currentItem = _dashboardItems[_selectedIndex];
-            final compactLayout =
-                constraints.maxWidth < AdminTheme.breakpointShellCompact;
-
-            if (compactLayout) {
-              return _buildScrollableMainContent(
-                currentItem: currentItem,
-                compactLayout: true,
-              );
-            }
-
-            final extendedRail =
-                constraints.maxWidth >= AdminTheme.breakpointExtendedRail;
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: extendedRail ? 284 : 96,
-                  child: _buildSidebar(extendedRail),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildScrollableMainContent(
-                    currentItem: currentItem,
-                    compactLayout: false,
+        child: compactShell
+            ? Padding(
+                padding: const EdgeInsets.all(AdminTheme.space3),
+                child: content,
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width:
+                        MediaQuery.sizeOf(context).width >=
+                            AdminTheme.breakpointExtendedRail
+                        ? _railWidth
+                        : _railWidthCollapsed,
+                    child: _buildRail(
+                      expanded:
+                          MediaQuery.sizeOf(context).width >=
+                          AdminTheme.breakpointExtendedRail,
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AdminTheme.space4,
+                        AdminTheme.space2,
+                        AdminTheme.space4,
+                        AdminTheme.space4,
+                      ),
+                      child: content,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _NavTile extends StatefulWidget {
+  const _NavTile({
+    required this.icon,
+    required this.label,
+    required this.expanded,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool expanded;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_NavTile> createState() => _NavTileState();
+}
+
+class _NavTileState extends State<_NavTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.selected
+        ? AdminTheme.textPrimary
+        : AdminTheme.textSecondary;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: widget.expanded ? AdminTheme.space2 : AdminTheme.space1 + 2,
+        vertical: 1,
+      ),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            height: 34,
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.expanded ? AdminTheme.space2 + 2 : 0,
+            ),
+            decoration: BoxDecoration(
+              color: widget.selected
+                  ? AdminTheme.surfaceRaised
+                  : _hovered
+                  ? AdminTheme.surfaceSunken
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(AdminTheme.radiusSm),
+            ),
+            child: widget.expanded
+                ? Row(
+                    children: [
+                      Icon(widget.icon, size: 16, color: color),
+                      const SizedBox(width: AdminTheme.space3 - 2),
+                      Expanded(
+                        child: Text(
+                          widget.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AdminType.body.copyWith(
+                            color: color,
+                            fontWeight: widget.selected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Center(child: Icon(widget.icon, size: 17, color: color)),
+          ),
         ),
       ),
     );
@@ -736,4 +680,11 @@ class _DashboardItem {
   final String title;
   final String subtitle;
   final IconData icon;
+}
+
+class _DashboardGroup {
+  const _DashboardGroup({required this.label, required this.indices});
+
+  final String label;
+  final List<int> indices;
 }

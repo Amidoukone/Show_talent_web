@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 import '../utils/browser_fullscreen.dart';
 import '../utils/video_moderation_playback.dart';
 import '../widgets/admin_ui.dart';
@@ -51,10 +52,7 @@ class VideoPlayerScreen extends StatefulWidget {
     this.initialIndex = 0,
     this.controllerFactory,
     super.key,
-  }) : assert(
-         entries.length != 0,
-         'La file doit contenir au moins une vidéo.',
-       );
+  }) : assert(entries.length != 0, 'La file doit contenir au moins une vidéo.');
 
   final List<AdminVideoQueueEntry> entries;
   final int initialIndex;
@@ -334,17 +332,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   SizedBox(height: compact ? 12 : 18),
                 ],
                 Expanded(
-                  child: AdminGlassPanel(
-                    padding: EdgeInsets.all(_immersive ? 10 : (compact ? 14 : 22)),
-                    highlight: true,
-                    accentColor: AdminTheme.cyan,
+                  child: AdminPanel(
+                    padding: EdgeInsets.all(
+                      _immersive
+                          ? AdminTheme.space2
+                          : (compact ? AdminTheme.space3 : AdminTheme.space4),
+                    ),
                     child: FutureBuilder<void>(
                       future: _initializeVideo,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState != ConnectionState.done) {
                           return const Center(
                             child: AdminLoadingState(
-                              message: 'Chargement de la vidéo...',
+                              message: 'Chargement de la vidéo…',
                             ),
                           );
                         }
@@ -416,9 +416,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               // La source est affichée : neuf fois sur dix, une vidéo qui ne
               // se lance pas est une source absente ou expirée, et l'URL est
               // ce qui permet de le voir sans ouvrir la console.
-              error == null
-                  ? _entry.videoUrl
-                  : '${_entry.videoUrl}\n\n$error',
+              error == null ? _entry.videoUrl : '${_entry.videoUrl}\n\n$error',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AdminTheme.textSecondary,
@@ -554,9 +552,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                formatPlaybackTimestamp(
-                  Duration(milliseconds: value.round()),
-                ),
+                formatPlaybackTimestamp(Duration(milliseconds: value.round())),
                 style: const TextStyle(
                   color: AdminTheme.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -663,7 +659,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             padding: EdgeInsets.only(left: 4),
             child: Text(
               'Espace : lecture  •  ← → : 5 s  •  Maj + ← → : 1 s  •  F : plein écran',
-              style: TextStyle(color: AdminTheme.textMuted, fontSize: 12),
+              style: AdminType.caption,
             ),
           ),
       ],
@@ -735,10 +731,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           _PanelRow(label: 'Référence vidéo', value: _entry.videoId),
           _PanelRow(label: 'Compte auteur', value: _entry.userId),
           _PanelRow(label: 'Durée', value: formatPlaybackTimestamp(_total)),
-          if (_hasQueue) ...[
-            const SizedBox(height: 14),
-            _buildQueueBar(),
-          ],
+          if (_hasQueue) ...[const SizedBox(height: 14), _buildQueueBar()],
           const SizedBox(height: 18),
           _buildDecisionBar(),
         ],

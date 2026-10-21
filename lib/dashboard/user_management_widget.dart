@@ -11,12 +11,16 @@ import '../models/player_football_profile.dart';
 import '../models/user.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/admin_callable_action_catalog.dart';
 import '../utils/firebase_functions_error.dart';
 import '../utils/player_age.dart';
 import '../widgets/admin_account_status_chips.dart';
+import '../widgets/admin_detail_panel.dart';
 import '../widgets/admin_feedback.dart';
+import '../widgets/admin_page.dart';
+import '../widgets/admin_table.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/managed_account_invite_result_dialog.dart';
 
@@ -37,18 +41,11 @@ class UserManagementWidget extends StatefulWidget {
 }
 
 class _UserManagementWidgetState extends State<UserManagementWidget> {
-  static const int rowsPerPage = 10;
+  static const int rowsPerPage = 25;
 
-  static const String _actionDelete = 'delete';
-  static const String _actionDisableAuth = 'disable_auth';
-  static const String _actionEnableAuth = 'enable_auth';
-  static const String _actionChangeRole = 'change_role';
-  static const String _actionResendInvite = 'resend_invite';
-  static const String _actionReviewProfile = 'review_profile';
-  static const String _actionEditProfile = 'edit_profile';
-  static const String _actionVerifyProfile = 'verify_profile';
-  static const String _actionUnverifyProfile = 'unverify_profile';
-  static const String _actionManageMembership = 'manage_membership';
+  /// Largeur en deçà de laquelle le tableau défile horizontalement. Sert
+  /// aussi à AdminWorkspace pour décider si la fiche tient à côté.
+  static const double _tableMinWidth = 960;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -59,6 +56,26 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   int currentPage = 0;
   String? _actionInFlightUid;
   String? _actionInFlightLabel;
+
+  /// Compte ouvert dans la fiche latérale.
+  ///
+  /// Seul l'identifiant est mémorisé : le contenu de la fiche est relu à
+  /// chaque reconstruction depuis la liste vivante du contrôleur. Garder
+  /// une copie figée afficherait l'état d'avant l'action — l'opérateur
+  /// certifie un profil et la fiche continue d'annoncer « non certifié ».
+  String? _selectedUid;
+
+  /// La note de certification est le seul champ que la liste ne porte pas :
+  /// elle vit dans users/{uid}/private/adminNotes et se lit à la demande
+  /// (téléphone, e-mail et motif de suspension arrivent, eux, par le
+  /// miroir users/{uid}/private/contact du contrôleur).
+  String? _detailVerificationNote;
+  bool _detailLoading = false;
+  String? _detailError;
+
+  /// Restriction appliquée par la bande de compteurs, en plus du rôle et
+  /// de la recherche.
+  _UserStatusFilter? _statusFilter;
 
   @override
   void initState() {
@@ -80,32 +97,17 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       MediaQuery.sizeOf(context).width < AdminTheme.breakpointCompact;
 
   Widget _buildRoleFilterField() {
-    return AdminGlassPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      radius: 16,
-      accentColor: AdminTheme.cyan,
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedRole,
-          isExpanded: true,
-          dropdownColor: AdminTheme.surfaceRaised,
-          iconEnabledColor: AdminTheme.textSecondary,
-          items: <String>['Tous', ...adminProvisionedRoles]
-              .map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value, overflow: TextOverflow.ellipsis),
-                );
-              })
-              .toList(),
-          onChanged: (String? newValue) {
-            setState(() {
-              selectedRole = newValue;
-              currentPage = 0;
-            });
-          },
-        ),
-      ),
+    return AdminFilterDropdown<String>(
+      label: 'Rôle',
+      value: selectedRole ?? 'Tous',
+      items: <String>['Tous', ...adminProvisionedRoles],
+      labelBuilder: (role) => role,
+      onChanged: (String newValue) {
+        setState(() {
+          selectedRole = newValue;
+          currentPage = 0;
+        });
+      },
     );
   }
 
@@ -113,6 +115,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     setState(() {
       searchQuery = '';
       selectedRole = 'Tous';
+      _statusFilter = null;
       currentPage = 0;
       _searchController.clear();
     });
@@ -139,16 +142,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         : 'Certifier le profil';
   }
 
-  Color get _panelAccentColor => AdminTheme.accent;
-
   IconData get _rowLeadingIcon => Icons.person_rounded;
 
   Color get _rowLeadingColor => AdminTheme.cyan;
 
-  String get _bannerTitle => 'Gouvernance des profils';
-
-  String get _bannerMessage =>
-      "La certification profil est un signal de confiance séparé de l'e-mail vérifié. Si l'utilisateur modifie une information de confiance côté mobile, le profil repasse à revalider avant d'afficher le badge Adfoot.";
+  /// Règle de gouvernance rappelée au survol de la colonne « Confiance ».
+  /// Elle occupait un bandeau permanent de quatre lignes en haut de l'écran.
+  String get _trustColumnHelp =>
+      "La certification profil est un signal de confiance séparé de l’e-mail vérifié. Si l’utilisateur modifie une information de confiance côté mobile, le profil repasse à revalider avant d’afficher le badge Adfoot.";
 
   String get _searchHint => 'Rechercher un utilisateur';
 
@@ -773,398 +774,271 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
-  Future<void> _showProfileReviewDialog(AppUser user) async {
-    // phone/email/authDisabledReason/profileVerificationNote were moved out
-    // of the bulk users snapshot into users/{uid}/private/contact and
-    // users/{uid}/private/adminNotes, so the review dialog needs an
-    // on-demand fetch to show them (admin claims grant access to both).
-    AppUser enrichedUser;
+  /// Ouvre la fiche latérale sur un compte.
+  ///
+  /// Remplace la boîte de dialogue « Revue profil » : elle imposait de
+  /// refermer pour passer au dossier suivant, alors que la revue de profils
+  /// se fait en série. La lecture à la demande des champs privés
+  /// (téléphone, e-mail, note de certification — sortis de l'instantané
+  /// global vers users/{uid}/private) est inchangée, elle alimente
+  /// maintenant le panneau au lieu de la modale.
+  Future<void> _openDetail(AppUser user) async {
+    setState(() {
+      _selectedUid = user.uid;
+      _detailVerificationNote = null;
+      _detailLoading = true;
+      _detailError = null;
+    });
+
     try {
-      enrichedUser = await _userController.fetchUserWithPrivateFields(user);
-    } catch (error) {
-      debugPrint('Lecture des champs privés impossible : $error');
-      if (!mounted) {
+      final enriched = await _userController.fetchUserWithPrivateFields(user);
+      if (!mounted || _selectedUid != user.uid) {
         return;
       }
-      showAdminFeedback(
-        title: 'Chargement impossible',
-        message:
-            'Impossible de charger les coordonnées de ${user.nom}. Vérifiez votre connexion puis réessayez.',
-        tone: AdminBannerTone.danger,
-      );
-      return;
+      setState(() {
+        _detailVerificationNote = enriched.profileVerificationNote;
+        _detailLoading = false;
+      });
+    } catch (error) {
+      debugPrint('Lecture des champs privés impossible : $error');
+      if (!mounted || _selectedUid != user.uid) {
+        return;
+      }
+      setState(() {
+        _detailLoading = false;
+        _detailError =
+            'Impossible de charger les coordonnées de ${user.nom}. '
+            'Vérifiez votre connexion puis réessayez.';
+      });
+    }
+  }
+
+  void _closeDetail() {
+    setState(() {
+      _selectedUid = null;
+      _detailVerificationNote = null;
+      _detailLoading = false;
+      _detailError = null;
+    });
+  }
+
+  /// Le compte à afficher dans la fiche, reconstruit à partir de la version
+  /// vivante de la liste et de la note lue à la demande.
+  ///
+  /// Résolu sur la liste complète et non sur la liste filtrée : certifier
+  /// un profil pendant qu'on filtre sur « à revalider » le fait sortir des
+  /// résultats, et la fiche ne doit pas disparaître au moment précis où
+  /// l'opérateur veut vérifier que son action a abouti.
+  AppUser? get _detailUser {
+    final uid = _selectedUid;
+    if (uid == null) {
+      return null;
     }
 
-    if (!mounted) {
-      return;
+    for (final user in _userController.userList) {
+      if (user.uid != uid) {
+        continue;
+      }
+      if (_detailVerificationNote == null) {
+        return user;
+      }
+      return AppUser.fromMap({
+        ...user.toMap(),
+        'profileVerificationNote': _detailVerificationNote,
+      });
     }
 
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.fact_check_outlined),
-              const SizedBox(width: 10),
-              Expanded(child: Text('Revue profil - ${user.nom}')),
-            ],
-          ),
-          content: SizedBox(
-            width: 620,
-            child: SingleChildScrollView(
-              child: _ProfileReviewContent(user: enrichedUser),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fermer'),
-            ),
-            if (_canManageProfileVerification(user))
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _editManagedAccountProfile(user);
-                },
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Modifier le profil'),
-              ),
-            if (_isMutableManagedAccount(user))
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _setManagedAccountMembership(user);
-                },
-                icon: const Icon(Icons.workspace_premium_outlined, size: 18),
-                label: const Text('Gérer les droits'),
-              ),
-            if (user.isPlayer && user.isMinorProfile)
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _withdrawMinorConsent(user);
-                },
-                icon: const Icon(Icons.shield_outlined, size: 18),
-                label: const Text('Retirer les autorisations parentales'),
-              ),
-            if (_canManageProfileVerification(user) &&
-                (user.profileVerified || !user.isMinorProfile))
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pop();
+    return null;
+  }
+
+  /// Actions d'une ligne.
+  ///
+  /// Les trois gestes du quotidien — ouvrir la fiche, certifier, suspendre
+  /// — sont en clair. Tout passait auparavant par un menu, donc deux clics
+  /// pour chacun. Le reste, moins fréquent ou destructeur, est sous « … ».
+  Widget _buildActionCell(AppUser user) {
+    final canVerify = _canManageProfileVerification(user);
+    final canManage = _isMutableManagedAccount(user);
+    final isManaged = _isAdminManagedAccount(user);
+
+    return AdminRowActions(
+      busy: _actionInFlightUid == user.uid,
+      busyLabel: _actionInFlightLabel,
+      primary: [
+        AdminRowAction(
+          icon: Icons.fact_check_outlined,
+          label: 'Ouvrir la fiche',
+          color: AdminTheme.cyan,
+          onPressed: () => _openDetail(user),
+        ),
+        AdminRowAction(
+          icon: user.profileVerified
+              ? Icons.remove_moderator_outlined
+              : Icons.verified_outlined,
+          label: user.profileVerified
+              ? 'Retirer la certification'
+              : _verifyProfileActionLabel(user),
+          color: user.profileVerified ? AdminTheme.warning : AdminTheme.success,
+          onPressed: canVerify && (user.profileVerified || !user.isMinorProfile)
+              ? () {
                   if (user.profileVerified) {
                     _unverifyManagedAccountProfile(user);
                   } else {
                     _verifyManagedAccountProfile(user);
                   }
-                },
-                icon: Icon(
-                  user.profileVerified
-                      ? Icons.remove_moderator_outlined
-                      : Icons.verified_outlined,
-                  size: 18,
-                ),
-                label: Text(
-                  user.profileVerified
-                      ? 'Retirer la certification'
-                      : _verifyProfileActionLabel(user),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  List<PopupMenuEntry<String>> _buildActionMenuItems(AppUser user) {
-    final items = <PopupMenuEntry<String>>[
-      PopupMenuItem(
-        value: user.authDisabled ? _actionEnableAuth : _actionDisableAuth,
-        child: Row(
-          children: [
-            Icon(
-              user.authDisabled
-                  ? Icons.lock_open_rounded
-                  : Icons.lock_outline_rounded,
-              size: 18,
-              color: user.authDisabled
-                  ? AdminTheme.success
-                  : AdminTheme.warning,
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                user.authDisabled ? 'Réactiver l’accès' : 'Suspendre l’accès',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+                }
+              : null,
         ),
-      ),
-    ];
-
-    items.add(const PopupMenuDivider());
-    items.add(
-      const PopupMenuItem(
-        value: _actionReviewProfile,
-        child: Row(
-          children: [
-            Icon(Icons.fact_check_outlined, size: 18, color: AdminTheme.cyan),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text('Revoir le profil', overflow: TextOverflow.ellipsis),
-            ),
-          ],
+        AdminRowAction(
+          icon: user.authDisabled
+              ? Icons.lock_open_rounded
+              : Icons.lock_outline_rounded,
+          label: user.authDisabled ? 'Réactiver l’accès' : 'Suspendre l’accès',
+          color: user.authDisabled ? AdminTheme.success : AdminTheme.warning,
+          onPressed: () {
+            if (user.authDisabled) {
+              _enableManagedAccountAuth(user);
+            } else {
+              _disableManagedAccountAuth(user);
+            }
+          },
         ),
-      ),
-    );
-
-    if (_canManageProfileVerification(user)) {
-      items.add(
-        const PopupMenuItem(
-          value: _actionEditProfile,
-          child: Row(
-            children: [
-              Icon(Icons.edit_outlined, size: 18, color: AdminTheme.cyan),
-              SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  'Modifier le profil',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+      ],
+      overflow: [
+        // Une action structurellement impossible — compte du portail,
+        // compte que l'administration ne suit pas — est retirée du menu
+        // plutôt que grisée : même règle qu'avant la refonte, et elle évite
+        // de promettre une opération que les callables refuseraient.
+        if (canVerify)
+          AdminRowAction(
+            icon: Icons.edit_outlined,
+            label: 'Modifier le profil',
+            color: AdminTheme.cyan,
+            onPressed: () => _editManagedAccountProfile(user),
           ),
-        ),
-      );
-      items.add(
-        PopupMenuItem(
-          value: user.profileVerified
-              ? _actionUnverifyProfile
-              : _actionVerifyProfile,
-          child: Row(
-            children: [
-              Icon(
-                user.profileVerified
-                    ? Icons.remove_moderator_outlined
-                    : Icons.verified_outlined,
-                size: 18,
-                color: user.profileVerified
-                    ? AdminTheme.warning
-                    : AdminTheme.success,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  user.profileVerified
-                      ? 'Retirer certification'
-                      : _verifyProfileActionLabel(user),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+        if (canManage)
+          AdminRowAction(
+            icon: Icons.workspace_premium_outlined,
+            label: 'Gérer les droits',
+            onPressed: () => _setManagedAccountMembership(user),
           ),
-        ),
-      );
-    }
-
-    if (_isMutableManagedAccount(user)) {
-      items.add(
-        PopupMenuItem(
-          value: _actionManageMembership,
-          child: Row(
-            children: [
-              Icon(
-                user.membership.isRecorded
-                    ? Icons.workspace_premium_rounded
-                    : Icons.workspace_premium_outlined,
-                size: 18,
-                color: user.membership.isActiveAt(DateTime.now())
-                    ? AdminTheme.accent
-                    : AdminTheme.textSecondary,
-              ),
-              const SizedBox(width: 8),
-              const Flexible(
-                child: Text(
-                  'Gérer les droits',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+        if (isManaged) ...[
+          AdminRowAction(
+            icon: Icons.manage_accounts_outlined,
+            label: 'Changer le rôle',
+            onPressed: () => _changeManagedAccountRole(user),
           ),
-        ),
-      );
-    }
-
-    if (_isAdminManagedAccount(user)) {
-      items.add(const PopupMenuDivider());
-      items.addAll([
-        PopupMenuItem(
-          value: _actionChangeRole,
-          child: Row(
-            children: const [
-              Icon(
-                Icons.manage_accounts_outlined,
-                size: 18,
-                color: AdminTheme.cyan,
-              ),
-              SizedBox(width: 8),
-              Flexible(
-                child: Text('Changer le rôle', overflow: TextOverflow.ellipsis),
-              ),
-            ],
+          AdminRowAction(
+            icon: Icons.mark_email_read_outlined,
+            label: 'Renvoyer l’invitation',
+            onPressed: () => _resendManagedAccountInvite(user),
           ),
-        ),
-        PopupMenuItem(
-          value: _actionResendInvite,
-          child: Row(
-            children: const [
-              Icon(
-                Icons.mark_email_read_outlined,
-                size: 18,
-                color: AdminTheme.accent,
-              ),
-              SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  'Renvoyer l’invitation',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ]);
-    }
-
-    items.add(const PopupMenuDivider());
-    items.add(
-      const PopupMenuItem(
-        value: _actionDelete,
-        child: Row(
-          children: [
-            Icon(
-              Icons.delete_outline_rounded,
-              size: 18,
-              color: AdminTheme.danger,
-            ),
-            SizedBox(width: 8),
-            Flexible(child: Text('Supprimer', overflow: TextOverflow.ellipsis)),
-          ],
-        ),
-      ),
-    );
-
-    return items;
-  }
-
-  Future<void> _handleActionSelection(String value, AppUser user) async {
-    switch (value) {
-      case _actionDelete:
-        await _deleteManagedAccount(user);
-        break;
-      case _actionDisableAuth:
-        await _disableManagedAccountAuth(user);
-        break;
-      case _actionEnableAuth:
-        await _enableManagedAccountAuth(user);
-        break;
-      case _actionChangeRole:
-        await _changeManagedAccountRole(user);
-        break;
-      case _actionResendInvite:
-        await _resendManagedAccountInvite(user);
-        break;
-      case _actionReviewProfile:
-        await _showProfileReviewDialog(user);
-        break;
-      case _actionEditProfile:
-        await _editManagedAccountProfile(user);
-        break;
-      case _actionVerifyProfile:
-        await _verifyManagedAccountProfile(user);
-        break;
-      case _actionUnverifyProfile:
-        await _unverifyManagedAccountProfile(user);
-        break;
-      case _actionManageMembership:
-        await _setManagedAccountMembership(user);
-        break;
-    }
-  }
-
-  Widget _buildActionCell(AppUser user) {
-    if (_actionInFlightUid == user.uid) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 8),
-          Text(_actionInFlightLabel ?? 'Traitement...'),
         ],
+        if (user.isPlayer && user.isMinorProfile)
+          AdminRowAction(
+            icon: Icons.shield_outlined,
+            label: 'Retirer les autorisations parentales',
+            color: AdminTheme.warning,
+            onPressed: () => _withdrawMinorConsent(user),
+          ),
+        AdminRowAction(
+          icon: Icons.delete_outline_rounded,
+          label: 'Supprimer',
+          color: AdminTheme.danger,
+          onPressed: () => _deleteManagedAccount(user),
+        ),
+      ],
+    );
+  }
+
+  /// Fiche latérale d'un compte : la revue de profil complète, avec les
+  /// décisions épinglées en bas et la navigation dans la file en haut.
+  Widget _buildDetailPanel(AppUser user, List<AppUser> queue) {
+    final index = queue.indexWhere((item) => item.uid == user.uid);
+    final canVerify = _canManageProfileVerification(user);
+    final busy = _actionInFlightUid == user.uid;
+
+    final Widget body;
+    if (_detailLoading) {
+      body = const AdminLoadingState(message: 'Chargement de la fiche…');
+    } else if (_detailError != null) {
+      body = AdminEmptyState(
+        title: 'Chargement incomplet',
+        message: _detailError!,
+        icon: Icons.error_outline_rounded,
+        actionLabel: 'Réessayer',
+        actionIcon: Icons.refresh_rounded,
+        onAction: () => _openDetail(user),
       );
+    } else {
+      body = _ProfileReviewContent(user: user);
     }
 
-    return PopupMenuButton<String>(
-      tooltip: 'Actions utilisateur',
-      onSelected: (value) => _handleActionSelection(value, user),
-      itemBuilder: (context) => _buildActionMenuItems(user),
+    return AdminDetailPanel(
+      title: user.nom,
+      subtitle: user.role,
+      position: index < 0 ? null : '${index + 1} / ${queue.length}',
+      onPrevious: index > 0 ? () => _openDetail(queue[index - 1]) : null,
+      onNext: index >= 0 && index < queue.length - 1
+          ? () => _openDetail(queue[index + 1])
+          : null,
+      onClose: _closeDetail,
+      actions: [
+        if (canVerify)
+          OutlinedButton(
+            onPressed: busy ? null : () => _editManagedAccountProfile(user),
+            child: const Text('Modifier'),
+          ),
+        if (_isMutableManagedAccount(user))
+          OutlinedButton(
+            onPressed: busy ? null : () => _setManagedAccountMembership(user),
+            child: const Text('Droits'),
+          ),
+        if (canVerify && (user.profileVerified || !user.isMinorProfile))
+          ElevatedButton(
+            onPressed: busy
+                ? null
+                : () {
+                    if (user.profileVerified) {
+                      _unverifyManagedAccountProfile(user);
+                    } else {
+                      _verifyManagedAccountProfile(user);
+                    }
+                  },
+            child: Text(
+              user.profileVerified
+                  ? 'Retirer la certification'
+                  : _verifyProfileActionLabel(user),
+            ),
+          ),
+      ],
+      child: body,
     );
   }
 
   Widget _buildUserCard(AppUser user) {
     return AdminDataCard(
-      leading: Icon(_rowLeadingIcon, color: _rowLeadingColor, size: 22),
-      title: Text(
-        user.nom,
-        style: const TextStyle(
-          color: AdminTheme.textPrimary,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      subtitle: Text(
-        user.email,
-        style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 12),
-      ),
+      onTap: () => _openDetail(user),
+      leading: Icon(_rowLeadingIcon, color: _rowLeadingColor, size: 18),
+      title: Text(user.nom, style: AdminType.bodyStrong),
+      subtitle: Text(user.email, style: AdminType.caption),
       fields: [
         AdminDataCardField(
           label: 'Rôle',
-          value: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(user.role),
-              Text(
-                user.profileLevelLabel,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AdminTheme.textSecondary,
-                ),
-              ),
-              Text(
-                user.profileTrustLabel,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: user.profileVerified
-                      ? AdminTheme.success
-                      : user.profileVerificationNeedsReview
-                      ? AdminTheme.warning
-                      : AdminTheme.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (user.createdByAdmin)
-                Text(
-                  user.createdByAdminUid == null
-                      ? 'créé par l’administration'
-                      : 'Admin créateur : ${user.createdByAdminUid}',
-                  style: TextStyle(fontSize: 12, color: AdminTheme.accent),
-                ),
-            ],
+          value: Text('${user.role} · ${user.profileLevelLabel}'),
+        ),
+        AdminDataCardField(
+          label: 'Confiance',
+          value: Text(
+            user.profileTrustLabel,
+            style: TextStyle(
+              color: user.profileVerified
+                  ? AdminTheme.success
+                  : user.profileVerificationNeedsReview
+                  ? AdminTheme.warning
+                  : AdminTheme.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         AdminDataCardField(
@@ -1176,453 +1050,306 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
+  /// Applique le compteur sélectionné dans la bande de synthèse.
+  ///
+  /// Les tuiles de statistiques annonçaient « 3 accès suspendus » sans
+  /// permettre de les voir : il fallait deviner lesquels à la lecture du
+  /// tableau. Chaque compteur est maintenant un filtre.
+  bool _matchesStatusFilter(AppUser user) {
+    switch (_statusFilter) {
+      case _UserStatusFilter.managed:
+        return _isAdminManagedAccount(user);
+      case _UserStatusFilter.suspended:
+        return user.authDisabled;
+      case _UserStatusFilter.verified:
+        return user.profileVerified;
+      case _UserStatusFilter.needsReview:
+        return user.profileVerificationNeedsReview;
+      case null:
+        return true;
+    }
+  }
+
+  void _toggleStatusFilter(_UserStatusFilter filter) {
+    setState(() {
+      _statusFilter = _statusFilter == filter ? null : filter;
+      currentPage = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
-    final panelPadding = compact ? 16.0 : 20.0;
-    final spacing = compact ? 12.0 : 18.0;
-    final tableColumnSpacing = compact ? 16.0 : 20.0;
-    final headingRowHeight = compact ? 54.0 : 58.0;
-    final dataRowHeight = compact ? 78.0 : 84.0;
-    final hasFilters = searchQuery.trim().isNotEmpty || selectedRole != 'Tous';
+    final hasFilters =
+        searchQuery.trim().isNotEmpty ||
+        selectedRole != 'Tous' ||
+        _statusFilter != null;
 
-    return AdminGlassPanel(
-      padding: EdgeInsets.all(panelPadding),
-      highlight: true,
-      accentColor: _panelAccentColor,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AdminInfoBanner(
-            title: _bannerTitle,
-            message: _bannerMessage,
-            icon: Icons.rule_folder_outlined,
-            tone: AdminBannerTone.warning,
-          ),
-          SizedBox(height: spacing),
-          AdminFilterBar(
-            maxWidth: 1180,
-            breakpoint: 900,
-            spacing: compact ? 10 : 12,
-            flexes: const [5, 3, 2],
-            children: [
-              AdminSearchField(
-                controller: _searchController,
-                hintText: _searchHint,
-                onChanged: (value) {
-                  setState(() {
-                    searchQuery = value;
-                    currentPage = 0;
-                  });
-                },
-              ),
-              _buildRoleFilterField(),
-              SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: hasFilters ? _clearFilters : null,
-                  icon: const Icon(Icons.filter_alt_off_rounded),
-                  label: const Text('Réinitialiser'),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: spacing),
-          Obx(() {
-            final loadError =
-                _userController.usersLoadError.value ??
-                _userController.privateContactLoadError.value;
-            if (loadError != null) {
-              return AdminEmptyState(
-                title: 'Chargement incomplet',
-                message: loadError,
-                icon: Icons.error_outline_rounded,
-                actionLabel: 'Réessayer',
-                actionIcon: Icons.refresh_rounded,
-                onAction: () {
-                  _userController.retryUsers();
-                },
-              );
-            }
-            final filteredUsers = _userController.userList.where((user) {
-              final matchesRole =
-                  selectedRole == 'Tous' || user.role == selectedRole;
-              final normalizedQuery = searchQuery.toLowerCase();
-              final matchesSearch =
-                  normalizedQuery.isEmpty ||
-                  // email/phone dropped: they no longer come back on the
-                  // bulk users snapshot (see UserController.fetchUsers),
-                  // only on the on-demand private-fields fetch used by the
-                  // profile review dialog.
-                  [
-                    user.nom,
-                    user.city,
-                    user.region,
-                    user.country,
-                    user.football.currentClubName,
-                    user.nomClub,
-                    user.entreprise,
-                    user.profileTrustLabel,
-                    user.profileVerificationStatusLabel,
-                  ].whereType<String>().any(
-                    (value) => value.toLowerCase().contains(normalizedQuery),
-                  );
-
-              return matchesRole && matchesSearch;
-            }).toList();
-
-            final totalPages = (filteredUsers.length / rowsPerPage).ceil();
-            final safePage = totalPages == 0
-                ? 0
-                : currentPage.clamp(0, totalPages - 1);
-            final startIndex = safePage * rowsPerPage;
-            final endIndex = (startIndex + rowsPerPage).clamp(
-              0,
-              filteredUsers.length,
-            );
-            final displayedUsers = filteredUsers.sublist(startIndex, endIndex);
-
-            if (_userController.isLoading.value) {
-              return const Center(
-                child: AdminLoadingState(
-                  message: 'Chargement des utilisateurs...',
-                ),
-              );
-            }
-
-            if (filteredUsers.isEmpty) {
-              final hasFilters =
-                  searchQuery.trim().isNotEmpty || selectedRole != 'Tous';
-
-              return AdminEmptyState(
-                title: _emptyTitle,
-                message: _emptyMessage,
-                icon: Icons.person_search_rounded,
-                actionLabel: hasFilters
-                    ? 'Réinitialiser les filtres'
-                    : 'Recharger la liste',
-                actionIcon: hasFilters
-                    ? Icons.filter_alt_off_rounded
-                    : Icons.refresh_rounded,
-                onAction: () {
-                  if (hasFilters) {
-                    _clearFilters();
-                  } else {
-                    _userController.retryUsers();
-                  }
-                },
-              );
-            }
-
-            final managedUsers = filteredUsers
-                .where((user) => _isAdminManagedAccount(user))
-                .length;
-            final advancedProfiles = filteredUsers
-                .where((user) => user.hasAdvancedProfile)
-                .length;
-            final verifiedProfiles = filteredUsers
-                .where((user) => user.profileVerified)
-                .length;
-            // canBeProfileVerifiedByAdmin alone doesn't check whether the
-            // account is actually one the admin can act on (self-signup
-            // joueur/fan accounts pass it too, but _verifyManagedAccountProfile
-            // and the backend's assertManagedTarget both reject those) — use
-            // the same _canManageProfileVerification gate as the action
-            // itself so this count matches what "Certifier" can actually do.
-            final readyForVerification = filteredUsers
-                .where(
-                  (user) =>
-                      !user.isMinorProfile &&
-                      !user.profileVerified &&
-                      _canManageProfileVerification(user) &&
-                      user.canBeProfileVerifiedByAdmin,
-                )
-                .length;
-            final pendingReview = filteredUsers
-                .where((user) => user.profileVerificationNeedsReview)
-                .length;
-            final suspendedAccess = filteredUsers
-                .where((user) => user.authDisabled)
-                .length;
-
-            return Column(
-              children: [
-                Wrap(
-                  spacing: compact ? 10 : 12,
-                  runSpacing: compact ? 10 : 12,
-                  children: [
-                    AdminMiniStat(
-                      label: 'Résultats',
-                      value: '${filteredUsers.length}',
-                      icon: Icons.groups_2_rounded,
-                      accentColor: AdminTheme.textSecondary,
-                      subtitle: 'Comptes visibles',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Comptes administrés',
-                      value: '$managedUsers',
-                      icon: Icons.manage_accounts_outlined,
-                      accentColor: AdminTheme.textSecondary,
-                      subtitle: 'Dans la sélection',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Accès suspendus',
-                      value: '$suspendedAccess',
-                      icon: Icons.lock_person_outlined,
-                      // Couleur conditionnée à la valeur plutôt que fixe :
-                      // n'attire l'œil que quand il y a réellement un compte
-                      // suspendu à regarder.
-                      accentColor: suspendedAccess > 0
-                          ? AdminTheme.warning
-                          : AdminTheme.textSecondary,
-                      subtitle: 'Accès suspendus',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Profils certifiés',
-                      value: '$verifiedProfiles',
-                      icon: Icons.verified_rounded,
-                      // Seul accent "positif" qui reste permanent : c'est un
-                      // vrai signal de confiance affiché publiquement, pas
-                      // juste un compteur parmi d'autres.
-                      accentColor: AdminTheme.success,
-                      subtitle: 'Signal de confiance',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'À revalider',
-                      value: '$pendingReview',
-                      icon: Icons.fact_check_outlined,
-                      accentColor: pendingReview > 0
-                          ? AdminTheme.warning
-                          : AdminTheme.textSecondary,
-                      subtitle: 'Informations à revoir',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Prêts à vérifier',
-                      value: '$readyForVerification',
-                      icon: Icons.rule_folder_outlined,
-                      accentColor: AdminTheme.textSecondary,
-                      subtitle: 'Éligibles',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Droits actifs',
-                      value:
-                          '${filteredUsers.where((user) => user.membership.isActiveAt(DateTime.now())).length}',
-                      icon: Icons.workspace_premium_outlined,
-                      accentColor: AdminTheme.textSecondary,
-                      subtitle: 'Dossiers en cours',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Profils avancés',
-                      value: '$advancedProfiles',
-                      icon: Icons.verified_outlined,
-                      accentColor: AdminTheme.textSecondary,
-                      subtitle: 'Profils complets',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                    AdminMiniStat(
-                      label: 'Action en cours',
-                      value: _actionInFlightUid == null ? '0' : '1',
-                      icon: Icons.bolt_rounded,
-                      accentColor: _actionInFlightUid == null
-                          ? AdminTheme.textSecondary
-                          : AdminTheme.warning,
-                      subtitle: _actionInFlightLabel ?? 'Aucune',
-                      minWidth: compact ? 180 : 220,
-                    ),
-                  ],
-                ),
-                SizedBox(height: spacing),
-                if (compact)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final user in displayedUsers) ...[
-                        _buildUserCard(user),
-                        const SizedBox(height: 12),
-                      ],
-                    ],
-                  )
-                else
-                  AdminDataTableCard(
-                    compact: compact,
-                    child: DataTable(
-                      columnSpacing: tableColumnSpacing,
-                      horizontalMargin: compact ? 8 : 10,
-                      columns: const [
-                        DataColumn(
-                          label: Text('Nom', textAlign: TextAlign.center),
-                        ),
-                        DataColumn(
-                          label: Text('Rôle', textAlign: TextAlign.center),
-                        ),
-                        DataColumn(
-                          label: Text('Statut', textAlign: TextAlign.center),
-                        ),
-                        DataColumn(
-                          label: Text('Actions', textAlign: TextAlign.center),
-                        ),
-                      ],
-                      rows: List<DataRow>.generate(
-                        displayedUsers.length,
-                        (index) => DataRow(
-                          cells: [
-                            DataCell(
-                              SizedBox(
-                                width: compact ? 200 : 240,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _rowLeadingIcon,
-                                      color: _rowLeadingColor,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            displayedUsers[index].nom,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          Text(
-                                            displayedUsers[index].email,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w500,
-                                              color: AdminTheme.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              SizedBox(
-                                width: compact ? 190 : 220,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      displayedUsers[index].role,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      displayedUsers[index].profileLevelLabel,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w500,
-                                        color: AdminTheme.textSecondary,
-                                      ),
-                                    ),
-                                    Text(
-                                      displayedUsers[index].profileTrustLabel,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color:
-                                            displayedUsers[index]
-                                                .profileVerified
-                                            ? AdminTheme.success
-                                            : displayedUsers[index]
-                                                  .profileVerificationNeedsReview
-                                            ? AdminTheme.warning
-                                            : AdminTheme.textMuted,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (displayedUsers[index].createdByAdmin)
-                                      const Text(
-                                        'créé par l\'administration',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AdminTheme.accent,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            DataCell(
-                              AdminAccountStatusChips(
-                                user: displayedUsers[index],
-                              ),
-                            ),
-                            DataCell(_buildActionCell(displayedUsers[index])),
-                          ],
-                        ),
-                      ),
-                      headingRowColor: WidgetStateProperty.all(
-                        AdminTheme.surfaceHighlight.withValues(alpha: 0.72),
-                      ),
-                      dataRowColor: WidgetStateProperty.all(
-                        AdminTheme.surface.withValues(alpha: 0.14),
-                      ),
-                      dividerThickness: 1,
-                      dataRowMinHeight: dataRowHeight,
-                      dataRowMaxHeight: dataRowHeight,
-                      headingRowHeight: headingRowHeight,
-                    ),
-                  ),
-                SizedBox(height: spacing),
-                AdminPaginationBar(
-                  currentPage: safePage,
-                  totalPages: totalPages,
-                  onPrevious: safePage > 0
-                      ? () {
-                          setState(() {
-                            currentPage = safePage - 1;
-                          });
-                        }
-                      : null,
-                  onNext: safePage < totalPages - 1
-                      ? () {
-                          setState(() {
-                            currentPage = safePage + 1;
-                          });
-                        }
-                      : null,
-                ),
-                const SizedBox(height: 10),
-                AdminLoadMoreBar(
-                  loadedCount: _userController.userList.length,
-                  hasMore: _userController.hasMoreUsers.value,
-                  itemLabel: 'utilisateurs',
-                  onLoadMore: _userController.loadMoreUsers,
-                ),
-              ],
-            );
-          }),
-        ],
-      ),
+    final toolbar = AdminToolbar(
+      flexes: const [3, 2],
+      trailing: [
+        IconButton(
+          onPressed: hasFilters ? _clearFilters : null,
+          icon: const Icon(Icons.filter_alt_off_rounded, size: 17),
+          tooltip: 'Réinitialiser les filtres',
+        ),
+        IconButton(
+          onPressed: _userController.retryUsers,
+          icon: const Icon(Icons.refresh_rounded, size: 17),
+          tooltip: 'Recharger la liste',
+        ),
+      ],
+      filters: [
+        AdminSearchField(
+          controller: _searchController,
+          hintText: _searchHint,
+          onChanged: (value) {
+            setState(() {
+              searchQuery = value;
+              currentPage = 0;
+            });
+          },
+        ),
+        _buildRoleFilterField(),
+      ],
     );
+
+    return Obx(() {
+      final loadError =
+          _userController.usersLoadError.value ??
+          _userController.privateContactLoadError.value;
+      if (loadError != null) {
+        return AdminEmptyState(
+          title: 'Chargement incomplet',
+          message: loadError,
+          icon: Icons.error_outline_rounded,
+          actionLabel: 'Réessayer',
+          actionIcon: Icons.refresh_rounded,
+          onAction: _userController.retryUsers,
+        );
+      }
+
+      if (_userController.isLoading.value) {
+        return const AdminLoadingState(message: 'Chargement des utilisateurs…');
+      }
+
+      final roleAndSearchMatches = _userController.userList.where((user) {
+        final matchesRole = selectedRole == 'Tous' || user.role == selectedRole;
+        final normalizedQuery = searchQuery.toLowerCase();
+        final matchesSearch =
+            normalizedQuery.isEmpty ||
+            // email/phone dropped: they no longer come back on the
+            // bulk users snapshot (see UserController.fetchUsers),
+            // only on the on-demand private-fields fetch used by the
+            // profile review panel.
+            [
+              user.nom,
+              user.city,
+              user.region,
+              user.country,
+              user.football.currentClubName,
+              user.nomClub,
+              user.entreprise,
+              user.profileTrustLabel,
+              user.profileVerificationStatusLabel,
+            ].whereType<String>().any(
+              (value) => value.toLowerCase().contains(normalizedQuery),
+            );
+
+        return matchesRole && matchesSearch;
+      }).toList();
+
+      // Les compteurs portent sur la sélection rôle + recherche, pas sur le
+      // filtre d'état lui-même : sinon cliquer « Accès suspendus » ferait
+      // tomber tous les autres compteurs à zéro.
+      final managedUsers = roleAndSearchMatches
+          .where(_isAdminManagedAccount)
+          .length;
+      final verifiedProfiles = roleAndSearchMatches
+          .where((user) => user.profileVerified)
+          .length;
+      final pendingReview = roleAndSearchMatches
+          .where((user) => user.profileVerificationNeedsReview)
+          .length;
+      final suspendedAccess = roleAndSearchMatches
+          .where((user) => user.authDisabled)
+          .length;
+
+      final filteredUsers = roleAndSearchMatches
+          .where(_matchesStatusFilter)
+          .toList();
+
+      final totalPages = (filteredUsers.length / rowsPerPage).ceil();
+      final safePage = totalPages == 0
+          ? 0
+          : currentPage.clamp(0, totalPages - 1);
+      final startIndex = safePage * rowsPerPage;
+      final endIndex = (startIndex + rowsPerPage).clamp(
+        0,
+        filteredUsers.length,
+      );
+      final displayedUsers = filteredUsers.sublist(startIndex, endIndex);
+
+      final stats = AdminStatStrip(
+        stats: [
+          AdminStat(
+            label: 'administrés',
+            value: '$managedUsers',
+            selected: _statusFilter == _UserStatusFilter.managed,
+            onTap: () => _toggleStatusFilter(_UserStatusFilter.managed),
+            tooltip: 'Comptes créés ou suivis par l’administration',
+          ),
+          AdminStat(
+            label: 'certifiés',
+            value: '$verifiedProfiles',
+            selected: _statusFilter == _UserStatusFilter.verified,
+            onTap: () => _toggleStatusFilter(_UserStatusFilter.verified),
+            tooltip: 'Profils portant le badge de confiance',
+          ),
+          AdminStat(
+            label: 'à revalider',
+            value: '$pendingReview',
+            tone: pendingReview > 0 ? AdminTheme.warning : null,
+            selected: _statusFilter == _UserStatusFilter.needsReview,
+            onTap: () => _toggleStatusFilter(_UserStatusFilter.needsReview),
+            tooltip: 'Informations de confiance modifiées depuis la revue',
+          ),
+          AdminStat(
+            label: 'accès suspendus',
+            value: '$suspendedAccess',
+            tone: suspendedAccess > 0 ? AdminTheme.warning : null,
+            selected: _statusFilter == _UserStatusFilter.suspended,
+            onTap: () => _toggleStatusFilter(_UserStatusFilter.suspended),
+            tooltip: 'Comptes dont la connexion est bloquée',
+          ),
+        ],
+      );
+
+      final Widget body;
+      if (filteredUsers.isEmpty) {
+        body = AdminEmptyState(
+          title: _emptyTitle,
+          message: _emptyMessage,
+          icon: Icons.person_search_rounded,
+          actionLabel: hasFilters
+              ? 'Réinitialiser les filtres'
+              : 'Recharger la liste',
+          actionIcon: hasFilters
+              ? Icons.filter_alt_off_rounded
+              : Icons.refresh_rounded,
+          onAction: () {
+            if (hasFilters) {
+              _clearFilters();
+            } else {
+              _userController.retryUsers();
+            }
+          },
+        );
+      } else if (compact) {
+        body = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final user in displayedUsers) ...[
+              _buildUserCard(user),
+              const SizedBox(height: AdminTheme.space2),
+            ],
+          ],
+        );
+      } else {
+        body = AdminTable(
+          minWidth: _tableMinWidth,
+          columns: [
+            const AdminColumn(label: 'Compte', flex: 4),
+            const AdminColumn(label: 'Rôle', flex: 2),
+            AdminColumn(
+              label: 'Confiance',
+              width: 150,
+              tooltip: _trustColumnHelp,
+            ),
+            const AdminColumn(label: 'Statut', width: 220),
+            const AdminColumn(label: '', width: 128, alignRight: true),
+          ],
+          rowCount: displayedUsers.length,
+          selectedRow: _selectedUid == null
+              ? null
+              : displayedUsers.indexWhere((user) => user.uid == _selectedUid),
+          onRowTap: (index) => _openDetail(displayedUsers[index]),
+          cellsBuilder: (index) {
+            final user = displayedUsers[index];
+
+            return [
+              AdminCellIdentity(
+                title: user.nom,
+                subtitle: user.email,
+                icon: _rowLeadingIcon,
+                iconColor: _rowLeadingColor,
+              ),
+              AdminCellIdentity(
+                title: user.role,
+                subtitle: user.createdByAdmin
+                    ? 'Compte administré'
+                    : user.profileLevelLabel,
+              ),
+              Text(
+                user.profileTrustLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AdminType.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: user.profileVerified
+                      ? AdminTheme.success
+                      : user.profileVerificationNeedsReview
+                      ? AdminTheme.warning
+                      : AdminTheme.textMuted,
+                ),
+              ),
+              AdminAccountStatusChips(user: user),
+              _buildActionCell(user),
+            ];
+          },
+        );
+      }
+
+      final selected = _detailUser;
+
+      return AdminWorkspace(
+        compact: compact,
+        bodyMinWidth: _tableMinWidth,
+        toolbar: toolbar,
+        stats: stats,
+        body: body,
+        // Le bandeau de gouvernance expliquait une règle métier en quatre
+        // lignes, en haut de chaque visite. Il est devenu l'infobulle de la
+        // colonne « Confiance », là où la question se pose vraiment.
+        detail: selected == null
+            ? null
+            : _buildDetailPanel(selected, filteredUsers),
+        footer: filteredUsers.isEmpty
+            ? null
+            : AdminListFooter(
+                rangeStart: startIndex + 1,
+                rangeEnd: endIndex,
+                filteredCount: filteredUsers.length,
+                currentPage: safePage,
+                totalPages: totalPages,
+                itemLabel: 'utilisateurs',
+                hasMore: _userController.hasMoreUsers.value,
+                onLoadMore: _userController.loadMoreUsers,
+                onPrevious: safePage > 0
+                    ? () => setState(() => currentPage = safePage - 1)
+                    : null,
+                onNext: safePage < totalPages - 1
+                    ? () => setState(() => currentPage = safePage + 1)
+                    : null,
+              ),
+      );
+    });
   }
 }
+
+/// Les quatre états sur lesquels la bande de synthèse peut restreindre la
+/// liste.
+enum _UserStatusFilter { managed, verified, needsReview, suspended }
 
 class _ManagedProfileEditDialog extends StatefulWidget {
   const _ManagedProfileEditDialog({
@@ -1824,17 +1551,17 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
           child: Text(
             'Sans elle, le dossier n’apparaît dans aucune recherche de '
             'recruteur.',
-            style: TextStyle(fontSize: 12),
+            style: AdminType.caption,
           ),
         ),
         if (_user.profileVerified) ...[
           const SizedBox(height: 4),
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
               'Modifier la date retire la certification jusqu’à un nouveau '
               'contrôle : l’âge est un fait que le recruteur croit sur parole.',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              style: AdminType.caption.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -2005,14 +1732,14 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                       child: Text(
                         'Date de naissance indisponible : le document de '
                         'contact n’a pas pu être lu.',
-                        style: TextStyle(fontSize: 12),
+                        style: AdminType.caption,
                       ),
                     ),
                   if (_isMinor) ...[
                     const SizedBox(height: 10),
                     const Text(
                       'Sans accord parental enregistré, la fiche reste masquée. Avec accord, accès limité aux recruteurs vérifiés et contact médié par l’administration.',
-                      style: TextStyle(fontSize: 12),
+                      style: AdminType.caption,
                     ),
                     if (_requiresGuardianConsent) ...[
                       TextFormField(
@@ -2107,7 +1834,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                       child: Text(
                         'Retirez une saison fausse ou dupliquée. '
                         'Une saison s’archive depuis l’application.',
-                        style: TextStyle(fontSize: 12),
+                        style: AdminType.caption,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -2117,7 +1844,7 @@ class _ManagedProfileEditDialogState extends State<_ManagedProfileEditDialog> {
                           Expanded(
                             child: Text(
                               _ProfileReviewContent.archivedSeasonLabel(season),
-                              style: const TextStyle(fontSize: 13),
+                              style: AdminType.body,
                             ),
                           ),
                           IconButton(
@@ -2328,9 +2055,8 @@ class _ManagedMembershipDialogState extends State<_ManagedMembershipDialog> {
               const SizedBox(height: 8),
               Text(
                 Membership.tierDescriptionOf(_tier),
-                style: const TextStyle(
+                style: AdminType.caption.copyWith(
                   color: AdminTheme.textSecondary,
-                  fontSize: 12,
                 ),
               ),
               if (!_isClearing) ...[
@@ -2357,11 +2083,10 @@ class _ManagedMembershipDialogState extends State<_ManagedMembershipDialog> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Un compte sous contrat avec l’agence n’a normalement pas de terme.',
-                  style: TextStyle(
+                  style: AdminType.caption.copyWith(
                     color: AdminTheme.textSecondary,
-                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -2380,9 +2105,8 @@ class _ManagedMembershipDialogState extends State<_ManagedMembershipDialog> {
                 _isClearing
                     ? 'Le dossier sera effacé : le compte redeviendra un compte sans droits enregistrés.'
                     : 'Aucun montant n’est enregistré ici. Le règlement se fait à l’agence et cette fiche ne fait qu’en garder la trace.',
-                style: const TextStyle(
+                style: AdminType.caption.copyWith(
                   color: AdminTheme.textSecondary,
-                  fontSize: 12,
                 ),
               ),
             ],
@@ -2714,31 +2438,12 @@ class _ProfileReviewSection extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
+  // Même grammaire que les autres fiches du portail (AdminDetailSection) :
+  // un intitulé discret et une suite de champs, sans encadré. Le panneau
+  // en empile six, ce qui faisait six cartes dans une carte.
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AdminTheme.surface.withValues(alpha: 0.24),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AdminTheme.borderSoft),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AdminTheme.textPrimary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 10),
-          ...children,
-        ],
-      ),
-    );
+    return AdminDetailSection(title: title, children: children);
   }
 }
 
@@ -2758,39 +2463,37 @@ class _ProfileReviewItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final successValue = success;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (successValue != null) ...[
-            Icon(
-              successValue
-                  ? Icons.check_circle_outline_rounded
-                  : Icons.error_outline_rounded,
-              size: 18,
-              color: successValue ? AdminTheme.success : AdminTheme.warning,
+    return AdminDetailField(
+      label: label,
+      value: value,
+      valueColor: successValue == null
+          ? null
+          : (successValue ? AdminTheme.success : AdminTheme.warning),
+      child: successValue == null
+          ? null
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  successValue
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.error_outline_rounded,
+                  size: 14,
+                  color: successValue ? AdminTheme.success : AdminTheme.warning,
+                ),
+                const SizedBox(width: AdminTheme.space2 - 2),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: AdminType.body.copyWith(
+                      color: successValue
+                          ? AdminTheme.success
+                          : AdminTheme.warning,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-          ],
-          SizedBox(
-            width: 190,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AdminTheme.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(color: AdminTheme.textPrimary),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

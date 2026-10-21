@@ -3,6 +3,82 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('la copie francaise suit une seule convention typographique', () {
+    // Le portail melangeait 642 apostrophes droites et 107 typographiques,
+    // plus 18 « ... » contre 5 « … ». Les deux formes se voient a l'ecran,
+    // parfois dans la meme phrase.
+    //
+    // Deux marqueurs suffisent a verrouiller la convention : une apostrophe
+    // droite dans une chaine francaise doit etre echappee ('), et trois
+    // points colles a un delimiteur de chaine sont une ellipse mal ecrite.
+    // Un spread operator `...identifiant` ne declenche ni l'un ni l'autre.
+    final escapedApostrophe = RegExp(r"\\'");
+    final asciiEllipsis = RegExp("[.]{3}['\"]");
+    final offenders = <String>[];
+
+    for (final root in const <String>[
+      'lib/dashboard',
+      'lib/widgets',
+      'lib/screens',
+      'lib/models',
+      'lib/utils',
+    ]) {
+      final directory = Directory(root);
+      if (!directory.existsSync()) continue;
+
+      for (final entity in directory.listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final content = entity.readAsStringSync();
+        if (escapedApostrophe.hasMatch(content)) {
+          offenders.add('${entity.path} : apostrophe droite');
+        }
+        if (asciiEllipsis.hasMatch(content)) {
+          offenders.add('${entity.path} : points de suspension');
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      isEmpty,
+      reason: 'Employer l’apostrophe ’ et le caractere … dans la copie.',
+    );
+  });
+
+  test('les ecrans ne posent plus de taille de police en dur', () {
+    // L'echelle typographique vit dans lib/theme (AdminTheme + AdminType).
+    // Treize tailles distinctes etaient auparavant eparpillees sur
+    // soixante-seize TextStyle litteraux : deux textes de meme role
+    // n'avaient pas la meme taille d'un ecran a l'autre, et rien dans un
+    // fichier pris isolement ne permettait de s'en apercevoir.
+    final offenders = <String>[];
+
+    for (final root in const <String>[
+      'lib/dashboard',
+      'lib/widgets',
+      'lib/screens',
+    ]) {
+      final directory = Directory(root);
+      if (!directory.existsSync()) continue;
+
+      for (final entity in directory.listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final content = entity.readAsStringSync();
+        if (content.contains('fontSize:')) {
+          offenders.add(entity.path);
+        }
+      }
+    }
+
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'Utiliser un role de AdminType, ou le textTheme, plutot que de '
+          'poser une taille a la main.',
+    );
+  });
+
   test('admin source text does not contain common mojibake sequences', () {
     const forbidden = <String>[
       '\u{00C3}',
@@ -66,7 +142,7 @@ void main() {
       'controllers',
       'mutations de modération',
       'Aucun accès sensible',
-      "n'est écrit directement",
+      "n’est écrit directement",
     ];
 
     final offenders = <String>[];

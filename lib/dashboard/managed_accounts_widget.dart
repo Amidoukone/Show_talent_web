@@ -7,6 +7,7 @@ import '../controller/user_controller.dart';
 import '../models/managed_account_provision_result.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/firebase_functions_error.dart';
 import '../utils/player_age.dart';
@@ -71,8 +72,8 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
   Future<void> _pickBirthDate() async {
     final latestEligibleDate = latestEligibleBirthDate();
     final currentBirthDate = _birthDate;
-    final initialDate = currentBirthDate == null ||
-            currentBirthDate.isAfter(latestEligibleDate)
+    final initialDate =
+        currentBirthDate == null || currentBirthDate.isAfter(latestEligibleDate)
         ? defaultBirthDatePickerDate()
         : currentBirthDate;
     final picked = await showDatePicker(
@@ -113,19 +114,26 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       return;
     }
     if (_selectedRole == 'joueur' && _birthDate == null) {
-      setState(() => _errorMessage =
-          'La date de naissance est requise pour vérifier l’âge du joueur.');
+      setState(
+        () => _errorMessage =
+            'La date de naissance est requise pour vérifier l’âge du joueur.',
+      );
       return;
     }
     if (_selectedRole == 'joueur' && isBelowMinimumPlayerAge(_birthDate!)) {
-      setState(() => _errorMessage =
-          'Adfoot accueille les joueurs à partir de 13 ans.');
+      setState(
+        () =>
+            _errorMessage = 'Adfoot accueille les joueurs à partir de 13 ans.',
+      );
       return;
     }
-    if (_isMinor && _guardianConsentReceived &&
+    if (_isMinor &&
+        _guardianConsentReceived &&
         _guardianNameController.text.trim().length < 2) {
-      setState(() => _errorMessage =
-          'Ajoutez le nom du parent ou tuteur dont l’accord a été recueilli.');
+      setState(
+        () => _errorMessage =
+            'Ajoutez le nom du parent ou tuteur dont l’accord a été recueilli.',
+      );
       return;
     }
 
@@ -240,285 +248,289 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
     );
   }
 
-  Widget _buildInfoBanner({
-    required AdminBannerTone tone,
-    required IconData icon,
-    required String title,
-    required String message,
-  }) {
-    return AdminInfoBanner(
-      title: title,
-      message: message,
-      icon: icon,
-      tone: tone,
+  Widget _buildTitulaireFields() {
+    return AdminFormColumn(
+      maxWidth: 560,
+      children: [
+        TextFormField(
+          controller: _nameController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Nom complet',
+            prefixIcon: Icon(Icons.person_outline_rounded, size: 18),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Le nom est obligatoire.';
+            }
+            return null;
+          },
+        ),
+        TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Adresse e-mail',
+            prefixIcon: Icon(Icons.mail_outline_rounded, size: 18),
+          ),
+          validator: (value) {
+            final trimmed = value?.trim() ?? '';
+            if (trimmed.isEmpty) {
+              return 'L’e-mail est obligatoire.';
+            }
+            if (!trimmed.contains('@')) {
+              return 'Saisissez un e-mail valide.';
+            }
+            return null;
+          },
+        ),
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Téléphone (optionnel)',
+            prefixIcon: Icon(Icons.call_outlined, size: 18),
+          ),
+        ),
+        DropdownButtonFormField<String>(
+          initialValue: _selectedRole,
+          decoration: const InputDecoration(
+            labelText: 'Rôle du compte',
+            prefixIcon: Icon(Icons.badge_outlined, size: 18),
+          ),
+          items: adminProvisionedRoles
+              .map(
+                (role) =>
+                    DropdownMenuItem<String>(value: role, child: Text(role)),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+            setState(() {
+              _selectedRole = value;
+            });
+          },
+        ),
+      ],
     );
+  }
+
+  /// Bloc « accord parental », affiché seulement pour un joueur mineur.
+  ///
+  /// Il reste replié tant que la date de naissance n'est pas saisie : six
+  /// champs de consentement affichés à un administrateur qui crée un
+  /// compte de club, c'est du bruit, et cela noyait la seule chose à
+  /// faire — remplir le nom et l'e-mail.
+  List<Widget> _buildGuardianFields() {
+    if (_selectedRole != 'joueur' || !_isMinor) {
+      return const <Widget>[];
+    }
+
+    return [
+      const SizedBox(height: AdminTheme.space4),
+      AdminInfoBanner(
+        title: 'Joueur mineur',
+        message:
+            'Le compte et son invitation peuvent être créés maintenant. Tant '
+            'que l’accord du parent ou tuteur n’est pas enregistré, la fiche '
+            'et les médias du mineur restent masqués.',
+        icon: Icons.shield_outlined,
+        tone: AdminBannerTone.warning,
+      ),
+      const SizedBox(height: AdminTheme.space3),
+      CheckboxListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        value: _guardianConsentReceived,
+        title: const Text(
+          'Accord du parent ou tuteur déjà recueilli (oralement ou par écrit)',
+          style: AdminType.body,
+        ),
+        onChanged: (value) => setState(() {
+          _guardianConsentReceived = value ?? false;
+          if (!_guardianConsentReceived) {
+            _guardianMediaAllowed = false;
+          }
+        }),
+      ),
+      if (!_guardianConsentReceived)
+        const Text(
+          'Vous pouvez créer le compte sans cette information et enregistrer '
+          'l’accord plus tard depuis la gestion du compte.',
+          style: AdminType.caption,
+        )
+      else ...[
+        const SizedBox(height: AdminTheme.space3),
+        AdminFormColumn(
+          maxWidth: 560,
+          children: [
+            TextFormField(
+              controller: _guardianNameController,
+              decoration: const InputDecoration(
+                labelText: 'Nom du parent ou tuteur',
+              ),
+            ),
+            DropdownButtonFormField<String>(
+              initialValue: _guardianRelationship,
+              decoration: const InputDecoration(
+                labelText: 'Lien avec le joueur',
+              ),
+              items: const [
+                DropdownMenuItem(value: 'parent', child: Text('Parent')),
+                DropdownMenuItem(
+                  value: 'legal_guardian',
+                  child: Text('Tuteur légal'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _guardianRelationship = value);
+                }
+              },
+            ),
+            DropdownButtonFormField<String>(
+              initialValue: _guardianConsentMethod,
+              decoration: const InputDecoration(
+                labelText: 'Accord recueilli par',
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'oral_confirmation',
+                  child: Text('Échange oral / téléphone'),
+                ),
+                DropdownMenuItem(
+                  value: 'written_confirmation',
+                  child: Text('Écrit / document'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _guardianConsentMethod = value);
+                }
+              },
+            ),
+            TextFormField(
+              controller: _guardianEvidenceController,
+              decoration: const InputDecoration(
+                labelText: 'Note de suivi (facultatif)',
+              ),
+            ),
+          ],
+        ),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          value: _guardianMediaAllowed,
+          title: const Text(
+            'Le parent autorise la publication des photos, vidéos et CV sur '
+            'la fiche ; les vidéos restent soumises à modération.',
+            style: AdminType.body,
+          ),
+          onChanged: (value) =>
+              setState(() => _guardianMediaAllowed = value ?? false),
+        ),
+      ],
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     final compact = _isCompactLayout(context);
-    final panelPadding = compact ? 16.0 : 20.0;
-    final spacing = compact ? 12.0 : 18.0;
 
-    return AdminGlassPanel(
-      padding: EdgeInsets.all(panelPadding),
-      highlight: true,
-      accentColor: AdminTheme.cyan,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Obx(() {
-            if (_userController.isLoading.value) {
-              return const AdminLoadingState(
-                message: 'Chargement des comptes...',
-              );
-            }
+    return SingleChildScrollView(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Le bandeau vert « droits vérifiés » a disparu : un message
+              // permanent qui confirme que tout va bien n'est plus lu au
+              // bout de deux jours, et il masquait le seul cas qui compte.
+              Obx(() {
+                if (_userController.hasRequiredAdminClaims) {
+                  return const SizedBox.shrink();
+                }
 
-            final managedAccounts = _userController.userList
-                .where(
-                  (user) =>
-                      user.createdByAdmin || isManagedAccountRole(user.role),
-                )
-                .length;
-
-            return Wrap(
-              spacing: compact ? 10 : 12,
-              runSpacing: compact ? 10 : 12,
-              children: [
-                AdminMiniStat(
-                  label: 'Droits admin',
-                  value: '${_userController.grantedAdminClaims.length}',
-                  icon: Icons.verified_user_outlined,
-                  accentColor: AdminTheme.cyan,
-                  subtitle: _userController.hasRequiredAdminClaims
-                      ? 'Session valide'
-                      : 'À vérifier',
-                  minWidth: compact ? 180 : 220,
+                return const Padding(
+                  padding: EdgeInsets.only(bottom: AdminTheme.space4),
+                  child: AdminInfoBanner(
+                    title: 'Droits administrateur manquants',
+                    message:
+                        'Reconnectez-vous avec un compte autorisé avant de '
+                        'provisionner.',
+                    icon: Icons.warning_amber_rounded,
+                    tone: AdminBannerTone.danger,
+                  ),
+                );
+              }),
+              AdminPanel(
+                padding: EdgeInsets.all(
+                  compact ? AdminTheme.space4 : AdminTheme.space5,
                 ),
-                AdminMiniStat(
-                  label: 'Comptes gérés',
-                  value: '$managedAccounts',
-                  icon: Icons.manage_accounts_outlined,
-                  accentColor: AdminTheme.success,
-                  subtitle: "Créés ou suivis par l'administration",
-                  minWidth: compact ? 180 : 220,
-                ),
-                AdminMiniStat(
-                  label: 'Rôles disponibles',
-                  value: '${adminProvisionedRoles.length}',
-                  icon: Icons.badge_outlined,
-                  accentColor: AdminTheme.accent,
-                  subtitle: 'Profils métier',
-                  minWidth: compact ? 180 : 220,
-                ),
-              ],
-            );
-          }),
-          SizedBox(height: spacing),
-          Obx(() {
-            if (_userController.hasRequiredAdminClaims) {
-              return _buildInfoBanner(
-                tone: AdminBannerTone.success,
-                icon: Icons.verified_user,
-                title: 'Droits administrateur vérifiés',
-                message:
-                    'Votre session peut provisionner et mettre à jour les comptes métier.',
-              );
-            }
-
-            return _buildInfoBanner(
-              tone: AdminBannerTone.warning,
-              icon: Icons.warning_amber_rounded,
-              title: 'Droits administrateur manquants',
-              message:
-                  'Reconnectez-vous avec un compte autorisé avant de provisionner.',
-            );
-          }),
-          SizedBox(height: spacing),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 1180 && !compact;
-
-              final formSection = AdminSubsectionCard(
-                title: 'Créer ou mettre à jour un compte',
-                subtitle:
-                    "Renseignez le titulaire, choisissez son rôle et transmettez les liens d'activation générés.",
-                accentColor: AdminTheme.cyan,
-                child: AdminFormColumn(
-                  maxWidth: 560,
-                  spacing: compact ? 12 : 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const AdminSectionHeader(
+                      title: 'Créer ou mettre à jour un compte',
+                      subtitle:
+                          'Renseignez le titulaire, choisissez son rôle, puis '
+                          'transmettez les liens d’activation générés.',
+                    ),
+                    const SizedBox(height: AdminTheme.space5),
                     Form(
                       key: _formKey,
-                      child: AdminFormColumn(
-                        maxWidth: 560,
-                        spacing: compact ? 12 : 16,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          TextFormField(
-                            controller: _nameController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Nom complet',
-                              prefixIcon: Icon(Icons.person_outline_rounded),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Le nom est obligatoire.';
-                              }
-                              return null;
-                            },
-                          ),
-                          TextFormField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Adresse e-mail',
-                              prefixIcon: Icon(Icons.mail_outline_rounded),
-                            ),
-                            validator: (value) {
-                              final trimmed = value?.trim() ?? '';
-                              if (trimmed.isEmpty) {
-                                return 'L’e-mail est obligatoire.';
-                              }
-                              if (!trimmed.contains('@')) {
-                                return 'Saisissez un e-mail valide.';
-                              }
-                              return null;
-                            },
-                          ),
-                          TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Téléphone (optionnel)',
-                              prefixIcon: Icon(Icons.call_outlined),
-                            ),
-                          ),
-                          DropdownButtonFormField<String>(
-                            initialValue: _selectedRole,
-                            decoration: const InputDecoration(
-                              labelText: 'Rôle du compte',
-                              prefixIcon: Icon(Icons.badge_outlined),
-                            ),
-                            items: adminProvisionedRoles
-                                .map(
-                                  (role) => DropdownMenuItem<String>(
-                                    value: role,
-                                    child: Text(role),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              if (value == null) {
-                                return;
-                              }
-
-                              setState(() {
-                                _selectedRole = value;
-                              });
-                            },
-                          ),
+                          _buildTitulaireFields(),
                           if (_selectedRole == 'joueur') ...[
-                            OutlinedButton.icon(
-                              onPressed: _isSubmitting ? null : _pickBirthDate,
-                              icon: const Icon(Icons.event_outlined),
-                              label: Text(_birthDate == null
-                                  ? 'Date de naissance requise'
-                                  : 'Date de naissance : ${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'),
+                            const SizedBox(height: AdminTheme.space3),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: OutlinedButton.icon(
+                                onPressed: _isSubmitting
+                                    ? null
+                                    : _pickBirthDate,
+                                icon: const Icon(
+                                  Icons.event_outlined,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  _birthDate == null
+                                      ? 'Date de naissance requise'
+                                      : 'Né le ${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}',
+                                ),
+                              ),
                             ),
-                            if (_isMinor) ...[
-                              const Text(
-                                'Le compte et son invitation peuvent être créés maintenant. Tant que l’accord du parent ou tuteur n’est pas enregistré, la fiche et les médias du mineur restent masqués.',
-                              ),
-                              CheckboxListTile(
-                                contentPadding: EdgeInsets.zero,
-                                value: _guardianConsentReceived,
-                                title: const Text(
-                                  'Accord du parent ou tuteur déjà recueilli (oralement ou par écrit)',
-                                ),
-                                onChanged: (value) => setState(() {
-                                  _guardianConsentReceived = value ?? false;
-                                  if (!_guardianConsentReceived) {
-                                    _guardianMediaAllowed = false;
-                                  }
-                                }),
-                              ),
-                              if (_guardianConsentReceived) ...[
-                                TextFormField(
-                                  controller: _guardianNameController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Nom du parent ou tuteur',
-                                  ),
-                                ),
-                                DropdownButtonFormField<String>(
-                                  initialValue: _guardianRelationship,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Lien avec le joueur',
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(value: 'parent', child: Text('Parent')),
-                                    DropdownMenuItem(value: 'legal_guardian', child: Text('Tuteur légal')),
-                                  ],
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setState(() => _guardianRelationship = value);
-                                    }
-                                  },
-                                ),
-                                DropdownButtonFormField<String>(
-                                  initialValue: _guardianConsentMethod,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Accord recueilli par',
-                                  ),
-                                  items: const [
-                                    DropdownMenuItem(value: 'oral_confirmation', child: Text('Échange oral / téléphone')),
-                                    DropdownMenuItem(value: 'written_confirmation', child: Text('Écrit / document')),
-                                  ],
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setState(() => _guardianConsentMethod = value);
-                                    }
-                                  },
-                                ),
-                                TextFormField(
-                                  controller: _guardianEvidenceController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Note de suivi (facultatif)',
-                                  ),
-                                ),
-                                CheckboxListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  value: _guardianMediaAllowed,
-                                  title: const Text('Le parent autorise la publication des photos, vidéos et CV sur la fiche ; les vidéos restent soumises à modération.'),
-                                  onChanged: (value) => setState(
-                                    () => _guardianMediaAllowed = value ?? false,
-                                  ),
-                                ),
-                              ] else
-                                const Text(
-                                  'Vous pouvez créer le compte sans cette information et enregistrer l’accord plus tard depuis la gestion du compte.',
-                                ),
-                            ],
                           ],
-                          SizedBox(
-                            width: double.infinity,
+                          ..._buildGuardianFields(),
+                          const SizedBox(height: AdminTheme.space5),
+                          Align(
+                            alignment: Alignment.centerLeft,
                             child: ElevatedButton.icon(
                               onPressed: _isSubmitting ? null : _submit,
                               icon: _isSubmitting
                                   ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
+                                      width: 14,
+                                      height: 14,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
+                                        color: AdminTheme.background,
                                       ),
                                     )
-                                  : const Icon(Icons.person_add_alt_1),
+                                  : const Icon(
+                                      Icons.person_add_alt_1,
+                                      size: 16,
+                                    ),
                               label: Text(
                                 _isSubmitting
-                                    ? 'Provisionnement en cours...'
+                                    ? 'Provisionnement en cours…'
                                     : 'Provisionner le compte',
                               ),
                             ),
@@ -527,62 +539,57 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
                       ),
                     ),
                     if (_errorMessage != null) ...[
-                      _buildInfoBanner(
-                        tone: AdminBannerTone.danger,
-                        icon: Icons.error_outline,
+                      const SizedBox(height: AdminTheme.space4),
+                      AdminInfoBanner(
                         title: 'Provisionnement refusé',
                         message: _errorMessage!,
-                      ),
-                    ],
-                    if (_lastResult != null) ...[
-                      AdminSubsectionCard(
-                        title: 'Résultat du provisionnement',
-                        subtitle:
-                            'Le message prêt à envoyer et les liens individuels restent disponibles dans cette section.',
-                        accentColor: AdminTheme.accent,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ManagedAccountInviteSummary(
-                              result: _lastResult!,
-                              recipientName: _lastRecipientName,
-                              copyPosition: SnackPosition.BOTTOM,
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  setState(() {
-                                    _lastResult = null;
-                                    _lastRecipientName = null;
-                                    _errorMessage = null;
-                                  });
-                                },
-                                icon: const Icon(Icons.restart_alt_rounded),
-                                label: const Text('Nouvelle opération'),
-                              ),
-                            ),
-                          ],
-                        ),
+                        icon: Icons.error_outline,
+                        tone: AdminBannerTone.danger,
                       ),
                     ],
                   ],
                 ),
-              );
-
-              return Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: wide ? 860 : constraints.maxWidth,
+              ),
+              if (_lastResult != null) ...[
+                const SizedBox(height: AdminTheme.space3),
+                AdminPanel(
+                  padding: EdgeInsets.all(
+                    compact ? AdminTheme.space4 : AdminTheme.space5,
                   ),
-                  child: formSection,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AdminSectionHeader(
+                        title: 'Liens à transmettre',
+                        subtitle:
+                            'Le message est déjà ordonné pour le titulaire. '
+                            'Copiez-le tel quel ou réutilisez les liens un '
+                            'par un.',
+                        trailing: TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _lastResult = null;
+                              _lastRecipientName = null;
+                              _errorMessage = null;
+                            });
+                          },
+                          icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                          label: const Text('Nouvelle opération'),
+                        ),
+                      ),
+                      const SizedBox(height: AdminTheme.space4),
+                      ManagedAccountInviteSummary(
+                        result: _lastResult!,
+                        recipientName: _lastRecipientName,
+                        copyPosition: SnackPosition.BOTTOM,
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

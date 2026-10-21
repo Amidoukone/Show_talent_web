@@ -122,7 +122,7 @@ void main() {
     expect(user.matchesLocation('abi'), isTrue);
     expect(user.hasAdvancedProfile, isTrue);
     expect(user.hasScoutReadyProfile, isTrue);
-    expect(user.profileLevelLabel, 'Profil elite');
+    expect(user.profileLevelLabel, 'Profil élite');
   });
 
   test('AppUser separates profile completion from admin verification', () {
@@ -155,7 +155,7 @@ void main() {
     expect(user.profileVerified, isTrue);
     expect(user.isProfileTrusted, isTrue);
     expect(user.profileTrustLabel, 'Profil certifié');
-    expect(user.profileVerificationStatusLabel, 'Vérifié par admin');
+    expect(user.profileVerificationStatusLabel, 'Certifié par l’administration');
     expect(user.profileVerifiedAt?.toUtc(), DateTime.utc(2026, 6, 1));
     expect(user.profileVerifiedBy, 'admin-1');
     expect(user.profileVerificationNote, 'Profil contrôlé');
@@ -195,7 +195,7 @@ void main() {
     expect(user.profileVerificationNeedsReview, isTrue);
     expect(user.isProfileTrusted, isFalse);
     expect(user.profileTrustLabel, 'À revalider');
-    expect(user.profileVerificationStatusLabel, 'Vérification à refaire');
+    expect(user.profileVerificationStatusLabel, 'Certification à revalider');
     expect(
       user.toMap()['profileVerificationInvalidationReason'],
       'profile_updated_by_user',

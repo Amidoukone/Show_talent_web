@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/user.dart';
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 import 'admin_ui.dart';
 
 /// Un seul repère de statut par compte plutôt qu'une pile de chips : les
@@ -10,11 +11,14 @@ import 'admin_ui.dart';
 /// information (ex. "inactif" et "accès limité" en même temps). Les droits
 /// enregistrés restent affichés, mais en second plan — ils ne changent pas
 /// l'accès au compte et ne doivent jamais se confondre avec lui.
+///
+/// Ce repère ne parle que d'**accès**. La certification est l'affaire de
+/// `AppUser.profileTrustLabel`, montré dans la colonne « Confiance ». Les
+/// deux ont longtemps dit la même chose avec des mots différents —
+/// « Vérifié » ici, « Profil certifié » là — ce qui donnait deux colonnes
+/// redondantes sur la moitié des lignes.
 class AdminAccountStatusChips extends StatelessWidget {
-  const AdminAccountStatusChips({
-    required this.user,
-    super.key,
-  });
+  const AdminAccountStatusChips({required this.user, super.key});
 
   final AppUser user;
 
@@ -34,11 +38,7 @@ class AdminAccountStatusChips extends StatelessWidget {
             membershipLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AdminTheme.textSecondary,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-            ),
+            style: AdminType.caption.copyWith(color: AdminTheme.textSecondary),
           ),
         ],
       ],
@@ -47,16 +47,16 @@ class AdminAccountStatusChips extends StatelessWidget {
 
   _StatusItem _primaryStatus(AppUser user) {
     if (user.authDisabled) {
-      return const _StatusItem(label: 'Accès désactivé', color: AdminTheme.warning);
+      return const _StatusItem(
+        label: 'Accès suspendu',
+        color: AdminTheme.warning,
+      );
     }
     if (!user.isEffectivelyActiveAccount) {
-      return const _StatusItem(label: 'Accès limité', color: AdminTheme.textMuted);
-    }
-    if (user.profileVerified) {
-      return const _StatusItem(label: 'Vérifié', color: AdminTheme.success);
-    }
-    if (user.profileVerificationNeedsReview) {
-      return const _StatusItem(label: 'À revalider', color: AdminTheme.warning);
+      return const _StatusItem(
+        label: 'Accès limité',
+        color: AdminTheme.textMuted,
+      );
     }
     return const _StatusItem(label: 'Actif', color: AdminTheme.success);
   }
@@ -72,10 +72,7 @@ class AdminAccountStatusChips extends StatelessWidget {
 }
 
 class _StatusItem {
-  const _StatusItem({
-    required this.label,
-    required this.color,
-  });
+  const _StatusItem({required this.label, required this.color});
 
   final String label;
   final Color color;

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../models/managed_account_provision_result.dart';
 import '../theme/admin_theme.dart';
+import '../theme/admin_type.dart';
 import 'admin_feedback.dart';
 import 'admin_ui.dart';
 
@@ -86,9 +87,7 @@ class ManagedAccountInviteSummary extends StatelessWidget {
     final emailMessage = [
       'Objet : ${result.buildEmailSubject()}',
       '',
-      result.buildEmailMessage(
-        recipientName: recipientName,
-      ),
+      result.buildEmailMessage(recipientName: recipientName),
     ].join('\n');
     final steps = result.buildRecommendedSteps();
 
@@ -206,9 +205,9 @@ class _ChecklistCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceSoft.withValues(alpha: 0.38),
-        border: Border.all(color: AdminTheme.border.withValues(alpha: 0.9)),
-        borderRadius: BorderRadius.circular(18),
+        color: AdminTheme.surfaceSunken,
+        border: Border.all(color: AdminTheme.border),
+        borderRadius: BorderRadius.circular(AdminTheme.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,8 +222,9 @@ class _ChecklistCard extends StatelessWidget {
           const SizedBox(height: 10),
           ...List<Widget>.generate(steps.length, (index) {
             return Padding(
-              padding:
-                  EdgeInsets.only(bottom: index == steps.length - 1 ? 0 : 10),
+              padding: EdgeInsets.only(
+                bottom: index == steps.length - 1 ? 0 : 10,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -238,10 +238,9 @@ class _ChecklistCard extends StatelessWidget {
                     ),
                     child: Text(
                       '${index + 1}',
-                      style: const TextStyle(
+                      style: AdminType.caption.copyWith(
                         color: AdminTheme.cyan,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -286,9 +285,9 @@ class _MessageCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceSoft.withValues(alpha: 0.38),
-        border: Border.all(color: AdminTheme.border.withValues(alpha: 0.9)),
-        borderRadius: BorderRadius.circular(18),
+        color: AdminTheme.surfaceSunken,
+        border: Border.all(color: AdminTheme.border),
+        borderRadius: BorderRadius.circular(AdminTheme.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,9 +357,9 @@ class _LinkTile extends StatelessWidget {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AdminTheme.surfaceSoft.withValues(alpha: 0.38),
-        border: Border.all(color: AdminTheme.border.withValues(alpha: 0.9)),
-        borderRadius: BorderRadius.circular(18),
+        color: AdminTheme.surfaceSunken,
+        border: Border.all(color: AdminTheme.border),
+        borderRadius: BorderRadius.circular(AdminTheme.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

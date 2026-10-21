@@ -39,7 +39,7 @@ void main() {
   ) async {
     final controller = TestUserController(
       users: List.generate(
-        5,
+        30,
         (i) => buildTestUser(
           uid: 'page-$i',
           nom: 'Compte $i',
@@ -59,11 +59,16 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final next = find.byIcon(Icons.arrow_forward_rounded);
+    final next = find.byIcon(Icons.chevron_right_rounded);
     await tester.ensureVisible(next);
     await tester.tap(next);
     await tester.pumpAndSettle();
-    controller.seededUsers.removeRange(1, 5);
+    expect(find.text('Compte 25'), findsOneWidget);
+
+    // La liste se vide en direct sous l'opérateur resté en page 2 : la
+    // page affichée doit retomber sur la première au lieu de lire au-delà
+    // de la fin de liste.
+    controller.seededUsers.removeRange(1, 30);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Compte 0'), findsOneWidget);
@@ -106,7 +111,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final actionMenu = find.byType(PopupMenuButton<String>);
+    final actionMenu = find.byType(PopupMenuButton<int>);
     await tester.ensureVisible(actionMenu);
     await tester.tap(actionMenu);
     await tester.pumpAndSettle();
@@ -140,14 +145,17 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final actionMenu = find.byType(PopupMenuButton<String>);
+    final actionMenu = find.byType(PopupMenuButton<int>);
     await tester.ensureVisible(actionMenu);
     await tester.tap(actionMenu);
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Changer le'));
     await tester.pumpAndSettle();
 
-    final roleDropdown = find.byType(DropdownButtonFormField<String>);
+    // Deux menus déroulants de rôle coexistent désormais : le filtre de la
+    // barre d'outils et celui de la boîte de dialogue. Le second est le
+    // dernier monté.
+    final roleDropdown = find.byType(DropdownButtonFormField<String>).last;
     await tester.ensureVisible(roleDropdown);
     await tester.tap(roleDropdown);
     await tester.pumpAndSettle();
@@ -205,11 +213,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final actionMenu = find.byType(PopupMenuButton<String>);
-    await tester.ensureVisible(actionMenu);
-    await tester.tap(actionMenu);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Certifier le profil'));
+    final certify = find.byTooltip('Certifier le profil');
+    await tester.ensureVisible(certify);
+    await tester.tap(certify);
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -266,11 +272,8 @@ void main() {
     // graphies différentes de la même information.
     expect(find.text('À revalider'), findsWidgets);
 
-    final actionMenu = find.byType(PopupMenuButton<String>);
-    await tester.ensureVisible(actionMenu);
-    await tester.tap(actionMenu);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Réexaminer le profil'), findsOneWidget);
+    // L'action de réexamen est posée sur la ligne, pas enfouie dans un
+    // menu : son libellé est celui de son infobulle.
+    expect(find.byTooltip('Réexaminer le profil'), findsOneWidget);
   });
 }

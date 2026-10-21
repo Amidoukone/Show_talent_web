@@ -175,10 +175,9 @@ void main() {
       final calls = <Map<String, dynamic>>[];
 
       expect(
-        () => buildService(calls).setManagedAccountMembership(
-          uid: '   ',
-          tier: MembershipTier.adfoot,
-        ),
+        () => buildService(
+          calls,
+        ).setManagedAccountMembership(uid: '   ', tier: MembershipTier.adfoot),
         throwsArgumentError,
       );
       expect(calls, isEmpty);
@@ -201,14 +200,15 @@ void main() {
 
   group('UserManagementWidget', () {
     Future<void> openActionMenu(WidgetTester tester) async {
-      final actionMenu = find.byType(PopupMenuButton<String>);
+      final actionMenu = find.byType(PopupMenuButton<int>);
       await tester.ensureVisible(actionMenu);
       await tester.tap(actionMenu);
       await tester.pumpAndSettle();
     }
 
-    testWidgets('a managed account can have its entitlement recorded',
-        (tester) async {
+    testWidgets('a managed account can have its entitlement recorded', (
+      tester,
+    ) async {
       final calls = <Map<String, dynamic>>[];
       final service = ManagedAccountService(
         callableExecutor: (callableName, payload) async {
@@ -259,8 +259,9 @@ void main() {
       expect(calls.single['payload'], {'uid': 'player-1', 'tier': 'adfoot'});
     });
 
-    testWidgets('an unchanged entitlement is not written again',
-        (tester) async {
+    testWidgets('an unchanged entitlement is not written again', (
+      tester,
+    ) async {
       final calls = <Map<String, dynamic>>[];
       final service = ManagedAccountService(
         callableExecutor: (callableName, payload) async {
@@ -300,8 +301,9 @@ void main() {
       expect(calls, isEmpty);
     });
 
-    testWidgets('a portal-only account is never offered the action',
-        (tester) async {
+    testWidgets('a portal-only account is never offered the action', (
+      tester,
+    ) async {
       final controller = TestUserController(
         users: [
           buildTestUser(

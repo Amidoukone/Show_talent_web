@@ -32,10 +32,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         normalized.contains('web-internal-error') ||
         normalized.contains('identity toolkit') ||
         normalized.contains('api key')) {
-      return "Le service d'authentification refuse la requ\u00eate. V\u00e9rifiez que votre acc\u00e8s administrateur est actif avant de r\u00e9essayer.";
+      return "Le service d’authentification refuse la requ\u00eate. V\u00e9rifiez que votre acc\u00e8s administrateur est actif avant de r\u00e9essayer.";
     }
 
-    return error.message ?? "Erreur d'authentification : ${error.code}";
+    return error.message ?? "Erreur d’authentification : ${error.code}";
   }
 
   @override
@@ -71,16 +71,16 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           .timeout(_loginTimeout);
 
       if (!accessResult.isAuthorized) {
-        Get.snackbar('Acc\u00e8s refus\u00e9', accessResult.message ?? 'Acc\u00e8s refus\u00e9.');
+        Get.snackbar(
+          'Acc\u00e8s refus\u00e9',
+          accessResult.message ?? 'Acc\u00e8s refus\u00e9.',
+        );
         return;
       }
 
       Get.offAllNamed(AppRoutes.adminDashboard);
     } on FirebaseAuthException catch (error) {
-      Get.snackbar(
-        'Connexion impossible',
-        _firebaseErrorMessage(error),
-      );
+      Get.snackbar('Connexion impossible', _firebaseErrorMessage(error));
     } on TimeoutException {
       Get.snackbar(
         'Connexion impossible',
@@ -154,28 +154,22 @@ class _LoginFormPanel extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final compact = viewportWidth < 600;
 
-    return AdminGlassPanel(
-      width: compact ? viewportWidth - 32 : 440,
-      padding: EdgeInsets.all(compact ? 20 : 28),
-      highlight: true,
-      accentColor: AdminTheme.cyan,
+    return AdminPanel(
+      width: compact ? viewportWidth - 32 : 420,
+      padding: EdgeInsets.all(compact ? AdminTheme.space5 : AdminTheme.space6),
       child: AdminFormColumn(
-        maxWidth: 440,
+        maxWidth: 420,
+        spacing: AdminTheme.space4,
         children: [
           const Align(
-            alignment: Alignment.center,
-            child: AdminBrandMark(size: 64),
+            alignment: Alignment.centerLeft,
+            child: AdminBrandMark(size: 40),
           ),
-          const Align(
-            alignment: Alignment.center,
+          Align(
+            alignment: Alignment.centerLeft,
             child: Text(
               'Connexion admin',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: AdminTheme.textPrimary,
-                letterSpacing: 0,
-              ),
+              style: Theme.of(context).textTheme.displaySmall,
             ),
           ),
           TextField(
@@ -184,7 +178,7 @@ class _LoginFormPanel extends StatelessWidget {
             enabled: !isSubmitting,
             decoration: const InputDecoration(
               labelText: 'Adresse e-mail',
-              prefixIcon: Icon(Icons.mail_outline_rounded),
+              prefixIcon: Icon(Icons.mail_outline_rounded, size: 18),
             ),
           ),
           TextField(
@@ -194,12 +188,13 @@ class _LoginFormPanel extends StatelessWidget {
             onSubmitted: (_) => onSubmit(),
             decoration: InputDecoration(
               labelText: 'Mot de passe',
-              prefixIcon: const Icon(Icons.lock_outline_rounded),
+              prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
               suffixIcon: IconButton(
                 icon: Icon(
                   obscurePassword
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
+                  size: 18,
                 ),
                 onPressed: onToggleObscurePassword,
               ),
@@ -211,13 +206,16 @@ class _LoginFormPanel extends StatelessWidget {
               onPressed: isSubmitting ? null : onSubmit,
               icon: isSubmitting
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AdminTheme.background,
+                      ),
                     )
-                  : const Icon(Icons.arrow_forward_rounded),
+                  : const Icon(Icons.arrow_forward_rounded, size: 16),
               label: Text(
-                isSubmitting ? 'Connexion...' : 'Ouvrir le tableau de bord',
+                isSubmitting ? 'Connexion…' : 'Ouvrir le tableau de bord',
               ),
             ),
           ),

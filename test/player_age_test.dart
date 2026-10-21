@@ -20,16 +20,16 @@ void main() {
       expect(playerAgeOn(DateTime(2010, 12, 31), on: reference), 15);
     });
 
-    test('anniversaire le jour même : l\'âge est acquis', () {
+    test('anniversaire le jour même : l’âge est acquis', () {
       expect(playerAgeOn(DateTime(2010, 10, 15), on: reference), 16);
     });
 
-    test('la veille de l\'anniversaire, il ne l\'est pas', () {
+    test('la veille de l’anniversaire, il ne l’est pas', () {
       expect(playerAgeOn(DateTime(2010, 10, 16), on: reference), 15);
     });
   });
 
-  group('le seuil d\'éligibilité', () {
+  group('le seuil d’éligibilité', () {
     test('le seuil du portail suit celui du backend', () {
       // `MINIMUM_PLAYER_AGE` dans functions/src/minor_consent.ts. Les deux
       // doivent bouger ensemble : changer celui-ci seul ne change rien à ce
@@ -62,7 +62,7 @@ void main() {
   });
 
   group('la minorité', () {
-    test('17 ans est mineur, 18 ne l\'est plus', () {
+    test('17 ans est mineur, 18 ne l’est plus', () {
       expect(isMinorPlayer(DateTime(2009, 1, 1), on: reference), isTrue);
       expect(isMinorPlayer(DateTime(2008, 1, 1), on: reference), isFalse);
     });

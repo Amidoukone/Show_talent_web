@@ -11,8 +11,28 @@ import '../models/user.dart';
 import '../utils/admin_access_messages.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/user_contact_projection.dart';
+import 'private_contact_cache.dart';
 
 class UserController extends GetxController {
+  UserController({PrivateContactReader? privateContactReader})
+    : _privateContacts = PrivateContactCache(
+        reader: privateContactReader ?? _readPrivateContactFromFirestore,
+      );
+
+  static Future<Map<String, dynamic>?> _readPrivateContactFromFirestore(
+    String uid,
+  ) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('private')
+        .doc('contact')
+        .get();
+    return snapshot.data();
+  }
+
+  final PrivateContactCache _privateContacts;
+
   final Rx<AppUser?> _user = Rx<AppUser?>(null);
   AppUser? get user => _user.value;
 
@@ -22,16 +42,12 @@ class UserController extends GetxController {
   final RxBool isLoading = true.obs;
   final RxnString usersLoadError = RxnString();
   final RxnString privateContactLoadError = RxnString();
-  bool _hasContactSnapshot = false;
   bool _retryingUsers = false;
 
   // Plafond + "charger plus" sur la collection users elle-même (voir
   // OffreController pour le détail du choix : tri par documentId pour
-  // n'exclure aucun document en silence). La lecture collectionGroup
-  // private ci-dessous reste volontairement non plafonnée : chaque document
-  // y est minuscule (contact uniquement) et lui ajouter un orderBy/limit
-  // nécessiterait un index COLLECTION_GROUP côté dépôt mobile qui n'existe
-  // pas encore (voir le commentaire sur _privateContactSubscription).
+  // n'exclure aucun document en silence). Les coordonnées privées sont
+  // lues pour cette seule fenêtre, voir _loadPrivateContacts.
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
   int _currentUsersLimit = _initialLoadLimit;
@@ -89,10 +105,6 @@ class UserController extends GetxController {
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersSubscription;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
-  _privateContactSubscription;
-  final Map<String, Map<String, dynamic>> _privateContactByUid =
-      <String, Map<String, dynamic>>{};
 
   @override
   void onInit() {
@@ -155,8 +167,13 @@ class UserController extends GetxController {
                 : 'Certains profils sont illisibles. La liste ne peut pas être affichée intégralement.';
             _userList.assignAll(parsedUsers);
             hasMoreUsers.value = snapshot.docs.length >= _currentUsersLimit;
+            // Réapplique d'abord ce qui est déjà en cache : les AppUser
+            // viennent d'être reconstruits et ont perdu leur e-mail.
             _applyPrivateContactCache();
             isLoading.value = false;
+            unawaited(
+              _loadPrivateContacts(parsedUsers.map((user) => user.uid)),
+            );
           },
           onError: (Object error, StackTrace stackTrace) {
             debugPrint('Flux Firestore users indisponible : $error');
@@ -169,57 +186,29 @@ class UserController extends GetxController {
             _usersSubscription = null;
           },
         );
+  }
 
-    // email/phone moved out of the main users doc (see AppUser.fromMap
-    // comment) — the list view still needs them for the email column and
-    // search, so mirror users/{uid}/private/contact via a collectionGroup
-    // query. Admin claims grant read access to every doc it returns (see
-    // firestore.rules); non-admins can't reach this code path at all.
-    //
-    // This query has no where()/orderBy() on purpose: firestore.indexes.json
-    // (mobile repo) has no COLLECTION_GROUP entry for `private`. Adding a
-    // filter or sort here WILL be rejected by Firestore in production until
-    // a matching COLLECTION_GROUP index is added there first.
-    _privateContactSubscription ??= FirebaseFirestore.instance
-        .collectionGroup('private')
-        .snapshots()
-        .listen(
-          (snapshot) {
-            _hasContactSnapshot = true;
-            privateContactLoadError.value = null;
-            for (final change in snapshot.docChanges) {
-              if (change.doc.id != 'contact') {
-                continue;
-              }
-              final uid = change.doc.reference.parent.parent?.id;
-              if (uid == null) {
-                continue;
-              }
-              if (change.type == DocumentChangeType.removed) {
-                _privateContactByUid.remove(uid);
-              } else {
-                _privateContactByUid[uid] =
-                    change.doc.data() ?? <String, dynamic>{};
-              }
-            }
-            _applyPrivateContactCache();
-          },
-          onError: (Object error, StackTrace stackTrace) {
-            debugPrint('Flux Firestore private/contact indisponible : $error');
-            debugPrintStack(stackTrace: stackTrace);
-            privateContactLoadError.value =
-                'Impossible de charger les coordonnées des comptes. Réessayez.';
-          },
-          onDone: () {
-            _privateContactSubscription = null;
-          },
-        );
+  Future<void> _loadPrivateContacts(Iterable<String> windowUids) {
+    return _privateContacts.syncWindow(
+      windowUids,
+      onApplied: () {
+        // Une vague aboutie referme le bandeau d'une panne passagère : les
+        // uid restés en échec ne sont pas mémorisés, le flux users les
+        // represente à sa prochaine émission et ils sont relus.
+        privateContactLoadError.value = null;
+        _applyPrivateContactCache();
+      },
+      onError: (_) {
+        privateContactLoadError.value =
+            'Impossible de charger les coordonnées des comptes. Réessayez.';
+      },
+    );
   }
 
   void _applyPrivateContactCache() {
-    if (!_hasContactSnapshot || _userList.isEmpty) return;
+    if (!_privateContacts.hasLoaded || _userList.isEmpty) return;
     for (final user in _userList) {
-      applyPrivateContact(user, _privateContactByUid[user.uid]);
+      applyPrivateContact(user, _privateContacts.contactFor(user.uid));
     }
     _userList.refresh();
   }
@@ -237,10 +226,7 @@ class UserController extends GetxController {
   Future<void> _stopUsersStream({bool clearUsers = false}) async {
     await _usersSubscription?.cancel();
     _usersSubscription = null;
-    await _privateContactSubscription?.cancel();
-    _privateContactSubscription = null;
-    _privateContactByUid.clear();
-    _hasContactSnapshot = false;
+    _privateContacts.invalidate();
 
     if (clearUsers) {
       usersLoadError.value = null;
@@ -413,7 +399,7 @@ class UserController extends GetxController {
         dateInscription: now.subtract(const Duration(days: 32)),
         dernierLogin: now.subtract(const Duration(hours: 6)),
         phone: '+225 07 00 00 00 01',
-        country: "Côte d'Ivoire",
+        country: "Côte d’Ivoire",
         city: 'Abidjan',
         nomClub: 'Académie Abidjan Nord',
         ligue: 'Formation',
@@ -436,7 +422,7 @@ class UserController extends GetxController {
         dateInscription: now.subtract(const Duration(days: 21)),
         dernierLogin: now.subtract(const Duration(days: 1)),
         phone: '+225 07 00 00 00 02',
-        country: "Côte d'Ivoire",
+        country: "Côte d’Ivoire",
         city: 'Bouaké',
         entreprise: 'KRS Talent',
         nombreDeRecrutements: 4,
@@ -456,7 +442,7 @@ class UserController extends GetxController {
         dateInscription: now.subtract(const Duration(days: 14)),
         dernierLogin: now.subtract(const Duration(hours: 12)),
         phone: '+225 07 00 00 00 03',
-        country: "Côte d'Ivoire",
+        country: "Côte d’Ivoire",
         city: 'Yamoussoukro',
         entreprise: 'TA Sports',
       ),
@@ -474,7 +460,7 @@ class UserController extends GetxController {
         dateInscription: now.subtract(const Duration(days: 10)),
         dernierLogin: now.subtract(const Duration(hours: 3)),
         phone: '+225 07 00 00 00 04',
-        country: "Côte d'Ivoire",
+        country: "Côte d’Ivoire",
         city: 'San-Pédro',
         position: 'Milieu',
         clubActuel: 'ST Academy',
@@ -508,7 +494,9 @@ class UserController extends GetxController {
   void onClose() {
     _authSubscription?.cancel();
     _usersSubscription?.cancel();
-    _privateContactSubscription?.cancel();
+    // Périme une vague de lecture encore en vol : elle écrirait dans un
+    // contrôleur fermé.
+    _privateContacts.invalidate();
     super.onClose();
   }
 }

@@ -161,9 +161,12 @@ class _LoginFormPanel extends StatelessWidget {
         maxWidth: 420,
         spacing: AdminTheme.space4,
         children: [
+          // Le logo complet, comme sur l'écran de connexion du mobile et
+          // dans l'en-tête du site public. C'est la seule surface du
+          // portail où le mot-marque n'est écrit nulle part ailleurs.
           const Align(
             alignment: Alignment.centerLeft,
-            child: AdminBrandMark(size: 40),
+            child: AdminBrandLockup(height: 64),
           ),
           Align(
             alignment: Alignment.centerLeft,

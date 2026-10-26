@@ -318,7 +318,7 @@ class _ContactIntakeManagementWidgetState
                                   ? color
                                   : AdminTheme.textSecondary,
                               fontWeight: selected
-                                  ? FontWeight.w800
+                                  ? FontWeight.w700
                                   : FontWeight.w600,
                             ),
                             onSelected: (_) {
@@ -473,7 +473,7 @@ class _ContactIntakeManagementWidgetState
                       '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
                       style: const TextStyle(
                         color: AdminTheme.textPrimary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -560,7 +560,7 @@ class _ContactIntakeManagementWidgetState
                       '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
                       style: const TextStyle(
                         color: AdminTheme.textPrimary,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 10),

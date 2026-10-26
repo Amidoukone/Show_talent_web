@@ -124,5 +124,42 @@ void main() {
       expect(script, contains('Dry run only'));
       expect(script, contains('No Firebase Auth or Firestore change was made'));
     });
+
+    test('aucune image ne demande FilterQuality.medium', () {
+      // Sur CanvasKit, `FilterQuality.medium` ne dessine rien : l'image se
+      // charge bien (verifie, 200 et 430 Ko transferes), la place est
+      // reservee dans la mise en page, et le rendu reste vide. Le logo du
+      // portail a disparu comme cela le 26 octobre 2026, sans la moindre
+      // erreur en console ni en reseau.
+      //
+      // C'est une panne silencieuse : rien n'echoue, il faut regarder
+      // l'ecran pour s'en apercevoir. D'ou ce garde-fou.
+      //
+      // Le motif vise le parametre, pas le mot : les commentaires qui
+      // expliquent le piege doivent pouvoir le nommer.
+      final usage = RegExp(r'filterQuality\s*:\s*FilterQuality\.medium');
+      final offenders = <String>[];
+
+      for (final root in const <String>['lib']) {
+        final directory = Directory(root);
+        if (!directory.existsSync()) continue;
+
+        for (final entity in directory.listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final content = entity.readAsStringSync();
+          if (usage.hasMatch(content)) {
+            offenders.add(entity.path);
+          }
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'FilterQuality.medium rend une image invisible sur CanvasKit. '
+            'Laisser le filtrage par defaut.',
+      );
+    });
   });
 }

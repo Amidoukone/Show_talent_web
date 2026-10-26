@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Socle visuel du portail admin.
 ///
@@ -61,6 +60,24 @@ class AdminTheme {
   // sur le fond de page), le texte secondaire et discret devenait illisible.
   static const Color textSecondary = Color(0xFFC3CBD3);
   static const Color textMuted = Color(0xFFA6AFB8);
+
+  // --------------------------------------------------------------------
+  // Polices. Embarquées, une graisse réelle par fichier, déclarées dans
+  // la section `fonts:` du pubspec, qui porte le détail de pourquoi.
+  // --------------------------------------------------------------------
+
+  /// Police de corps : Inter, dessinée pour les petites tailles à l'écran.
+  /// Embarquée en 400, 500, 600 et 700.
+  static const String fontBody = 'Inter';
+
+  /// Police de titre. Embarquée en 500 et 700 : Space Grotesk n'a pas de
+  /// graisse 600, donc les titres se posent en 700.
+  static const String fontDisplay = 'Space Grotesk';
+
+  /// Space Grotesk ne porte ni ɛ, ɔ, ni ɲ, vérifié dans sa table cmap. Sans
+  /// ce repli, un nom bambara dans un titre tomberait sur la police par
+  /// défaut de CanvasKit au lieu de rester dans la famille du portail.
+  static const List<String> fontDisplayFallback = <String>[fontBody];
 
   // --------------------------------------------------------------------
   // Échelle d'espacement. Un seul jeu de valeurs pour tout le portail :
@@ -134,11 +151,19 @@ class AdminTheme {
     );
 
     // Deux rôles, pas plus : Space Grotesk porte les titres (une
-    // personnalité technique assumée), Public Sans porte tout le reste —
-    // y compris les TextStyle littéraux qui ne précisent pas de police,
+    // personnalité technique assumée), Inter porte tout le reste, y
+    // compris les TextStyle littéraux qui ne précisent pas de police,
     // puisqu'ils héritent de bodyMedium via DefaultTextStyle.
-    final displayFont = GoogleFonts.spaceGrotesk();
-    final bodyFont = GoogleFonts.publicSans();
+    //
+    // Les deux familles sont maintenant embarquées, une graisse réelle par
+    // fichier. Elles ne passent plus par google_fonts, qui enregistrait une
+    // famille par variante et laissait Flutter fabriquer les graisses
+    // manquantes. Voir le commentaire de la section `fonts:` du pubspec.
+    const displayFont = TextStyle(
+      fontFamily: fontDisplay,
+      fontFamilyFallback: fontDisplayFallback,
+    );
+    const bodyFont = TextStyle(fontFamily: fontBody);
 
     return ThemeData(
       useMaterial3: true,
@@ -149,57 +174,66 @@ class AdminTheme {
       canvasColor: surface,
       dividerColor: border,
       splashFactory: NoSplash.splashFactory,
-      // Sept crans pour tout le portail : 11, 12, 13, 15, 17, 22, 28. Les
+      // Sept crans pour tout le portail : 12, 13, 14, 15, 17, 22, 28. Les
       // rôles de corps vivent dans AdminType ; les rôles de titre restent
       // ici parce qu'eux doivent nommer Space Grotesk.
+      //
+      // Les hauteurs de ligne s'écrivent `cible / taille` pour la même
+      // raison que dans AdminType : CanvasKit peint les glyphes lui-même,
+      // sans hinting ni lissage sous-pixel, et une boîte de ligne qui
+      // tombe sur un demi-pixel étale le texte sur deux rangées.
       textTheme: TextTheme(
         displaySmall: displayFont.copyWith(
           fontSize: 28,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.4,
           color: textPrimary,
-          height: 1.1,
+          height: 32 / 28,
         ),
+        // Les titres passent de w600 à w700 : Space Grotesk n'existe qu'en
+        // 300, 400, 500 et 700. Le w600 d'avant n'était pas une vraie
+        // graisse, c'était un faux gras fabriqué sur le Regular. Si un
+        // titre paraît lourd, le Medium 500 est embarqué et disponible.
         headlineMedium: displayFont.copyWith(
           fontSize: 22,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.2,
           color: textPrimary,
-          height: 1.2,
+          height: 28 / 22,
         ),
         titleLarge: displayFont.copyWith(
           fontSize: 17,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: textPrimary,
           letterSpacing: -0.1,
-          height: 1.25,
+          height: 22 / 17,
         ),
         titleMedium: displayFont.copyWith(
           fontSize: 15,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: textPrimary,
-          height: 1.3,
+          height: 20 / 15,
         ),
         bodyLarge: bodyFont.copyWith(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           color: textPrimary,
-          height: 1.35,
+          height: 18 / 14,
         ),
         bodyMedium: bodyFont.copyWith(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w500,
           color: textSecondary,
-          height: 1.45,
+          height: 20 / 14,
         ),
         bodySmall: bodyFont.copyWith(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
           color: textMuted,
-          height: 1.35,
+          height: 18 / 13,
         ),
         labelLarge: bodyFont.copyWith(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           color: background,
           letterSpacing: 0,
@@ -236,9 +270,9 @@ class AdminTheme {
         filled: true,
         fillColor: surfaceSoft,
         isDense: true,
-        labelStyle: const TextStyle(color: textSecondary, fontSize: 13),
+        labelStyle: const TextStyle(color: textSecondary, fontSize: 14),
         floatingLabelStyle: const TextStyle(color: textSecondary),
-        hintStyle: const TextStyle(color: textMuted, fontSize: 13),
+        hintStyle: const TextStyle(color: textMuted, fontSize: 14),
         prefixIconColor: textMuted,
         suffixIconColor: textMuted,
         contentPadding: const EdgeInsets.symmetric(
@@ -281,7 +315,7 @@ class AdminTheme {
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           ),
         ),
       ),
@@ -300,7 +334,7 @@ class AdminTheme {
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
         ),
       ),
@@ -317,7 +351,7 @@ class AdminTheme {
             ),
           ),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
           ),
         ),
       ),
@@ -361,10 +395,15 @@ class AdminTheme {
         headingTextStyle: TextStyle(
           color: textMuted,
           fontWeight: FontWeight.w700,
-          fontSize: 11,
-          letterSpacing: 0.6,
+          fontSize: 12,
+          letterSpacing: 0.5,
+          height: 16 / 12,
         ),
-        dataTextStyle: TextStyle(color: textSecondary, fontSize: 13),
+        dataTextStyle: TextStyle(
+          color: textSecondary,
+          fontSize: 14,
+          height: 20 / 14,
+        ),
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: surfaceRaised,
@@ -374,11 +413,11 @@ class AdminTheme {
           borderRadius: BorderRadius.circular(radiusSm),
           side: const BorderSide(color: borderStrong),
         ),
-        textStyle: const TextStyle(color: textPrimary, fontSize: 13),
+        textStyle: const TextStyle(color: textPrimary, fontSize: 14),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surfaceRaised,
-        contentTextStyle: const TextStyle(color: textPrimary, fontSize: 13),
+        contentTextStyle: const TextStyle(color: textPrimary, fontSize: 14),
         behavior: SnackBarBehavior.floating,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -395,7 +434,8 @@ class AdminTheme {
         textStyle: const TextStyle(
           color: textPrimary,
           fontWeight: FontWeight.w500,
-          fontSize: 12,
+          fontSize: 13,
+          height: 18 / 13,
         ),
         waitDuration: const Duration(milliseconds: 400),
       ),

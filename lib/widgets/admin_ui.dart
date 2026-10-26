@@ -120,6 +120,21 @@ class AdminContentFrame extends StatelessWidget {
   }
 }
 
+/// Le signe seul, à poser là où le mot « Adfoot » est déjà écrit à côté.
+///
+/// Le logo vivait dans un carré vert arrondi. Ce fond était une invention
+/// du portail : ni l'application mobile, ni le site public, ni même
+/// l'icône d'onglet et les icônes PWA de ce portail ne le portent. Tous
+/// posent l'encre blanche directement sur leur fond. Le cartouche parti,
+/// le signe occupe toute la boîte au lieu des 60 % que lui laissait son
+/// ancienne marge interne, donc il se lit mieux à taille égale.
+///
+/// **Ne pas poser `filterQuality` ici.** Sur CanvasKit,
+/// `FilterQuality.medium` ne dessine rien du tout : l'image se charge, la
+/// place est réservée dans la mise en page, et le rendu reste vide.
+/// Constaté le 26 octobre 2026 sur `logo_lockup_white.png`, et corrigé en
+/// retirant la seule option, le reste du widget étant inchangé. Le
+/// filtrage par défaut suffit pour ce rétrécissement.
 class AdminBrandMark extends StatelessWidget {
   const AdminBrandMark({this.size = 36, this.width, super.key});
 
@@ -128,17 +143,36 @@ class AdminBrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: width ?? size,
       height: size,
-      decoration: BoxDecoration(
-        color: AdminTheme.accent,
-        borderRadius: BorderRadius.circular(AdminTheme.radiusSm),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(size * 0.2),
-        child: Image.asset('assets/logo_icon_white.png', fit: BoxFit.contain),
-      ),
+      child: Image.asset('assets/logo_icon_white.png', fit: BoxFit.contain),
+    );
+  }
+}
+
+/// Le logo complet, signe et mot-marque, en blanc sur transparent.
+///
+/// C'est ce que montrent l'écran de connexion de l'application mobile et
+/// l'en-tête du site public. Il n'a sa place que là où rien ne répète déjà
+/// « Adfoot » : dans le rail de navigation, le mot-marque est un `Text`
+/// voisin, et c'est [AdminBrandMark] qu'il faut.
+///
+/// Le fichier est dérivé de `assets/logo.png`, l'artwork de référence,
+/// identique au bit près à celui du dépôt mobile. L'ancien
+/// `logo_white.png` était rogné au ras du dessin : le mot ADFOOT y était
+/// coupé en bas et le T débordait à droite.
+class AdminBrandLockup extends StatelessWidget {
+  const AdminBrandLockup({this.height = 64, super.key});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/logo_lockup_white.png',
+      height: height,
+      fit: BoxFit.contain,
     );
   }
 }

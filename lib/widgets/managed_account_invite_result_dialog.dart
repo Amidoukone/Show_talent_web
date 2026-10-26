@@ -32,7 +32,7 @@ class ManagedAccountInviteResultDialog extends StatelessWidget {
         title,
         style: const TextStyle(
           color: AdminTheme.textPrimary,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
         ),
       ),
       content: SizedBox(

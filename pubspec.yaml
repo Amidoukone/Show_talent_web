@@ -45,7 +45,6 @@ dependencies:
   path: ^1.9.1
   fl_chart: ^1.2.0
   firebase_app_check: ^0.4.6
-  google_fonts: ^6.3.3
   sentry_flutter: ^8.14.2
 
 
@@ -66,16 +65,55 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  # Seuls les deux fichiers reellement affiches sont embarques. Verifie par
+  # recherche sur tout lib/ et web/ : logo.png, logo_icon.png et
+  # logo_white.png n'etaient charges par aucun ecran et pesaient 1,54 Mo
+  # dans le bundle. Ils restent dans le depot comme artwork de reference.
+  #
+  # logo.png est la source d'autorite : le meme fichier, au bit pres, que
+  # assets/logo.png du depot mobile. logo_lockup_white.png en derive.
+  # logo_white.png, lui, est rogne (le mot ADFOOT y est coupe en bas) et ne
+  # doit pas etre remis en service tel quel.
   assets:
-    - assets/logo.png
-    - assets/logo_icon.png
     - assets/logo_icon_white.png
-    - assets/logo_white.png
-  
+    - assets/logo_lockup_white.png
 
-  
-  
-  
+  # Les polices sont embarquees, et chaque graisse employee a son fichier.
+  #
+  # Avant, le theme appelait `GoogleFonts.publicSans()` une seule fois puis
+  # demandait les autres graisses par `copyWith`. Le paquet google_fonts
+  # enregistre une famille PAR VARIANTE (`fontFamily:
+  # familyWithVariant.toString()`), donc cette famille ne contenait que le
+  # Regular : les graisses 500, 600, 700 et 800 n'existaient pas et Flutter
+  # les fabriquait en epaississant les contours du Regular. Mesure sur la
+  # production du 26 octobre 2026 : deux fichiers de police telecharges en
+  # tout, pour cinq graisses demandees. Un faux gras est baveux, et sur un
+  # rendu CanvasKit sans hinting cela donnait le voile signale.
+  #
+  # Les fichiers ne sont volontairement PAS sous-ensembles. Le portail
+  # affiche des noms maliens et le bambara s'ecrit avec ɛ, ɔ, ɲ et ŋ, qui
+  # tombent hors du sous-ensemble latin habituel. Verifie dans la table
+  # cmap : les quatre fichiers Inter les portent tous les quatre. Space
+  # Grotesk porte ŋ mais pas ɛ, ɔ ni ɲ, d'ou le `fontFamilyFallback` vers
+  # Inter sur les styles de titre, dans AdminTheme.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    - family: Space Grotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/SpaceGrotesk-Bold.ttf
+          weight: 700
+
   uses-material-design: true
 
 

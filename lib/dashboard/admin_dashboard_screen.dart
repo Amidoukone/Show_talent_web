@@ -68,8 +68,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ),
     _DashboardItem(
       title: 'Comptes administrés',
-      subtitle:
-          "Provisionnement et suivi des comptes créés par l’administration.",
+      subtitle: "Provisionnement et suivi des comptes administrés.",
       icon: Icons.manage_accounts_rounded,
     ),
     _DashboardItem(

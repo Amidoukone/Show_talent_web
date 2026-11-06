@@ -77,7 +77,7 @@ class ManagedAccountProvisionResult {
 
   String get lifecycleLabel => existingUser
       ? 'utilisateur existant mis à jour'
-      : 'nouveau compte géré créé';
+      : 'nouveau compte administré créé';
 
   List<String> buildRecommendedSteps({
     String appName = 'Adfoot',

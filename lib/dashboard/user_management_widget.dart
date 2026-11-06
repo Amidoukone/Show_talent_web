@@ -297,8 +297,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     final confirmed = await _confirmAction(
       title: disableManagedAccountAuthAction.label,
       message:
-          'Cette action désactive immédiatement l’accès au compte ${user.email}. La session mobile sera fermée et les prochaines connexions seront refusées.',
-      confirmLabel: 'Désactiver',
+          'Cette action suspend immédiatement l’accès au compte ${user.email}. La session mobile sera fermée et les prochaines connexions seront refusées.',
+      confirmLabel: 'Suspendre',
     );
     if (!confirmed) {
       return;
@@ -310,7 +310,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       request: () =>
           _managedAccountService.disableManagedAccountAuth(uid: user.uid),
       successMessage:
-          'L’accès a été désactivé pour ${user.email}. Le compte ne pourra plus se reconnecter tant qu’il ne sera pas réactivé.',
+          'L’accès a été suspendu pour ${user.email}. Le compte ne pourra plus se reconnecter tant qu’il ne sera pas rétabli.',
     );
   }
 
@@ -329,7 +329,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'Le changement de rôle n’est proposé que pour les comptes créés par l’administration.',
+            'Le changement de rôle n’est proposé que pour les comptes administrés.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -417,7 +417,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'Le renvoi d’invitation n’est proposé que pour les comptes créés par l’administration.',
+            'Le renvoi d’invitation n’est proposé que pour les comptes administrés.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -540,7 +540,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'La modification du profil est réservée aux comptes gérés par l’administration et exclut les comptes admin.',
+            'La modification du profil est réservée aux comptes administrés et exclut les comptes admin.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -631,7 +631,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'La certification profil est réservée aux comptes gérés par l’administration et exclut les comptes admin.',
+            'La certification profil est réservée aux comptes administrés et exclut les comptes admin.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -691,7 +691,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       showAdminFeedback(
         title: 'Action indisponible',
         message:
-            'La certification profil est réservée aux comptes gérés par l’administration et exclut les comptes admin.',
+            'La certification profil est réservée aux comptes administrés et exclut les comptes admin.',
         tone: AdminBannerTone.warning,
       );
       return;
@@ -1270,6 +1270,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             const AdminColumn(label: '', width: 128, alignRight: true),
           ],
           rowCount: displayedUsers.length,
+          rowKey: (index) => ValueKey(displayedUsers[index].uid),
           selectedRow: _selectedUid == null
               ? null
               : displayedUsers.indexWhere((user) => user.uid == _selectedUid),

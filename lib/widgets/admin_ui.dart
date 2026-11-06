@@ -98,28 +98,6 @@ class AdminPanel extends StatelessWidget {
   }
 }
 
-class AdminContentFrame extends StatelessWidget {
-  const AdminContentFrame({
-    required this.child,
-    this.maxWidth = AdminTheme.readingMaxWidth,
-    super.key,
-  });
-
-  final Widget child;
-  final double maxWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: child,
-      ),
-    );
-  }
-}
-
 /// Le signe seul, à poser là où le mot « Adfoot » est déjà écrit à côté.
 ///
 /// Le logo vivait dans un carré vert arrondi. Ce fond était une invention
@@ -539,36 +517,6 @@ class _AdminStatChip extends StatelessWidget {
     }
 
     return Tooltip(message: stat.tooltip!, child: chip);
-  }
-}
-
-/// Carte de sous-section à l'intérieur d'un écran (formulaire, encart).
-class AdminSubsectionCard extends StatelessWidget {
-  const AdminSubsectionCard({
-    required this.title,
-    required this.child,
-    this.subtitle,
-    this.accentColor = AdminTheme.accent,
-    super.key,
-  });
-
-  final String title;
-  final String? subtitle;
-  final Widget child;
-  final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return AdminPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AdminSectionHeader(title: title, subtitle: subtitle),
-          const SizedBox(height: AdminTheme.space4),
-          child,
-        ],
-      ),
-    );
   }
 }
 

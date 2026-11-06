@@ -582,6 +582,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
             AdminColumn(label: '', width: 108, alignRight: true),
           ],
           rowCount: displayedVideos.length,
+          rowKey: (index) => ValueKey(displayedVideos[index].id),
           onRowTap: (index) =>
               _openVideo(displayedVideos[index], filteredVideos),
           cellsBuilder: (index) {

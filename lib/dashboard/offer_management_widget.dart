@@ -598,6 +598,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
             AdminColumn(label: '', width: 96, alignRight: true),
           ],
           rowCount: displayed.length,
+          rowKey: (index) => ValueKey(displayed[index].id),
           selectedRow: _selectedOfferId == null
               ? null
               : displayed.indexWhere((offre) => offre.id == _selectedOfferId),

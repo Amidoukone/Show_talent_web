@@ -556,6 +556,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
             AdminColumn(label: '', width: 96, alignRight: true),
           ],
           rowCount: displayed.length,
+          rowKey: (index) => ValueKey(displayed[index].id),
           selectedRow: _selectedEventId == null
               ? null
               : displayed.indexWhere((event) => event.id == _selectedEventId),

@@ -106,6 +106,7 @@ class AdminVideoPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = dense ? 68.0 : 112.0;
     final height = dense ? 40.0 : 64.0;
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
 
     return Container(
       width: width,
@@ -123,6 +124,8 @@ class AdminVideoPreviewCard extends StatelessWidget {
             Image.network(
               thumbnailUrl,
               fit: BoxFit.cover,
+              cacheWidth: (width * devicePixelRatio).round(),
+              cacheHeight: (height * devicePixelRatio).round(),
               errorBuilder: (context, error, stackTrace) {
                 return Center(
                   child: Icon(

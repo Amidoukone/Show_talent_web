@@ -199,6 +199,9 @@ class _LoginFormPanel extends StatelessWidget {
                       : Icons.visibility_outlined,
                   size: 18,
                 ),
+                tooltip: obscurePassword
+                    ? 'Afficher le mot de passe'
+                    : 'Masquer le mot de passe',
                 onPressed: onToggleObscurePassword,
               ),
             ),

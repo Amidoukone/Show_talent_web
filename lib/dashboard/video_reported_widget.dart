@@ -370,6 +370,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             AdminColumn(label: '', width: 72, alignRight: true),
           ],
           rowCount: displayedVideos.length,
+          rowKey: (index) => ValueKey(displayedVideos[index].id),
           onRowTap: (index) =>
               _openVideo(context, displayedVideos[index], filteredVideos),
           cellsBuilder: (index) {

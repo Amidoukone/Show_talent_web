@@ -1154,6 +1154,7 @@ class _ContactIntakeManagementWidgetState
             AdminColumn(label: '', width: 96, alignRight: true),
           ],
           rowCount: displayed.length,
+          rowKey: (index) => ValueKey(displayed[index].id),
           selectedRow: _selectedIntakeId == null
               ? null
               : displayed.indexWhere(

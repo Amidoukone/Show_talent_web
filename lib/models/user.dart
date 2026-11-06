@@ -99,6 +99,7 @@ class AppUser {
   bool profilePublic;
   bool allowMessages;
   String? cvUrl;
+  String? passportPhotoUrl;
 
   AppUser({
     required this.uid,
@@ -168,6 +169,7 @@ class AppUser {
     this.profilePublic = true,
     this.allowMessages = true,
     this.cvUrl,
+    this.passportPhotoUrl,
   });
 
   /// [privateContact] merges in users/{uid}/private/contact
@@ -331,6 +333,7 @@ class AppUser {
       profilePublic: _toBool(map['profilePublic'], true),
       allowMessages: _toBool(map['allowMessages'], true),
       cvUrl: _normalizeNullableString(map['cvUrl']),
+      passportPhotoUrl: _normalizeNullableString(map['passportPhotoUrl']),
     );
   }
 
@@ -439,6 +442,7 @@ class AppUser {
       'followersList': followersList,
       'followingsList': followingsList,
       'cvUrl': cvUrl,
+      'passportPhotoUrl': passportPhotoUrl,
     };
   }
 

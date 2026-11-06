@@ -34,17 +34,17 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  firebase_core: ^4.11.0
-  firebase_auth: ^6.5.3
-  cloud_firestore: ^6.6.0
-  cloud_functions: ^6.3.3
-  firebase_storage: ^13.4.3
+  firebase_core: ^4.15.2
+  firebase_auth: ^6.7.1
+  cloud_firestore: ^6.10.2
+  cloud_functions: ^6.5.1
+  firebase_storage: ^13.6.1
   video_player: ^2.11.1
   cupertino_icons: ^1.0.9
   get: ^4.7.3
   path: ^1.9.1
   fl_chart: ^1.2.0
-  firebase_app_check: ^0.4.6
+  firebase_app_check: ^0.4.9
   sentry_flutter: ^8.14.2
 
 

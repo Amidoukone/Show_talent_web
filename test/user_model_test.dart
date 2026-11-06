@@ -103,6 +103,7 @@ void main() {
       'openToOpportunities': true,
       'team': 'Academy A',
       'cvUrl': 'https://cdn.example/cv.pdf',
+      'passportPhotoUrl': 'gs://adfoot-production/identityDocuments/player-1/passport_1.jpg',
       // La forme a plat de la refonte : des codes au premier niveau du
       // document, parce qu'une requete Firestore n'indexe pas utilement un
       // champ enfoui dans une map.
@@ -123,6 +124,10 @@ void main() {
     expect(user.hasAdvancedProfile, isTrue);
     expect(user.hasScoutReadyProfile, isTrue);
     expect(user.profileLevelLabel, 'Profil élite');
+    expect(
+      user.passportPhotoUrl,
+      'gs://adfoot-production/identityDocuments/player-1/passport_1.jpg',
+    );
   });
 
   test('AppUser separates profile completion from admin verification', () {

@@ -2346,6 +2346,12 @@ class _ProfileReviewContent extends StatelessWidget {
           value: user.cvUrl?.isNotEmpty == true ? 'Présent' : 'Absent',
         ),
         _ProfileReviewItem(
+          label: 'Photo de passeport',
+          value: user.passportPhotoUrl?.isNotEmpty == true
+              ? 'Présent'
+              : 'Absent',
+        ),
+        _ProfileReviewItem(
           label: 'Numéro de licence',
           value:
               user.playerProfile?['licenseNumber']?.toString() ??

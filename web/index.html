@@ -17,6 +17,14 @@
   <link rel="icon" type="image/png" sizes="64x64" href="favicon.png"/>
   <title>Adfoot Admin</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    /* Memes couleur que AdminTheme.background (lib/theme/admin_theme.dart)
+       et manifest.json : evite le flash blanc du navigateur avant que le
+       moteur Flutter ne peigne le premier frame. */
+    html, body {
+      background-color: #0E1114;
+    }
+  </style>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

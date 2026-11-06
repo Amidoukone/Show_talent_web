@@ -69,10 +69,7 @@ class Event {
     }
   }
 
-  static DateTime _parseDate(
-    dynamic value, {
-    DateTime? fallback,
-  }) {
+  static DateTime _parseDate(dynamic value, {DateTime? fallback}) {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
     if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
@@ -133,56 +130,59 @@ class Event {
     };
   }
 
-  factory Event.fromMap(
-    Map<String, dynamic> map, {
-    String? fallbackId,
-  }) {
-    final rawParticipants =
-        _readFirst(map, ['participants', 'inscrits', 'candidats']);
+  factory Event.fromMap(Map<String, dynamic> map, {String? fallbackId}) {
+    final rawParticipants = _readFirst(map, [
+      'participants',
+      'inscrits',
+      'candidats',
+    ]);
     final participantsMaps = rawParticipants is List
         ? rawParticipants
-            .whereType<Map>()
-            .map((entry) => Map<String, dynamic>.from(entry))
-            .toList()
+              .whereType<Map>()
+              .map((entry) => Map<String, dynamic>.from(entry))
+              .toList()
         : const <Map<String, dynamic>>[];
 
-    final rawOrganisateur =
-        _readFirst(map, ['organisateur', 'owner', 'author', 'recruteur']);
+    final rawOrganisateur = _readFirst(map, [
+      'organisateur',
+      'owner',
+      'author',
+      'recruteur',
+    ]);
     final organisateurMap = rawOrganisateur is Map
         ? Map<String, dynamic>.from(rawOrganisateur)
         : <String, dynamic>{
-            'uid': _readFirst(
-              map,
-              ['organisateurUid', 'ownerUid', 'authorUid', 'recruteurUid'],
-            ),
-            'nom': _readFirst(
-              map,
-              ['organisateurNom', 'ownerName', 'authorName', 'recruteurNom'],
-            ),
-            'email': _readFirst(
-              map,
-              ['organisateurEmail', 'ownerEmail', 'authorEmail'],
-            ),
-            'role': _readFirst(
-              map,
-              [
-                'organisateurRole',
-                'ownerRole',
-                'authorRole',
-                'recruteurRole',
-                'role',
-              ],
-            ),
-            'photoProfil': _readFirst(
-              map,
-              [
-                'organisateurPhoto',
-                'ownerPhoto',
-                'authorPhoto',
-                'recruteurPhoto',
-                'photoProfil',
-              ],
-            ),
+            'uid': _readFirst(map, [
+              'organisateurUid',
+              'ownerUid',
+              'authorUid',
+              'recruteurUid',
+            ]),
+            'nom': _readFirst(map, [
+              'organisateurNom',
+              'ownerName',
+              'authorName',
+              'recruteurNom',
+            ]),
+            'email': _readFirst(map, [
+              'organisateurEmail',
+              'ownerEmail',
+              'authorEmail',
+            ]),
+            'role': _readFirst(map, [
+              'organisateurRole',
+              'ownerRole',
+              'authorRole',
+              'recruteurRole',
+              'role',
+            ]),
+            'photoProfil': _readFirst(map, [
+              'organisateurPhoto',
+              'ownerPhoto',
+              'authorPhoto',
+              'recruteurPhoto',
+              'photoProfil',
+            ]),
           };
 
     final rawId = map['id']?.toString().trim() ?? '';
@@ -192,9 +192,13 @@ class Event {
       id: resolvedId,
       titre: _readFirst(map, ['titre', 'title', 'nom'])?.toString() ?? '',
       description:
-          _readFirst(map, ['description', 'details', 'contenu', 'body'])
-                  ?.toString() ??
-              '',
+          _readFirst(map, [
+            'description',
+            'details',
+            'contenu',
+            'body',
+          ])?.toString() ??
+          '',
       dateDebut: _parseDate(
         _readFirst(map, ['dateDebut', 'startDate', 'date']),
       ),
@@ -206,11 +210,12 @@ class Event {
       statut: normalizeStatus(
         _readFirst(map, ['statut', 'status'])?.toString() ?? 'ouvert',
       ),
-      lieu: _readFirst(map, ['lieu', 'location', 'localisation'])?.toString() ??
+      lieu:
+          _readFirst(map, ['lieu', 'location', 'localisation'])?.toString() ??
           '',
       estPublic:
           (_readFirst(map, ['estPublic', 'isPublic', 'public']) as bool?) ??
-              true,
+          true,
       createdAt: _parseDate(
         _readFirst(map, ['createdAt', 'dateCreation', 'publishedAt']),
       ),
@@ -220,9 +225,9 @@ class Event {
               ?.toInt(),
       tags: map['tags'] is List
           ? (map['tags'] as List)
-              .map((item) => item.toString().trim())
-              .where((item) => item.isNotEmpty)
-              .toList()
+                .map((item) => item.toString().trim())
+                .where((item) => item.isNotEmpty)
+                .toList()
           : null,
       streamingUrl: map['streamingUrl']?.toString(),
       flyerUrl: map['flyerUrl']?.toString(),

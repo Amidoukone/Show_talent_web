@@ -48,10 +48,7 @@ void showAdminFeedback({
     ),
     messageText: Text(
       message,
-      style: const TextStyle(
-        color: AdminTheme.textSecondary,
-        height: 1.4,
-      ),
+      style: const TextStyle(color: AdminTheme.textSecondary, height: 1.4),
     ),
   );
 }

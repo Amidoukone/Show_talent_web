@@ -24,8 +24,8 @@ class AdminActionResponse {
       data: rawData is Map<String, dynamic>
           ? rawData
           : rawData is Map
-              ? Map<String, dynamic>.from(rawData)
-              : null,
+          ? Map<String, dynamic>.from(rawData)
+          : null,
     );
   }
 

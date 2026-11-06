@@ -5,22 +5,24 @@ import '../models/managed_account_provision_result.dart';
 import '../models/membership.dart';
 import '../utils/account_role_policy.dart';
 
-typedef ManagedAccountCallableExecutor = Future<Map<String, dynamic>> Function(
-  String callableName,
-  Map<String, dynamic> payload,
-);
+typedef ManagedAccountCallableExecutor =
+    Future<Map<String, dynamic>> Function(
+      String callableName,
+      Map<String, dynamic> payload,
+    );
 
 class ManagedAccountService {
   ManagedAccountService({
     FirebaseFunctions? functions,
     ManagedAccountCallableExecutor? callableExecutor,
-  })  : _functions = functions ??
-            (callableExecutor == null && !AppEnvironmentConfig.visualQaMode
-                ? FirebaseFunctions.instanceFor(
-                    region: AppEnvironmentConfig.functionsRegion,
-                  )
-                : null),
-        _callableExecutor = callableExecutor;
+  }) : _functions =
+           functions ??
+           (callableExecutor == null && !AppEnvironmentConfig.visualQaMode
+               ? FirebaseFunctions.instanceFor(
+                   region: AppEnvironmentConfig.functionsRegion,
+                 )
+               : null),
+       _callableExecutor = callableExecutor;
 
   final FirebaseFunctions? _functions;
   final ManagedAccountCallableExecutor? _callableExecutor;
@@ -84,14 +86,10 @@ class ManagedAccountService {
     return ManagedAccountProvisionResult.fromMap(data);
   }
 
-  Future<void> deleteManagedAccount({
-    required String uid,
-  }) async {
+  Future<void> deleteManagedAccount({required String uid}) async {
     await _callable(
       'deleteManagedAccount',
-      payload: <String, dynamic>{
-        'uid': uid,
-      },
+      payload: <String, dynamic>{'uid': uid},
     );
   }
 
@@ -111,10 +109,7 @@ class ManagedAccountService {
 
     await _callable(
       'changeManagedAccountRole',
-      payload: <String, dynamic>{
-        'uid': uid,
-        'role': normalizedRole,
-      },
+      payload: <String, dynamic>{'uid': uid, 'role': normalizedRole},
     );
   }
 
@@ -123,33 +118,23 @@ class ManagedAccountService {
   }) async {
     final data = await _callable(
       'resendManagedAccountInvite',
-      payload: <String, dynamic>{
-        'uid': uid,
-      },
+      payload: <String, dynamic>{'uid': uid},
     );
 
     return ManagedAccountProvisionResult.fromMap(data);
   }
 
-  Future<void> disableManagedAccountAuth({
-    required String uid,
-  }) async {
+  Future<void> disableManagedAccountAuth({required String uid}) async {
     await _callable(
       'disableManagedAccountAuth',
-      payload: <String, dynamic>{
-        'uid': uid,
-      },
+      payload: <String, dynamic>{'uid': uid},
     );
   }
 
-  Future<void> enableManagedAccountAuth({
-    required String uid,
-  }) async {
+  Future<void> enableManagedAccountAuth({required String uid}) async {
     await _callable(
       'enableManagedAccountAuth',
-      payload: <String, dynamic>{
-        'uid': uid,
-      },
+      payload: <String, dynamic>{'uid': uid},
     );
   }
 
@@ -246,10 +231,7 @@ class ManagedAccountService {
       payload: payload,
     );
 
-    await _callable(
-      'updateManagedAccountProfile',
-      payload: normalizedPayload,
-    );
+    await _callable('updateManagedAccountProfile', payload: normalizedPayload);
   }
 
   Future<void> verifyManagedAccountProfile({
@@ -314,10 +296,7 @@ class ManagedAccountService {
       envelope: envelope,
     );
 
-    return <String, dynamic>{
-      'uid': normalizedUid,
-      'patch': normalizedPatch,
-    };
+    return <String, dynamic>{'uid': normalizedUid, 'patch': normalizedPatch};
   }
 
   String _resolveManagedAccountProfileUid({

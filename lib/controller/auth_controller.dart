@@ -6,13 +6,11 @@ import '../models/admin_access_result.dart';
 import 'user_controller.dart';
 
 class AuthController extends GetxController {
-  AuthController({
-    FirebaseAuth? firebaseAuth,
-    UserController? userController,
-  })  : _firebaseAuth = AppEnvironmentConfig.visualQaMode
-            ? null
-            : firebaseAuth ?? FirebaseAuth.instance,
-        _userController = userController ?? Get.find<UserController>();
+  AuthController({FirebaseAuth? firebaseAuth, UserController? userController})
+    : _firebaseAuth = AppEnvironmentConfig.visualQaMode
+          ? null
+          : firebaseAuth ?? FirebaseAuth.instance,
+      _userController = userController ?? Get.find<UserController>();
 
   final FirebaseAuth? _firebaseAuth;
   final UserController _userController;

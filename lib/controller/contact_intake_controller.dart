@@ -14,13 +14,13 @@ class ContactIntakeController extends GetxController {
   ContactIntakeController({
     FirebaseFirestore? firestore,
     AdminContentService? adminContentService,
-  })  : _visualQaMode = AppEnvironmentConfig.visualQaMode,
-        _firestore = AppEnvironmentConfig.visualQaMode
-            ? null
-            : firestore ?? FirebaseFirestore.instance,
-        _adminContentService = AppEnvironmentConfig.visualQaMode
-            ? AdminContentService.visualQa()
-            : adminContentService ?? AdminContentService();
+  }) : _visualQaMode = AppEnvironmentConfig.visualQaMode,
+       _firestore = AppEnvironmentConfig.visualQaMode
+           ? null
+           : firestore ?? FirebaseFirestore.instance,
+       _adminContentService = AppEnvironmentConfig.visualQaMode
+           ? AdminContentService.visualQa()
+           : adminContentService ?? AdminContentService();
 
   final FirebaseFirestore? _firestore;
   final AdminContentService _adminContentService;
@@ -41,7 +41,7 @@ class ContactIntakeController extends GetxController {
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
-      _contactIntakesSubscription;
+  _contactIntakesSubscription;
 
   @override
   void onInit() {
@@ -54,8 +54,8 @@ class ContactIntakeController extends GetxController {
     }
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
-          _handleAuthStateChanged,
-        );
+      _handleAuthStateChanged,
+    );
     _handleAuthStateChanged(FirebaseAuth.instance.currentUser);
   }
 
@@ -83,38 +83,40 @@ class ContactIntakeController extends GetxController {
         .limit(_currentLimit)
         .snapshots()
         .listen(
-      (snapshot) {
-        final parsed = <ContactIntake>[];
+          (snapshot) {
+            final parsed = <ContactIntake>[];
 
-        for (final doc in snapshot.docs) {
-          try {
-            parsed.add(ContactIntake.fromDoc(doc));
-          } catch (error) {
-            debugPrint(
-              'Prise de contact ignorée (parsing) : ${doc.id} -> $error',
-            );
-          }
-        }
+            for (final doc in snapshot.docs) {
+              try {
+                parsed.add(ContactIntake.fromDoc(doc));
+              } catch (error) {
+                debugPrint(
+                  'Prise de contact ignorée (parsing) : ${doc.id} -> $error',
+                );
+              }
+            }
 
-        parsed.sort((a, b) {
-          final left = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final right = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return right.compareTo(left);
-        });
+            parsed.sort((a, b) {
+              final left =
+                  a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final right =
+                  b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              return right.compareTo(left);
+            });
 
-        contactIntakes.assignAll(parsed);
-        hasMore.value = snapshot.docs.length >= _currentLimit;
-        lastError.value = '';
-        isLoading.value = false;
-      },
-      onError: (Object error) {
-        debugPrint('Flux Firestore contact_intakes indisponible : $error');
-        contactIntakes.clear();
-        lastError.value =
-            'Impossible de charger les mises en relation. Vérifiez votre connexion puis réessayez.';
-        isLoading.value = false;
-      },
-    );
+            contactIntakes.assignAll(parsed);
+            hasMore.value = snapshot.docs.length >= _currentLimit;
+            lastError.value = '';
+            isLoading.value = false;
+          },
+          onError: (Object error) {
+            debugPrint('Flux Firestore contact_intakes indisponible : $error');
+            contactIntakes.clear();
+            lastError.value =
+                'Impossible de charger les mises en relation. Vérifiez votre connexion puis réessayez.';
+            isLoading.value = false;
+          },
+        );
   }
 
   /// Voir OffreController.loadMoreOffres.
@@ -184,43 +186,40 @@ class ContactIntakeController extends GetxController {
         final nextNote = data.containsKey('note')
             ? data['note']
             : current.agencyFollowUpNote;
-        final updated = ContactIntake.fromMap(
-          <String, dynamic>{
-            'id': current.id,
-            'requesterUid': current.requesterUid,
-            'targetUid': current.targetUid,
-            'requesterRole': current.requesterRole,
-            'targetRole': current.targetRole,
-            'contextType': current.contextType,
-            'contactReason': current.contactReason,
-            'introMessage': current.introMessage,
-            'status': current.status,
-            'agencyFollowUpStatus': data['status']?.toString() ?? normalized,
-            'agencyFollowUpNote': nextNote,
-            'agencyLastUpdatedByUid':
-                data['updatedBy']?.toString() ?? current.agencyLastUpdatedByUid,
-            'agencyLastUpdatedAt': DateTime.now(),
-            'conversationId': current.conversationId,
-            'contextId': current.contextId,
-            'contextTitle': current.contextTitle,
-            'requesterSnapshot': current.requesterSnapshot,
-            'targetSnapshot': current.targetSnapshot,
-            'latestParticipantFeedbackStatus':
-                current.latestParticipantFeedbackStatus,
-            'latestParticipantFeedbackNote':
-                current.latestParticipantFeedbackNote,
-            'latestParticipantFeedbackByUid':
-                current.latestParticipantFeedbackByUid,
-            'latestParticipantFeedbackByRole':
-                current.latestParticipantFeedbackByRole,
-            'latestParticipantFeedbackAt': current.latestParticipantFeedbackAt,
-            'suggestedAgencyFollowUpStatus':
-                current.suggestedAgencyFollowUpStatus,
-            'createdAt': current.createdAt,
-            'updatedAt': DateTime.now(),
-          },
-          fallbackId: current.id,
-        );
+        final updated = ContactIntake.fromMap(<String, dynamic>{
+          'id': current.id,
+          'requesterUid': current.requesterUid,
+          'targetUid': current.targetUid,
+          'requesterRole': current.requesterRole,
+          'targetRole': current.targetRole,
+          'contextType': current.contextType,
+          'contactReason': current.contactReason,
+          'introMessage': current.introMessage,
+          'status': current.status,
+          'agencyFollowUpStatus': data['status']?.toString() ?? normalized,
+          'agencyFollowUpNote': nextNote,
+          'agencyLastUpdatedByUid':
+              data['updatedBy']?.toString() ?? current.agencyLastUpdatedByUid,
+          'agencyLastUpdatedAt': DateTime.now(),
+          'conversationId': current.conversationId,
+          'contextId': current.contextId,
+          'contextTitle': current.contextTitle,
+          'requesterSnapshot': current.requesterSnapshot,
+          'targetSnapshot': current.targetSnapshot,
+          'latestParticipantFeedbackStatus':
+              current.latestParticipantFeedbackStatus,
+          'latestParticipantFeedbackNote':
+              current.latestParticipantFeedbackNote,
+          'latestParticipantFeedbackByUid':
+              current.latestParticipantFeedbackByUid,
+          'latestParticipantFeedbackByRole':
+              current.latestParticipantFeedbackByRole,
+          'latestParticipantFeedbackAt': current.latestParticipantFeedbackAt,
+          'suggestedAgencyFollowUpStatus':
+              current.suggestedAgencyFollowUpStatus,
+          'createdAt': current.createdAt,
+          'updatedAt': DateTime.now(),
+        }, fallbackId: current.id);
         contactIntakes[index] = updated;
         contactIntakes.refresh();
       }
@@ -259,42 +258,39 @@ class ContactIntakeController extends GetxController {
       );
       if (index != -1) {
         final current = contactIntakes[index];
-        final updated = ContactIntake.fromMap(
-          <String, dynamic>{
-            'id': current.id,
-            'requesterUid': current.requesterUid,
-            'targetUid': current.targetUid,
-            'requesterRole': current.requesterRole,
-            'targetRole': current.targetRole,
-            'contextType': current.contextType,
-            'contactReason': current.contactReason,
-            'introMessage': current.introMessage,
-            'status': current.status,
-            'agencyFollowUpStatus': current.agencyFollowUpStatus,
-            'agencyFollowUpNote': current.agencyFollowUpNote,
-            'agencyLastUpdatedByUid': current.agencyLastUpdatedByUid,
-            'agencyLastUpdatedAt': current.agencyLastUpdatedAt,
-            'conversationId': null,
-            'contextId': current.contextId,
-            'contextTitle': current.contextTitle,
-            'requesterSnapshot': current.requesterSnapshot,
-            'targetSnapshot': current.targetSnapshot,
-            'latestParticipantFeedbackStatus':
-                current.latestParticipantFeedbackStatus,
-            'latestParticipantFeedbackNote':
-                current.latestParticipantFeedbackNote,
-            'latestParticipantFeedbackByUid':
-                current.latestParticipantFeedbackByUid,
-            'latestParticipantFeedbackByRole':
-                current.latestParticipantFeedbackByRole,
-            'latestParticipantFeedbackAt': current.latestParticipantFeedbackAt,
-            'suggestedAgencyFollowUpStatus':
-                current.suggestedAgencyFollowUpStatus,
-            'createdAt': current.createdAt,
-            'updatedAt': DateTime.now(),
-          },
-          fallbackId: current.id,
-        );
+        final updated = ContactIntake.fromMap(<String, dynamic>{
+          'id': current.id,
+          'requesterUid': current.requesterUid,
+          'targetUid': current.targetUid,
+          'requesterRole': current.requesterRole,
+          'targetRole': current.targetRole,
+          'contextType': current.contextType,
+          'contactReason': current.contactReason,
+          'introMessage': current.introMessage,
+          'status': current.status,
+          'agencyFollowUpStatus': current.agencyFollowUpStatus,
+          'agencyFollowUpNote': current.agencyFollowUpNote,
+          'agencyLastUpdatedByUid': current.agencyLastUpdatedByUid,
+          'agencyLastUpdatedAt': current.agencyLastUpdatedAt,
+          'conversationId': null,
+          'contextId': current.contextId,
+          'contextTitle': current.contextTitle,
+          'requesterSnapshot': current.requesterSnapshot,
+          'targetSnapshot': current.targetSnapshot,
+          'latestParticipantFeedbackStatus':
+              current.latestParticipantFeedbackStatus,
+          'latestParticipantFeedbackNote':
+              current.latestParticipantFeedbackNote,
+          'latestParticipantFeedbackByUid':
+              current.latestParticipantFeedbackByUid,
+          'latestParticipantFeedbackByRole':
+              current.latestParticipantFeedbackByRole,
+          'latestParticipantFeedbackAt': current.latestParticipantFeedbackAt,
+          'suggestedAgencyFollowUpStatus':
+              current.suggestedAgencyFollowUpStatus,
+          'createdAt': current.createdAt,
+          'updatedAt': DateTime.now(),
+        }, fallbackId: current.id);
         contactIntakes[index] = updated;
         contactIntakes.refresh();
       }

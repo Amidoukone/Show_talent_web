@@ -6,15 +6,14 @@ import '../utils/firebase_functions_error.dart';
 
 class AdminContentService {
   AdminContentService({FirebaseFunctions? functions})
-      : _functions = functions ??
-            FirebaseFunctions.instanceFor(
-              region: AppEnvironmentConfig.functionsRegion,
-            ),
-        _visualQaMode = false;
+    : _functions =
+          functions ??
+          FirebaseFunctions.instanceFor(
+            region: AppEnvironmentConfig.functionsRegion,
+          ),
+      _visualQaMode = false;
 
-  AdminContentService.visualQa()
-      : _functions = null,
-        _visualQaMode = true;
+  AdminContentService.visualQa() : _functions = null, _visualQaMode = true;
 
   final FirebaseFunctions? _functions;
   final bool _visualQaMode;
@@ -38,8 +37,8 @@ class AdminContentService {
       final map = data is Map<String, dynamic>
           ? data
           : data is Map
-              ? Map<String, dynamic>.from(data)
-              : <String, dynamic>{};
+          ? Map<String, dynamic>.from(data)
+          : <String, dynamic>{};
       return AdminActionResponse.fromMap(map);
     } on FirebaseFunctionsException catch (error) {
       return AdminActionResponse.failure(
@@ -73,14 +72,10 @@ class AdminContentService {
     );
   }
 
-  Future<AdminActionResponse> deleteOffer({
-    required String offerId,
-  }) {
+  Future<AdminActionResponse> deleteOffer({required String offerId}) {
     return _callable(
       'adminDeleteOffer',
-      payload: <String, dynamic>{
-        'offerId': offerId.trim(),
-      },
+      payload: <String, dynamic>{'offerId': offerId.trim()},
       fallbackMessage: "Suppression de l’offre impossible pour le moment.",
     );
   }
@@ -100,14 +95,10 @@ class AdminContentService {
     );
   }
 
-  Future<AdminActionResponse> deleteEvent({
-    required String eventId,
-  }) {
+  Future<AdminActionResponse> deleteEvent({required String eventId}) {
     return _callable(
       'adminDeleteEvent',
-      payload: <String, dynamic>{
-        'eventId': eventId.trim(),
-      },
+      payload: <String, dynamic>{'eventId': eventId.trim()},
       fallbackMessage: "Suppression de l’événement impossible pour le moment.",
     );
   }
@@ -142,14 +133,10 @@ class AdminContentService {
     );
   }
 
-  Future<AdminActionResponse> deleteVideo({
-    required String videoId,
-  }) {
+  Future<AdminActionResponse> deleteVideo({required String videoId}) {
     return _callable(
       'adminDeleteVideo',
-      payload: <String, dynamic>{
-        'videoId': videoId.trim(),
-      },
+      payload: <String, dynamic>{'videoId': videoId.trim()},
       fallbackMessage: 'Suppression de la vidéo impossible pour le moment.',
     );
   }

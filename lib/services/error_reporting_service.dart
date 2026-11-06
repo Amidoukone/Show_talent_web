@@ -58,7 +58,9 @@ class ErrorReportingService {
       // Non-bloquant : un échec d'activation de la télémétrie ne doit jamais
       // empêcher le démarrage du portail (même filet que AppCheckService).
       if (kDebugMode) {
-        debugPrint('[ErrorReportingService] activation failed (non-blocking): $e');
+        debugPrint(
+          '[ErrorReportingService] activation failed (non-blocking): $e',
+        );
       }
     }
   }

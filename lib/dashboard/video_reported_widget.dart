@@ -257,9 +257,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       final reportedVideos = videoController.getReportedVideos();
 
       if (videoController.isLoading.value) {
-        return const AdminLoadingState(
-          message: 'Chargement des signalements…',
-        );
+        return const AdminLoadingState(message: 'Chargement des signalements…');
       }
 
       final loadError = videoController.lastError.value;

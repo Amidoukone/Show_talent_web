@@ -50,11 +50,9 @@ class FirebaseBootstrap {
       host,
       AppEnvironmentConfig.firestoreEmulatorPort,
     );
-    FirebaseFunctions.instanceFor(region: AppEnvironmentConfig.functionsRegion)
-        .useFunctionsEmulator(
-      host,
-      AppEnvironmentConfig.functionsEmulatorPort,
-    );
+    FirebaseFunctions.instanceFor(
+      region: AppEnvironmentConfig.functionsRegion,
+    ).useFunctionsEmulator(host, AppEnvironmentConfig.functionsEmulatorPort);
     FirebaseStorage.instance.useStorageEmulator(
       host,
       AppEnvironmentConfig.storageEmulatorPort,

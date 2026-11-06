@@ -14,13 +14,13 @@ class OffreController extends GetxController {
   OffreController({
     FirebaseFirestore? firestore,
     AdminContentService? adminContentService,
-  })  : _visualQaMode = AppEnvironmentConfig.visualQaMode,
-        _firestore = AppEnvironmentConfig.visualQaMode
-            ? null
-            : firestore ?? FirebaseFirestore.instance,
-        _adminContentService = AppEnvironmentConfig.visualQaMode
-            ? AdminContentService.visualQa()
-            : adminContentService ?? AdminContentService();
+  }) : _visualQaMode = AppEnvironmentConfig.visualQaMode,
+       _firestore = AppEnvironmentConfig.visualQaMode
+           ? null
+           : firestore ?? FirebaseFirestore.instance,
+       _adminContentService = AppEnvironmentConfig.visualQaMode
+           ? AdminContentService.visualQa()
+           : adminContentService ?? AdminContentService();
 
   final FirebaseFirestore? _firestore;
   final AdminContentService _adminContentService;
@@ -61,8 +61,8 @@ class OffreController extends GetxController {
     }
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
-          _handleAuthStateChanged,
-        );
+      _handleAuthStateChanged,
+    );
     _handleAuthStateChanged(FirebaseAuth.instance.currentUser);
   }
 
@@ -90,31 +90,31 @@ class OffreController extends GetxController {
         .limit(_currentLimit)
         .snapshots()
         .listen(
-      (snapshot) {
-        final parsed = <Offre>[];
+          (snapshot) {
+            final parsed = <Offre>[];
 
-        for (final doc in snapshot.docs) {
-          try {
-            parsed.add(Offre.fromDoc(doc));
-          } catch (error) {
-            debugPrint('Offre ignorée (parsing) : ${doc.id} -> $error');
-          }
-        }
+            for (final doc in snapshot.docs) {
+              try {
+                parsed.add(Offre.fromDoc(doc));
+              } catch (error) {
+                debugPrint('Offre ignorée (parsing) : ${doc.id} -> $error');
+              }
+            }
 
-        parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
-        offres.assignAll(parsed);
-        hasMore.value = snapshot.docs.length >= _currentLimit;
-        lastError.value = '';
-        isLoading.value = false;
-      },
-      onError: (Object error) {
-        debugPrint('Flux Firestore offres indisponible : $error');
-        offres.clear();
-        lastError.value =
-            'Impossible de charger les offres. Vérifiez votre connexion puis réessayez.';
-        isLoading.value = false;
-      },
-    );
+            parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
+            offres.assignAll(parsed);
+            hasMore.value = snapshot.docs.length >= _currentLimit;
+            lastError.value = '';
+            isLoading.value = false;
+          },
+          onError: (Object error) {
+            debugPrint('Flux Firestore offres indisponible : $error');
+            offres.clear();
+            lastError.value =
+                'Impossible de charger les offres. Vérifiez votre connexion puis réessayez.';
+            isLoading.value = false;
+          },
+        );
   }
 
   /// Agrandit la fenêtre chargée de [_loadMoreIncrement] offres et

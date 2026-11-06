@@ -14,13 +14,13 @@ class EventController extends GetxController {
   EventController({
     FirebaseFirestore? firestore,
     AdminContentService? adminContentService,
-  })  : _visualQaMode = AppEnvironmentConfig.visualQaMode,
-        _firestore = AppEnvironmentConfig.visualQaMode
-            ? null
-            : firestore ?? FirebaseFirestore.instance,
-        _adminContentService = AppEnvironmentConfig.visualQaMode
-            ? AdminContentService.visualQa()
-            : adminContentService ?? AdminContentService();
+  }) : _visualQaMode = AppEnvironmentConfig.visualQaMode,
+       _firestore = AppEnvironmentConfig.visualQaMode
+           ? null
+           : firestore ?? FirebaseFirestore.instance,
+       _adminContentService = AppEnvironmentConfig.visualQaMode
+           ? AdminContentService.visualQa()
+           : adminContentService ?? AdminContentService();
 
   final FirebaseFirestore? _firestore;
   final AdminContentService _adminContentService;
@@ -58,8 +58,8 @@ class EventController extends GetxController {
     }
 
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen(
-          _handleAuthStateChanged,
-        );
+      _handleAuthStateChanged,
+    );
     _handleAuthStateChanged(FirebaseAuth.instance.currentUser);
   }
 
@@ -87,31 +87,31 @@ class EventController extends GetxController {
         .limit(_currentLimit)
         .snapshots()
         .listen(
-      (snapshot) {
-        final parsed = <Event>[];
+          (snapshot) {
+            final parsed = <Event>[];
 
-        for (final doc in snapshot.docs) {
-          try {
-            parsed.add(Event.fromDoc(doc));
-          } catch (error) {
-            debugPrint('Événement ignoré (parsing) : ${doc.id} -> $error');
-          }
-        }
+            for (final doc in snapshot.docs) {
+              try {
+                parsed.add(Event.fromDoc(doc));
+              } catch (error) {
+                debugPrint('Événement ignoré (parsing) : ${doc.id} -> $error');
+              }
+            }
 
-        parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
-        events.assignAll(parsed);
-        hasMore.value = snapshot.docs.length >= _currentLimit;
-        lastError.value = '';
-        isLoading.value = false;
-      },
-      onError: (Object error) {
-        debugPrint('Flux Firestore events indisponible : $error');
-        events.clear();
-        lastError.value =
-            'Impossible de charger les événements. Vérifiez votre connexion puis réessayez.';
-        isLoading.value = false;
-      },
-    );
+            parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
+            events.assignAll(parsed);
+            hasMore.value = snapshot.docs.length >= _currentLimit;
+            lastError.value = '';
+            isLoading.value = false;
+          },
+          onError: (Object error) {
+            debugPrint('Flux Firestore events indisponible : $error');
+            events.clear();
+            lastError.value =
+                'Impossible de charger les événements. Vérifiez votre connexion puis réessayez.';
+            isLoading.value = false;
+          },
+        );
   }
 
   /// Voir OffreController.loadMoreOffres.

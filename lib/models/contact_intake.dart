@@ -240,8 +240,10 @@ class ContactIntake {
   final DateTime? updatedAt;
 
   factory ContactIntake.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    return ContactIntake.fromMap(doc.data() ?? const <String, dynamic>{},
-        fallbackId: doc.id);
+    return ContactIntake.fromMap(
+      doc.data() ?? const <String, dynamic>{},
+      fallbackId: doc.id,
+    );
   }
 
   factory ContactIntake.fromMap(
@@ -267,8 +269,9 @@ class ContactIntake {
         map['agencyFollowUpStatus']?.toString(),
       ),
       agencyFollowUpNote: _normalizeNullableString(map['agencyFollowUpNote']),
-      agencyLastUpdatedByUid:
-          _normalizeNullableString(map['agencyLastUpdatedByUid']),
+      agencyLastUpdatedByUid: _normalizeNullableString(
+        map['agencyLastUpdatedByUid'],
+      ),
       agencyLastUpdatedAt: _parseNullableDate(map['agencyLastUpdatedAt']),
       conversationId: _normalizeNullableString(map['conversationId']),
       contextId: _normalizeNullableString(map['contextId']),
@@ -323,9 +326,8 @@ class ContactIntake {
   bool get hasParticipantFeedback =>
       latestParticipantFeedbackStatus?.trim().isNotEmpty == true;
 
-  String get participantFeedbackLabel => ParticipantFeedbackStatus.label(
-        latestParticipantFeedbackStatus,
-      );
+  String get participantFeedbackLabel =>
+      ParticipantFeedbackStatus.label(latestParticipantFeedbackStatus);
 
   String get participantFeedbackActorLabel =>
       _roleLabel(latestParticipantFeedbackByRole ?? '');

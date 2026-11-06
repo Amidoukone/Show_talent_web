@@ -20,18 +20,25 @@ AppEnvironment _parseAppEnvironment(String rawValue) {
 class AppEnvironmentConfig {
   AppEnvironmentConfig._();
 
-  static const String _rawAppEnvironment =
-      String.fromEnvironment('APP_ENV', defaultValue: 'production');
-  static const bool useFirebaseEmulators =
-      bool.fromEnvironment('USE_FIREBASE_EMULATORS', defaultValue: false);
-  static const bool visualQaMode =
-      bool.fromEnvironment('ADMIN_VISUAL_QA', defaultValue: false);
+  static const String _rawAppEnvironment = String.fromEnvironment(
+    'APP_ENV',
+    defaultValue: 'production',
+  );
+  static const bool useFirebaseEmulators = bool.fromEnvironment(
+    'USE_FIREBASE_EMULATORS',
+    defaultValue: false,
+  );
+  static const bool visualQaMode = bool.fromEnvironment(
+    'ADMIN_VISUAL_QA',
+    defaultValue: false,
+  );
   static const String functionsRegion = String.fromEnvironment(
     'FIREBASE_FUNCTIONS_REGION',
     defaultValue: 'europe-west1',
   );
-  static const String _firebaseEmulatorHost =
-      String.fromEnvironment('FIREBASE_EMULATOR_HOST');
+  static const String _firebaseEmulatorHost = String.fromEnvironment(
+    'FIREBASE_EMULATOR_HOST',
+  );
   static const int authEmulatorPort = int.fromEnvironment(
     'FIREBASE_AUTH_EMULATOR_PORT',
     defaultValue: 9099,
@@ -48,38 +55,53 @@ class AppEnvironmentConfig {
     'FIREBASE_STORAGE_EMULATOR_PORT',
     defaultValue: 9199,
   );
-  static const String _firebaseProjectId =
-      String.fromEnvironment('FIREBASE_PROJECT_ID');
-  static const String _firebaseMessagingSenderId =
-      String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
-  static const String _firebaseStorageBucket =
-      String.fromEnvironment('FIREBASE_STORAGE_BUCKET');
-  static const String _webApiKey =
-      String.fromEnvironment('FIREBASE_WEB_API_KEY');
+  static const String _firebaseProjectId = String.fromEnvironment(
+    'FIREBASE_PROJECT_ID',
+  );
+  static const String _firebaseMessagingSenderId = String.fromEnvironment(
+    'FIREBASE_MESSAGING_SENDER_ID',
+  );
+  static const String _firebaseStorageBucket = String.fromEnvironment(
+    'FIREBASE_STORAGE_BUCKET',
+  );
+  static const String _webApiKey = String.fromEnvironment(
+    'FIREBASE_WEB_API_KEY',
+  );
   static const String _webAppId = String.fromEnvironment('FIREBASE_WEB_APP_ID');
-  static const String _webAuthDomain =
-      String.fromEnvironment('FIREBASE_WEB_AUTH_DOMAIN');
-  static const String _androidApiKey =
-      String.fromEnvironment('FIREBASE_ANDROID_API_KEY');
-  static const String _androidAppId =
-      String.fromEnvironment('FIREBASE_ANDROID_APP_ID');
-  static const String _iosApiKey =
-      String.fromEnvironment('FIREBASE_IOS_API_KEY');
+  static const String _webAuthDomain = String.fromEnvironment(
+    'FIREBASE_WEB_AUTH_DOMAIN',
+  );
+  static const String _androidApiKey = String.fromEnvironment(
+    'FIREBASE_ANDROID_API_KEY',
+  );
+  static const String _androidAppId = String.fromEnvironment(
+    'FIREBASE_ANDROID_APP_ID',
+  );
+  static const String _iosApiKey = String.fromEnvironment(
+    'FIREBASE_IOS_API_KEY',
+  );
   static const String _iosAppId = String.fromEnvironment('FIREBASE_IOS_APP_ID');
-  static const String _iosBundleId =
-      String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID');
-  static const String _macosApiKey =
-      String.fromEnvironment('FIREBASE_MACOS_API_KEY');
-  static const String _macosAppId =
-      String.fromEnvironment('FIREBASE_MACOS_APP_ID');
-  static const String _macosBundleId =
-      String.fromEnvironment('FIREBASE_MACOS_BUNDLE_ID');
-  static const String _windowsApiKey =
-      String.fromEnvironment('FIREBASE_WINDOWS_API_KEY');
-  static const String _windowsAppId =
-      String.fromEnvironment('FIREBASE_WINDOWS_APP_ID');
-  static const String _windowsAuthDomain =
-      String.fromEnvironment('FIREBASE_WINDOWS_AUTH_DOMAIN');
+  static const String _iosBundleId = String.fromEnvironment(
+    'FIREBASE_IOS_BUNDLE_ID',
+  );
+  static const String _macosApiKey = String.fromEnvironment(
+    'FIREBASE_MACOS_API_KEY',
+  );
+  static const String _macosAppId = String.fromEnvironment(
+    'FIREBASE_MACOS_APP_ID',
+  );
+  static const String _macosBundleId = String.fromEnvironment(
+    'FIREBASE_MACOS_BUNDLE_ID',
+  );
+  static const String _windowsApiKey = String.fromEnvironment(
+    'FIREBASE_WINDOWS_API_KEY',
+  );
+  static const String _windowsAppId = String.fromEnvironment(
+    'FIREBASE_WINDOWS_APP_ID',
+  );
+  static const String _windowsAuthDomain = String.fromEnvironment(
+    'FIREBASE_WINDOWS_AUTH_DOMAIN',
+  );
 
   static AppEnvironment get environment =>
       _parseAppEnvironment(_rawAppEnvironment);

@@ -37,8 +37,9 @@ class ManagedAccountProvisionResult {
       role: payload['role']?.toString() ?? '',
       existingUser: payload['existingUser'] == true,
       passwordSetupLink: _readOptionalString(payload['passwordSetupLink']),
-      emailVerificationLink:
-          _readOptionalString(payload['emailVerificationLink']),
+      emailVerificationLink: _readOptionalString(
+        payload['emailVerificationLink'],
+      ),
       inviteEmailSent: payload['inviteEmailSent'] == true,
       inviteEmailReason: _readOptionalString(payload['inviteEmailReason']),
     );
@@ -79,16 +80,16 @@ class ManagedAccountProvisionResult {
       ? 'utilisateur existant mis à jour'
       : 'nouveau compte administré créé';
 
-  List<String> buildRecommendedSteps({
-    String appName = 'Adfoot',
-  }) {
+  List<String> buildRecommendedSteps({String appName = 'Adfoot'}) {
     final steps = <String>[];
 
     if (requiresEmailVerification) {
       steps.add("Ouvrir d’abord le lien de validation d’e-mail.");
       steps.add("Confirmer l’adresse e-mail avant la première connexion.");
     } else {
-      steps.add("L’e-mail est déjà vérifié. La connexion peut se faire ensuite.");
+      steps.add(
+        "L’e-mail est déjà vérifié. La connexion peut se faire ensuite.",
+      );
     }
 
     if (hasPasswordSetupLink) {
@@ -113,10 +114,7 @@ class ManagedAccountProvisionResult {
     String? recipientName,
     String appName = 'Adfoot',
   }) {
-    return buildEmailMessage(
-      recipientName: recipientName,
-      appName: appName,
-    );
+    return buildEmailMessage(recipientName: recipientName, appName: appName);
   }
 
   String buildWhatsappMessage({
@@ -162,18 +160,13 @@ class ManagedAccountProvisionResult {
     return lines.join('\n');
   }
 
-  String buildEmailSubject({
-    String appName = 'Adfoot',
-  }) {
+  String buildEmailSubject({String appName = 'Adfoot'}) {
     return existingUser
         ? 'Réactivation de votre compte $role $appName'
         : 'Activation de votre compte $role $appName';
   }
 
-  String buildEmailMessage({
-    String? recipientName,
-    String appName = 'Adfoot',
-  }) {
+  String buildEmailMessage({String? recipientName, String appName = 'Adfoot'}) {
     final trimmedRecipient = recipientName?.trim() ?? '';
     final lines = <String>[
       trimmedRecipient.isEmpty ? 'Bonjour,' : 'Bonjour $trimmedRecipient,',

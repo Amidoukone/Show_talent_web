@@ -25,10 +25,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AdminTheme.buildTheme(),
       locale: const Locale('fr'),
-      supportedLocales: const [
-        Locale('fr'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('fr'), Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,

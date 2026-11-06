@@ -32,7 +32,8 @@ const int kAdultAge = 18;
 int playerAgeOn(DateTime birthDate, {DateTime? on}) {
   final reference = on ?? DateTime.now();
   var age = reference.year - birthDate.year;
-  final beforeBirthdayThisYear = reference.month < birthDate.month ||
+  final beforeBirthdayThisYear =
+      reference.month < birthDate.month ||
       (reference.month == birthDate.month && reference.day < birthDate.day);
   if (beforeBirthdayThisYear) {
     age--;

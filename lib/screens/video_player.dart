@@ -134,6 +134,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     final entry = _entries[_index];
     final uri = Uri.parse(entry.videoUrl);
+    final hasPlayableScheme = uri.scheme == 'http' || uri.scheme == 'https';
     final factory = widget.controllerFactory;
     final controller = factory == null
         ? VideoPlayerController.networkUrl(uri)
@@ -142,6 +143,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     controller.addListener(_onPlaybackChanged);
     _controller = controller;
     _scrubMs = null;
+    if (!hasPlayableScheme) {
+      // Jamais rencontré en pratique (l'URL vient de Firestore, écrite côté
+      // mobile), mais aucune liste blanche de schéma n'existait avant ce
+      // correctif non plus. Même traitement que l'échec d'initialisation déjà
+      // géré par cet écran : l'admin voit "Impossible de lire cette vidéo."
+      // au lieu de laisser le lecteur tenter de charger un schéma arbitraire.
+      _initializeVideo = Future.value();
+      return;
+    }
     _initializeVideo = controller.initialize().then((_) async {
       await controller.setLooping(_looping);
       await controller.setPlaybackSpeed(_speed);

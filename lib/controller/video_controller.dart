@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../config/app_environment.dart';
+import '../models/admin_action_response.dart';
 import '../models/video.dart';
 import '../services/admin_content_service.dart';
 
@@ -171,53 +172,46 @@ class VideoController extends GetxController {
     return videoList;
   }
 
-  Future<void> deleteVideo(String videoId) async {
+  /// Même contrat de retour qu'OffreController/EventController : une
+  /// réponse typée, jamais une exception. VideoController levait auparavant
+  /// un StateError ici, seul des 3 contrôleurs de contenu à rompre ce
+  /// contrat — un appelant qui ne s'y attendait pas affichait la chaîne
+  /// d'erreur brute au lieu du message propre porté par la réponse.
+  Future<AdminActionResponse> deleteVideo(String videoId) async {
     final response = await _adminContentService.deleteVideo(videoId: videoId);
-    if (!response.success) {
-      final message = response.message.trim().isNotEmpty
-          ? response.message
-          : 'Suppression de la vidéo impossible.';
-      throw StateError(message);
+    if (response.success) {
+      videoList.removeWhere((video) => video.id == videoId);
     }
-
-    videoList.removeWhere((video) => video.id == videoId);
+    return response;
   }
 
-  Future<void> setVideoStatus(
+  Future<AdminActionResponse> setVideoStatus(
     String videoId,
     String status, {
     String reason = '',
-  }) async {
-    final response = await _adminContentService.setVideoStatus(
+  }) {
+    return _adminContentService.setVideoStatus(
       videoId: videoId,
       status: status,
       reason: reason,
     );
-    if (!response.success) {
-      final message = response.message.trim().isNotEmpty
-          ? response.message
-          : 'Mise à jour du statut vidéo impossible.';
-      throw StateError(message);
-    }
   }
 
-  Future<void> approveVideo(String videoId) async {
-    await setVideoStatus(videoId, 'approved');
+  Future<AdminActionResponse> approveVideo(String videoId) {
+    return setVideoStatus(videoId, 'approved');
   }
 
-  Future<void> rejectVideo(String videoId, {String reason = ''}) async {
+  Future<AdminActionResponse> rejectVideo(
+    String videoId, {
+    String reason = '',
+  }) async {
     final response = await _adminContentService.rejectVideo(
       videoId: videoId,
       reason: reason,
     );
-    if (!response.success) {
-      final message = response.message.trim().isNotEmpty
-          ? response.message
-          : 'Refus de la vidéo impossible.';
-      throw StateError(message);
+    if (response.success) {
+      videoList.removeWhere((video) => video.id == videoId);
     }
-
-    videoList.removeWhere((video) => video.id == videoId);
+    return response;
   }
-
 }

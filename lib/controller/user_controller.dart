@@ -95,7 +95,7 @@ class UserController extends GetxController {
   Future<void> loadMoreUsers() async {
     if (!hasMoreUsers.value) return;
     _currentUsersLimit += _loadMoreIncrement;
-    await _stopUsersStream();
+    await _stopUsersStream(invalidatePrivateContacts: false);
     fetchUsers();
   }
 
@@ -165,6 +165,9 @@ class UserController extends GetxController {
             usersLoadError.value = invalidProfiles == 0
                 ? null
                 : 'Certains profils sont illisibles. La liste ne peut pas être affichée intégralement.';
+            parsedUsers.sort(
+              (a, b) => b.dateInscription.compareTo(a.dateInscription),
+            );
             _userList.assignAll(parsedUsers);
             hasMoreUsers.value = snapshot.docs.length >= _currentUsersLimit;
             // Réapplique d'abord ce qui est déjà en cache : les AppUser
@@ -223,10 +226,22 @@ class UserController extends GetxController {
     fetchUsers();
   }
 
-  Future<void> _stopUsersStream({bool clearUsers = false}) async {
+  /// [invalidatePrivateContacts] ne doit être à `false` que depuis
+  /// [loadMoreUsers] : la nouvelle fenêtre est un sur-ensemble strict de
+  /// l'ancienne, donc les coordonnées déjà en cache restent valides et
+  /// [PrivateContactCache.syncWindow] sait déjà ne relire que les UID
+  /// manquants. Vider le cache à chaque "charger plus" relisait
+  /// `private/contact` pour tous les comptes déjà affichés, pas seulement
+  /// les nouveaux.
+  Future<void> _stopUsersStream({
+    bool clearUsers = false,
+    bool invalidatePrivateContacts = true,
+  }) async {
     await _usersSubscription?.cancel();
     _usersSubscription = null;
-    _privateContacts.invalidate();
+    if (invalidatePrivateContacts) {
+      _privateContacts.invalidate();
+    }
 
     if (clearUsers) {
       usersLoadError.value = null;

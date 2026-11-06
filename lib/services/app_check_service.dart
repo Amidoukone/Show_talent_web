@@ -2,6 +2,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 
 import '../config/app_environment.dart';
+import 'error_reporting_service.dart';
 
 /// App Check bootstrap for the admin web portal.
 ///
@@ -42,9 +43,13 @@ class AppCheckService {
           '[AppCheckService] activated for env=${AppEnvironmentConfig.environmentName}',
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Non-blocking: an App Check activation failure must never prevent
-      // the admin portal from starting.
+      // the admin portal from starting. Still reported (ErrorReportingService
+      // is already initialized by this point, see AppBootstrap.initialize) --
+      // this used to be silent in release builds, so a revoked site key or an
+      // exhausted reCAPTCHA Enterprise quota could go unnoticed for months.
+      ErrorReportingService.captureError(e, stackTrace);
       if (kDebugMode) {
         debugPrint('[AppCheckService] activation failed (non-blocking): $e');
       }

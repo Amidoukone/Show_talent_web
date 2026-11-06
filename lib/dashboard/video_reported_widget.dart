@@ -460,7 +460,18 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
     });
 
     try {
-      await videoController.deleteVideo(videoId);
+      final response = await videoController.deleteVideo(videoId);
+      if (!response.success) {
+        showAdminFeedback(
+          title: 'Suppression impossible',
+          message: response.message.trim().isNotEmpty
+              ? response.message
+              : 'Suppression de la vidéo impossible.',
+          tone: AdminBannerTone.danger,
+          position: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
       showAdminFeedback(
         title: 'Vidéo supprimée',
         message: 'La vidéo signalée a été retirée avec succès.',

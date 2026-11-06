@@ -224,7 +224,18 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     });
 
     try {
-      await videoController.approveVideo(video.id);
+      final response = await videoController.approveVideo(video.id);
+      if (!response.success) {
+        showAdminFeedback(
+          title: 'Approbation impossible',
+          message: response.message.trim().isNotEmpty
+              ? response.message
+              : 'Approbation de la vidéo impossible.',
+          tone: AdminBannerTone.danger,
+          position: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
       showAdminFeedback(
         title: 'Vidéo approuvée',
         message:
@@ -263,7 +274,21 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     });
 
     try {
-      await videoController.rejectVideo(video.id, reason: reason);
+      final response = await videoController.rejectVideo(
+        video.id,
+        reason: reason,
+      );
+      if (!response.success) {
+        showAdminFeedback(
+          title: 'Refus impossible',
+          message: response.message.trim().isNotEmpty
+              ? response.message
+              : 'Refus de la vidéo impossible.',
+          tone: AdminBannerTone.danger,
+          position: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
       showAdminFeedback(
         title: 'Vidéo refusée',
         message: 'La vidéo a été supprimée et le joueur sera notifié.',

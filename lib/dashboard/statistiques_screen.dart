@@ -22,6 +22,29 @@ class StatisticsOverviewPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
+      final loadError =
+          userController.usersLoadError.value ??
+          (videoController.lastError.value.isEmpty
+              ? null
+              : videoController.lastError.value);
+      if (loadError != null) {
+        return Center(
+          child: AdminEmptyState(
+            title: 'Chargement incomplet',
+            message:
+                '$loadError Les statistiques affichées seraient fausses tant '
+                'que ce chargement échoue — elles ne sont pas montrées.',
+            icon: Icons.error_outline_rounded,
+            actionLabel: 'Réessayer',
+            actionIcon: Icons.refresh_rounded,
+            onAction: () {
+              userController.retryUsers();
+              videoController.fetchVideos();
+            },
+          ),
+        );
+      }
+
       if (userController.isLoading.value || videoController.isLoading.value) {
         return const Center(
           child: AdminLoadingState(message: 'Chargement des statistiques…'),

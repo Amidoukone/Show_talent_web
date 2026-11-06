@@ -133,28 +133,10 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
   }
 
   Future<void> _confirmDelete(Event event) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await confirmAdminDeletion(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Supprimer l’événement'),
-          content: Text('Supprimer l’événement "${event.titre}" ?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.dangerText,
-                foregroundColor: AdminTheme.background,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Supprimer'),
-            ),
-          ],
-        );
-      },
+      title: 'Supprimer l’événement',
+      content: Text('Supprimer l’événement "${event.titre}" ?'),
     );
 
     if (confirmed != true || !mounted) {

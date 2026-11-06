@@ -182,32 +182,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     required String message,
     required String confirmLabel,
     Color confirmColor = AdminTheme.dangerText,
-  }) async {
-    final confirmed = await showDialog<bool>(
+  }) {
+    return confirmAdminDeletion(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: confirmColor,
-                foregroundColor: AdminTheme.background,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(confirmLabel),
-            ),
-          ],
-        );
-      },
+      title: title,
+      content: Text(message),
+      confirmLabel: confirmLabel,
+      confirmColor: confirmColor,
     );
-
-    return confirmed == true;
   }
 
   Future<void> _runVoidAction({

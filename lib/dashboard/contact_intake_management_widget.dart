@@ -458,55 +458,32 @@ class _ContactIntakeManagementWidgetState
   }
 
   Future<void> _deleteContactIntake(ContactIntake intake) async {
-    final confirmed =
-        await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) {
-            return AlertDialog(
-              title: const Text('Supprimer la mise en relation'),
-              content: SizedBox(
-                width: 520,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
-                      style: const TextStyle(
-                        color: AdminTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Cette action supprime le dossier de suivi côté admin. Si une conversation liée existe encore, elle sera supprimée avec ses messages.',
-                      style: TextStyle(
-                        color: AdminTheme.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
+    final confirmed = await confirmAdminDeletion(
+      context: context,
+      title: 'Supprimer la mise en relation',
+      confirmIcon: Icons.delete_outline_rounded,
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
+              style: const TextStyle(
+                color: AdminTheme.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Annuler'),
-                ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.dangerText,
-                    foregroundColor: AdminTheme.background,
-                  ),
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Supprimer'),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Cette action supprime le dossier de suivi côté admin. Si une conversation liée existe encore, elle sera supprimée avec ses messages.',
+              style: TextStyle(color: AdminTheme.textSecondary, height: 1.35),
+            ),
+          ],
+        ),
+      ),
+    );
 
     if (!confirmed || !mounted) {
       return;
@@ -545,55 +522,33 @@ class _ContactIntakeManagementWidgetState
   }
 
   Future<void> _deleteContactIntakeConversation(ContactIntake intake) async {
-    final confirmed =
-        await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) {
-            return AlertDialog(
-              title: const Text('Supprimer la conversation'),
-              content: SizedBox(
-                width: 520,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
-                      style: const TextStyle(
-                        color: AdminTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Cette action supprime uniquement la conversation liée et ses messages. Le dossier de suivi agence reste en place.',
-                      style: TextStyle(
-                        color: AdminTheme.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
+    final confirmed = await confirmAdminDeletion(
+      context: context,
+      title: 'Supprimer la conversation',
+      confirmLabel: 'Supprimer la conversation',
+      confirmIcon: Icons.delete_outline_rounded,
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
+              style: const TextStyle(
+                color: AdminTheme.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Annuler'),
-                ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.dangerText,
-                    foregroundColor: AdminTheme.background,
-                  ),
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Supprimer la conversation'),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Cette action supprime uniquement la conversation liée et ses messages. Le dossier de suivi agence reste en place.',
+              style: TextStyle(color: AdminTheme.textSecondary, height: 1.35),
+            ),
+          ],
+        ),
+      ),
+    );
 
     if (!confirmed || !mounted) {
       return;

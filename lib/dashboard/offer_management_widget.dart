@@ -132,28 +132,10 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
   }
 
   Future<void> _confirmDelete(Offre offre) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await confirmAdminDeletion(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Supprimer l’offre'),
-          content: Text('Supprimer l’offre "${offre.titre}" ?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.dangerText,
-                foregroundColor: AdminTheme.background,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Supprimer'),
-            ),
-          ],
-        );
-      },
+      title: 'Supprimer l’offre',
+      content: Text('Supprimer l’offre "${offre.titre}" ?'),
     );
 
     if (confirmed != true || !mounted) {

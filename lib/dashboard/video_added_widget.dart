@@ -469,30 +469,12 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
   /// ensuite, ici, ce qui permet au lecteur de modération de savoir si la
   /// décision a eu lieu et de se refermer en conséquence.
   Future<bool> _confirmDelete(BuildContext context, String videoId) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await confirmAdminDeletion(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Supprimer la vidéo'),
-          content: const Text(
-            'Cette action retire définitivement la vidéo du catalogue et de la modération.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.dangerText,
-                foregroundColor: AdminTheme.background,
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Supprimer'),
-            ),
-          ],
-        );
-      },
+      title: 'Supprimer la vidéo',
+      content: const Text(
+        'Cette action retire définitivement la vidéo du catalogue et de la modération.',
+      ),
     );
 
     if (confirmed != true || !mounted) {

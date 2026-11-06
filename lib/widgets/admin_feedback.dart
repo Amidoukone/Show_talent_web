@@ -55,3 +55,55 @@ void showAdminFeedback({
     ),
   );
 }
+
+/// Boîte de dialogue de confirmation partagée par les actions destructives
+/// des écrans de gestion (suppression, suspension...). Le même
+/// `AlertDialog` à deux boutons ("Annuler" + action pleine sur
+/// [confirmColor]) était recopié à l'identique dans plusieurs écrans.
+///
+/// [content] reste un `Widget` plutôt qu'une simple chaîne : certains
+/// appelants (mise en relation) ont besoin d'un corps à plusieurs lignes
+/// avec une mise en forme propre, pas seulement d'un message brut.
+Future<bool> confirmAdminDeletion({
+  required BuildContext context,
+  required String title,
+  required Widget content,
+  String confirmLabel = 'Supprimer',
+  IconData? confirmIcon,
+  Color confirmColor = AdminTheme.dangerText,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      final confirmStyle = ElevatedButton.styleFrom(
+        backgroundColor: confirmColor,
+        foregroundColor: AdminTheme.background,
+      );
+
+      return AlertDialog(
+        title: Text(title),
+        content: content,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Annuler'),
+          ),
+          confirmIcon == null
+              ? ElevatedButton(
+                  style: confirmStyle,
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(confirmLabel),
+                )
+              : ElevatedButton.icon(
+                  style: confirmStyle,
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  icon: Icon(confirmIcon),
+                  label: Text(confirmLabel),
+                ),
+        ],
+      );
+    },
+  );
+
+  return confirmed ?? false;
+}

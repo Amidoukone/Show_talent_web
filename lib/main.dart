@@ -7,6 +7,7 @@ import 'package:show_talent/theme/admin_theme.dart';
 
 import 'config/app_bootstrap.dart';
 import 'config/app_routes.dart';
+import 'widgets/inactivity_guard.dart';
 
 Future<void> main() async {
   runZonedGuarded(() async {
@@ -33,6 +34,8 @@ class MyApp extends StatelessWidget {
       ],
       initialRoute: AppRoutes.adminLogin,
       getPages: AppRoutes.pages,
+      builder: (context, child) =>
+          InactivityGuard(child: child ?? const SizedBox.shrink()),
     );
   }
 }

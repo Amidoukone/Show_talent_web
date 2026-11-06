@@ -7,6 +7,7 @@ import '../config/app_routes.dart';
 import '../controller/auth_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
+import '../services/inactivity_service.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
 import '../widgets/admin_page.dart';
@@ -156,6 +157,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void dispose() {
     _sessionRevalidationTimer?.cancel();
+    InactivityService.instance.stop();
     super.dispose();
   }
 
@@ -185,6 +187,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _isAuthorizing = false;
     });
 
+    InactivityService.instance.start(onTimeout: _signOutForInactivity);
+
     _sessionRevalidationTimer?.cancel();
     _sessionRevalidationTimer = Timer.periodic(
       _sessionRevalidationInterval,
@@ -208,6 +212,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     if (!accessResult.isAuthorized) {
       _sessionRevalidationTimer?.cancel();
+      InactivityService.instance.stop();
       Get.snackbar(
         'Session révoquée',
         accessResult.message ??
@@ -217,7 +222,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  Future<void> _signOutForInactivity() async {
+    await widget.authController.signOut();
+    Get.snackbar(
+      'Déconnexion automatique',
+      'Vous avez été déconnecté après 15 minutes d’inactivité.',
+    );
+    Get.offAllNamed(AppRoutes.adminLogin);
+  }
+
   Future<void> _signOut() async {
+    InactivityService.instance.stop();
     await widget.authController.signOut();
     Get.offAllNamed(AppRoutes.adminLogin);
   }

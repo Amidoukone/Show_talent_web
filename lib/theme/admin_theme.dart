@@ -52,6 +52,15 @@ class AdminTheme {
   static const Color cyan = Color(0xFF4EA8FF);
   static const Color warning = Color(0xFFE6C75A);
   static const Color danger = Color(0xFFE53935);
+
+  /// [danger], mais réservée au texte (puce de statut, bouton plein,
+  /// pourcentage coloré) : [danger] lui-même retombe sous le seuil WCAG AA
+  /// (4,5:1) une fois utilisé comme texte sur [surface] (~4,17:1) ou comme
+  /// fond sous un texte [background] (~4,48:1) — le seul des cinq tons de
+  /// sens du portail à poser problème, les autres passant largement entre
+  /// 7:1 et 11:1. Les icônes et bordures restent sur [danger] : leur seuil
+  /// non-texte (3:1) est déjà atteint.
+  static const Color dangerText = Color(0xFFEB5750);
   static const Color success = Color(0xFF26C165);
 
   static const Color textPrimary = Color(0xFFEDEDED);

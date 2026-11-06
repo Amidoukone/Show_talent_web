@@ -443,7 +443,7 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.danger,
+                backgroundColor: AdminTheme.dangerText,
                 foregroundColor: AdminTheme.background,
               ),
               onPressed: () => Navigator.of(context).pop(true),

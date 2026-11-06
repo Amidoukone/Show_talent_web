@@ -86,7 +86,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
       case 'ouverte':
         return AdminTheme.success;
       case 'fermee':
-        return AdminTheme.danger;
+        return AdminTheme.dangerText;
       case 'archivee':
         return AdminTheme.cyan;
       default:
@@ -144,7 +144,7 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.danger,
+                backgroundColor: AdminTheme.dangerText,
                 foregroundColor: AdminTheme.background,
               ),
               onPressed: () => Navigator.of(context).pop(true),

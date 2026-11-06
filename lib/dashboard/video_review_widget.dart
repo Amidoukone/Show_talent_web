@@ -365,7 +365,7 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                   ),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AdminTheme.danger,
+                      backgroundColor: AdminTheme.dangerText,
                       foregroundColor: AdminTheme.background,
                     ),
                     onPressed: hasReason

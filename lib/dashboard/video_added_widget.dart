@@ -484,7 +484,7 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.danger,
+                backgroundColor: AdminTheme.dangerText,
                 foregroundColor: AdminTheme.background,
               ),
               onPressed: () => Navigator.of(context).pop(true),

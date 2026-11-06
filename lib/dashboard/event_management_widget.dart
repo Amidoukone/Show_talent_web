@@ -86,7 +86,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
       case 'ouvert':
         return AdminTheme.success;
       case 'ferme':
-        return AdminTheme.danger;
+        return AdminTheme.dangerText;
       case 'archive':
         return AdminTheme.cyan;
       default:
@@ -145,7 +145,7 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AdminTheme.danger,
+                backgroundColor: AdminTheme.dangerText,
                 foregroundColor: AdminTheme.background,
               ),
               onPressed: () => Navigator.of(context).pop(true),

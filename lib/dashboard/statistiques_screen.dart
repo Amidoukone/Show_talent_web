@@ -346,7 +346,7 @@ class StatisticsOverviewPanel extends StatelessWidget {
                             label: 'Accès suspendus',
                             value: '${(disabledRate * 100).round()}%',
                             progress: disabledRate,
-                            color: AdminTheme.danger,
+                            color: AdminTheme.dangerText,
                           ),
                         ],
                       ),

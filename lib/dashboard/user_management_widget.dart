@@ -180,7 +180,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     required String title,
     required String message,
     required String confirmLabel,
-    Color confirmColor = AdminTheme.danger,
+    Color confirmColor = AdminTheme.dangerText,
   }) async {
     final confirmed = await showDialog<bool>(
       context: context,

@@ -494,7 +494,7 @@ class _ContactIntakeManagementWidgetState
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.danger,
+                    backgroundColor: AdminTheme.dangerText,
                     foregroundColor: AdminTheme.background,
                   ),
                   onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -581,7 +581,7 @@ class _ContactIntakeManagementWidgetState
                 ),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AdminTheme.danger,
+                    backgroundColor: AdminTheme.dangerText,
                     foregroundColor: AdminTheme.background,
                   ),
                   onPressed: () => Navigator.of(dialogContext).pop(true),

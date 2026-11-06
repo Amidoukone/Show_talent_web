@@ -21,10 +21,19 @@ class VideoController extends GetxController {
   final bool _visualQaMode;
 
   // Voir OffreController pour le détail du choix (plafond + "charger plus",
-  // tri par documentId pour n'exclure aucun document en silence).
+  // tri par createdAt). Vérifié comme pour offres/événements : createdAt
+  // est posé sans condition au seul point de création d'un document vidéo
+  // (upload_session.ts:678, "Seeded here, once, on the document's only
+  // creation point"). Jamais absent, aucune réserve historique.
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
-  int _currentLimit = _initialLoadLimit;
+
+  // Voir OffreController._recomputeOffres/_firstPage/_extraPages pour le
+  // détail : page 1 temps réel, pages suivantes par curseur et statiques.
+  List<Video> _firstPage = <Video>[];
+  List<Video> _extraPages = <Video>[];
+  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
+  bool _isLoadingMore = false;
 
   var videoList = <Video>[].obs;
   final RxBool isLoading = true.obs;
@@ -50,6 +59,23 @@ class VideoController extends GetxController {
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _videosSubscription;
+
+  void _recomputeVideos() {
+    final byId = <String, Video>{};
+    for (final video in _extraPages) {
+      byId[video.id] = video;
+    }
+    for (final video in _firstPage) {
+      byId[video.id] = video;
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) {
+        final left = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final right = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return right.compareTo(left);
+      });
+    videoList.assignAll(merged);
+  }
 
   @override
   void onInit() {
@@ -80,7 +106,9 @@ class VideoController extends GetxController {
       videoList.clear();
       lastError.value = '';
       hasMore.value = false;
-      _currentLimit = _initialLoadLimit;
+      _firstPage = <Video>[];
+      _extraPages = <Video>[];
+      _lastDocument = null;
       totalVideosCount.value = null;
       isLoading.value = false;
       return;
@@ -108,10 +136,12 @@ class VideoController extends GetxController {
 
     isLoading.value = true;
     _videosSubscription?.cancel();
+    _extraPages = <Video>[];
+    _lastDocument = null;
     _videosSubscription = FirebaseFirestore.instance
         .collection('videos')
-        .orderBy(FieldPath.documentId)
-        .limit(_currentLimit)
+        .orderBy('createdAt', descending: true)
+        .limit(_initialLoadLimit)
         .snapshots()
         .listen(
           (snapshot) {
@@ -129,21 +159,12 @@ class VideoController extends GetxController {
                 .whereType<Video>()
                 .toList();
 
-            // Le flux arrive trié par documentId (voir plafond ci-dessus) :
-            // sans ce tri, les files de modération affichaient les vidéos
-            // dans un ordre arbitraire plutôt que la plus récente en premier.
-            // Même filet que OffreController/EventController/
-            // ContactIntakeController pour les documents sans date.
-            parsed.sort((a, b) {
-              final left =
-                  a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-              final right =
-                  b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-              return right.compareTo(left);
-            });
-
-            videoList.assignAll(parsed);
-            hasMore.value = snapshot.docs.length >= _currentLimit;
+            _firstPage = parsed;
+            if (snapshot.docs.isNotEmpty) {
+              _lastDocument = snapshot.docs.last;
+            }
+            _recomputeVideos();
+            hasMore.value = snapshot.docs.length >= _initialLoadLimit;
             lastError.value = '';
             isLoading.value = false;
           },
@@ -158,10 +179,45 @@ class VideoController extends GetxController {
   }
 
   /// Voir OffreController.loadMoreOffres.
-  void loadMoreVideos() {
-    if (!hasMore.value) return;
-    _currentLimit += _loadMoreIncrement;
-    fetchVideos();
+  Future<void> loadMoreVideos() async {
+    if (!hasMore.value || _isLoadingMore) return;
+    final cursor = _lastDocument;
+    if (cursor == null) return;
+
+    _isLoadingMore = true;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('videos')
+          .orderBy('createdAt', descending: true)
+          .startAfterDocument(cursor)
+          .limit(_loadMoreIncrement)
+          .get();
+
+      final parsed = snapshot.docs
+          .map((doc) {
+            try {
+              return Video.fromMap({...doc.data(), 'id': doc.id});
+            } catch (e) {
+              debugPrint('Erreur lors de la récupération de la vidéo : $e');
+              return null;
+            }
+          })
+          .whereType<Video>()
+          .toList();
+
+      _extraPages = <Video>[..._extraPages, ...parsed];
+      if (snapshot.docs.isNotEmpty) {
+        _lastDocument = snapshot.docs.last;
+      }
+      hasMore.value = snapshot.docs.length >= _loadMoreIncrement;
+      _recomputeVideos();
+    } catch (error) {
+      debugPrint('Chargement supplémentaire des vidéos impossible : $error');
+      lastError.value =
+          'Impossible de charger plus de vidéos. Vérifiez votre connexion puis réessayez.';
+    } finally {
+      _isLoadingMore = false;
+    }
   }
 
   List<Video> getReportedVideos() {

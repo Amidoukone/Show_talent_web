@@ -45,13 +45,37 @@ class UserController extends GetxController {
   bool _retryingUsers = false;
 
   // Plafond + "charger plus" sur la collection users elle-même (voir
-  // OffreController pour le détail du choix : tri par documentId pour
-  // n'exclure aucun document en silence). Les coordonnées privées sont
-  // lues pour cette seule fenêtre, voir _loadPrivateContacts.
+  // OffreController pour le détail du choix). Tri par dateInscription :
+  // vérifié, pas supposé — ce champ est requis (non optionnel) dans
+  // AppUser, posé sans condition au seul point de création d'un document
+  // utilisateur (provisionManagedAccount côté mobile, pas d'auto-inscription
+  // sur cette plateforme) et existe depuis le tout premier commit du
+  // modèle. Aucune réserve historique, contrairement à offres/événements.
+  // Les coordonnées privées sont lues pour cette seule fenêtre, voir
+  // _loadPrivateContacts.
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
-  int _currentUsersLimit = _initialLoadLimit;
+
+  // Voir OffreController._recomputeOffres/_firstPage/_extraPages pour le
+  // détail : page 1 temps réel, pages suivantes par curseur et statiques.
+  List<AppUser> _firstPage = <AppUser>[];
+  List<AppUser> _extraPages = <AppUser>[];
+  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
+  bool _isLoadingMoreUsers = false;
   final RxBool hasMoreUsers = false.obs;
+
+  void _recomputeUsers() {
+    final byUid = <String, AppUser>{};
+    for (final user in _extraPages) {
+      byUid[user.uid] = user;
+    }
+    for (final user in _firstPage) {
+      byUid[user.uid] = user;
+    }
+    final merged = byUid.values.toList()
+      ..sort((a, b) => b.dateInscription.compareTo(a.dateInscription));
+    _userList.assignAll(merged);
+  }
 
   /// Nombre total de comptes, indépendant de la fenêtre chargée ci-dessus.
   ///
@@ -89,14 +113,63 @@ class UserController extends GetxController {
     }
   }
 
-  /// Agrandit la fenêtre chargée de [_loadMoreIncrement] utilisateurs.
-  /// Contourne volontairement la garde "déjà abonné" de [fetchUsers] en
-  /// coupant d'abord le flux existant, comme le fait déjà [retryUsers].
+  /// Ajoute un lot de [_loadMoreIncrement] utilisateurs après le dernier
+  /// document déjà chargé, par curseur plutôt qu'en relisant tout depuis
+  /// le début. Ne touche pas au flux temps réel de la première page : les
+  /// deux fenêtres sont fusionnées par [_recomputeUsers].
   Future<void> loadMoreUsers() async {
-    if (!hasMoreUsers.value) return;
-    _currentUsersLimit += _loadMoreIncrement;
-    await _stopUsersStream(invalidatePrivateContacts: false);
-    fetchUsers();
+    if (!hasMoreUsers.value || _isLoadingMoreUsers) return;
+    final cursor = _lastDocument;
+    if (cursor == null) return;
+
+    _isLoadingMoreUsers = true;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .orderBy('dateInscription', descending: true)
+          .startAfterDocument(cursor)
+          .limit(_loadMoreIncrement)
+          .get();
+
+      final parsedUsers = <AppUser>[];
+      var invalidProfiles = 0;
+      for (final doc in snapshot.docs) {
+        try {
+          parsedUsers.add(_parseUserData(doc.data(), fallbackUid: doc.id));
+        } catch (error, stackTrace) {
+          invalidProfiles++;
+          debugPrint(
+            'Document utilisateur ignoré (${doc.id}) car invalide : $error',
+          );
+          debugPrintStack(stackTrace: stackTrace);
+        }
+      }
+      if (invalidProfiles > 0) {
+        usersLoadError.value =
+            'Certains profils sont illisibles. La liste ne peut pas être affichée intégralement.';
+      }
+
+      _extraPages = <AppUser>[..._extraPages, ...parsedUsers];
+      if (snapshot.docs.isNotEmpty) {
+        _lastDocument = snapshot.docs.last;
+      }
+      hasMoreUsers.value = snapshot.docs.length >= _loadMoreIncrement;
+      _recomputeUsers();
+      // Réapplique d'abord ce qui est déjà en cache, comme à chaque vague
+      // du flux temps réel : syncWindow ne relit ensuite que les UID
+      // manquants, jamais ceux déjà en cache.
+      _applyPrivateContactCache();
+      unawaited(_loadPrivateContacts(_userList.map((user) => user.uid)));
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Chargement supplémentaire des utilisateurs impossible : $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      usersLoadError.value =
+          'Impossible de charger plus d’utilisateurs. Vérifiez votre connexion puis réessayez.';
+    } finally {
+      _isLoadingMoreUsers = false;
+    }
   }
 
   final RxList<String> _grantedAdminClaims = <String>[].obs;
@@ -138,10 +211,12 @@ class UserController extends GetxController {
     unawaited(_refreshTotalUsersCount());
 
     isLoading.value = true;
+    _extraPages = <AppUser>[];
+    _lastDocument = null;
     _usersSubscription = FirebaseFirestore.instance
         .collection('users')
-        .orderBy(FieldPath.documentId)
-        .limit(_currentUsersLimit)
+        .orderBy('dateInscription', descending: true)
+        .limit(_initialLoadLimit)
         .snapshots()
         .listen(
           (snapshot) {
@@ -165,18 +240,17 @@ class UserController extends GetxController {
             usersLoadError.value = invalidProfiles == 0
                 ? null
                 : 'Certains profils sont illisibles. La liste ne peut pas être affichée intégralement.';
-            parsedUsers.sort(
-              (a, b) => b.dateInscription.compareTo(a.dateInscription),
-            );
-            _userList.assignAll(parsedUsers);
-            hasMoreUsers.value = snapshot.docs.length >= _currentUsersLimit;
+            _firstPage = parsedUsers;
+            if (snapshot.docs.isNotEmpty) {
+              _lastDocument = snapshot.docs.last;
+            }
+            _recomputeUsers();
+            hasMoreUsers.value = snapshot.docs.length >= _initialLoadLimit;
             // Réapplique d'abord ce qui est déjà en cache : les AppUser
             // viennent d'être reconstruits et ont perdu leur e-mail.
             _applyPrivateContactCache();
             isLoading.value = false;
-            unawaited(
-              _loadPrivateContacts(parsedUsers.map((user) => user.uid)),
-            );
+            unawaited(_loadPrivateContacts(_userList.map((user) => user.uid)));
           },
           onError: (Object error, StackTrace stackTrace) {
             debugPrint('Flux Firestore users indisponible : $error');
@@ -226,22 +300,13 @@ class UserController extends GetxController {
     fetchUsers();
   }
 
-  /// [invalidatePrivateContacts] ne doit être à `false` que depuis
-  /// [loadMoreUsers] : la nouvelle fenêtre est un sur-ensemble strict de
-  /// l'ancienne, donc les coordonnées déjà en cache restent valides et
-  /// [PrivateContactCache.syncWindow] sait déjà ne relire que les UID
-  /// manquants. Vider le cache à chaque "charger plus" relisait
-  /// `private/contact` pour tous les comptes déjà affichés, pas seulement
-  /// les nouveaux.
-  Future<void> _stopUsersStream({
-    bool clearUsers = false,
-    bool invalidatePrivateContacts = true,
-  }) async {
+  /// [loadMoreUsers] ne passe plus par ici : il ne touche pas au flux
+  /// temps réel de la première page, donc n'a plus besoin d'invalider le
+  /// cache de coordonnées privées pour autant (voir sa propre docstring).
+  Future<void> _stopUsersStream({bool clearUsers = false}) async {
     await _usersSubscription?.cancel();
     _usersSubscription = null;
-    if (invalidatePrivateContacts) {
-      _privateContacts.invalidate();
-    }
+    _privateContacts.invalidate();
 
     if (clearUsers) {
       usersLoadError.value = null;
@@ -249,7 +314,9 @@ class UserController extends GetxController {
       _userList.clear();
       isLoading.value = false;
       hasMoreUsers.value = false;
-      _currentUsersLimit = _initialLoadLimit;
+      _firstPage = <AppUser>[];
+      _extraPages = <AppUser>[];
+      _lastDocument = null;
       totalUsersCount.value = null;
     }
   }

@@ -34,10 +34,22 @@ class EventController extends GetxController {
   ];
 
   // Voir OffreController pour le détail du choix (plafond + "charger plus",
-  // tri par documentId pour n'exclure aucun document en silence).
+  // tri par createdAt). Vérifié comme pour les offres : createdAt est posé
+  // sans condition au seul point de création d'un événement
+  // (event_repository.dart, bloc "nouvel événement") et le mobile
+  // l'utilise déjà lui-même comme tri de référence
+  // (event_repository.dart:502,504). Ajouté le 2025-03-18 (commit
+  // a484641) ; la purge totale des événements du 2026-09-28 a effacé tout
+  // document antérieur à cet ajout.
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
-  int _currentLimit = _initialLoadLimit;
+
+  // Voir OffreController._recomputeOffres/_firstPage/_extraPages pour le
+  // détail : page 1 temps réel, pages suivantes par curseur et statiques.
+  List<Event> _firstPage = <Event>[];
+  List<Event> _extraPages = <Event>[];
+  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
+  bool _isLoadingMore = false;
 
   final RxList<Event> events = <Event>[].obs;
   final RxBool isLoading = true.obs;
@@ -46,6 +58,19 @@ class EventController extends GetxController {
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _eventsSubscription;
+
+  void _recomputeEvents() {
+    final byId = <String, Event>{};
+    for (final event in _extraPages) {
+      byId[event.id] = event;
+    }
+    for (final event in _firstPage) {
+      byId[event.id] = event;
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    events.assignAll(merged);
+  }
 
   @override
   void onInit() {
@@ -80,11 +105,13 @@ class EventController extends GetxController {
 
     isLoading.value = true;
     _eventsSubscription?.cancel();
+    _extraPages = <Event>[];
+    _lastDocument = null;
 
     _eventsSubscription = _firestore!
         .collection('events')
-        .orderBy(FieldPath.documentId)
-        .limit(_currentLimit)
+        .orderBy('createdAt', descending: true)
+        .limit(_initialLoadLimit)
         .snapshots()
         .listen(
           (snapshot) {
@@ -98,9 +125,12 @@ class EventController extends GetxController {
               }
             }
 
-            parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
-            events.assignAll(parsed);
-            hasMore.value = snapshot.docs.length >= _currentLimit;
+            _firstPage = parsed;
+            if (snapshot.docs.isNotEmpty) {
+              _lastDocument = snapshot.docs.last;
+            }
+            _recomputeEvents();
+            hasMore.value = snapshot.docs.length >= _initialLoadLimit;
             lastError.value = '';
             isLoading.value = false;
           },
@@ -115,10 +145,44 @@ class EventController extends GetxController {
   }
 
   /// Voir OffreController.loadMoreOffres.
-  void loadMoreEvents() {
-    if (!hasMore.value) return;
-    _currentLimit += _loadMoreIncrement;
-    _listenEvents();
+  Future<void> loadMoreEvents() async {
+    if (!hasMore.value || _isLoadingMore) return;
+    final cursor = _lastDocument;
+    if (cursor == null) return;
+
+    _isLoadingMore = true;
+    try {
+      final snapshot = await _firestore!
+          .collection('events')
+          .orderBy('createdAt', descending: true)
+          .startAfterDocument(cursor)
+          .limit(_loadMoreIncrement)
+          .get();
+
+      final parsed = <Event>[];
+      for (final doc in snapshot.docs) {
+        try {
+          parsed.add(Event.fromDoc(doc));
+        } catch (error) {
+          debugPrint('Événement ignoré (parsing) : ${doc.id} -> $error');
+        }
+      }
+
+      _extraPages = <Event>[..._extraPages, ...parsed];
+      if (snapshot.docs.isNotEmpty) {
+        _lastDocument = snapshot.docs.last;
+      }
+      hasMore.value = snapshot.docs.length >= _loadMoreIncrement;
+      _recomputeEvents();
+    } catch (error) {
+      debugPrint(
+        'Chargement supplémentaire des événements impossible : $error',
+      );
+      lastError.value =
+          'Impossible de charger plus d’événements. Vérifiez votre connexion puis réessayez.';
+    } finally {
+      _isLoadingMore = false;
+    }
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
@@ -139,7 +203,9 @@ class EventController extends GetxController {
       lastError.value = '';
       isLoading.value = false;
       hasMore.value = false;
-      _currentLimit = _initialLoadLimit;
+      _firstPage = <Event>[];
+      _extraPages = <Event>[];
+      _lastDocument = null;
     }
   }
 

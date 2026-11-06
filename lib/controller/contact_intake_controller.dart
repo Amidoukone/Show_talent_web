@@ -29,10 +29,20 @@ class ContactIntakeController extends GetxController {
   static const List<String> followUpStatuses = AgencyFollowUpStatus.values;
 
   // Voir OffreController pour le détail du choix (plafond + "charger plus",
-  // tri par documentId pour n'exclure aucun document en silence).
+  // tri par createdAt). Vérifié comme pour les offres/événements :
+  // createdAt est posé sans condition aux deux seuls points de création
+  // d'une prise de contact (chat_repository.dart), collection introduite en
+  // un seul commit qui l'a toujours eu — aucune fenêtre historique sans ce
+  // champ.
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
-  int _currentLimit = _initialLoadLimit;
+
+  // Voir OffreController._recomputeOffres/_firstPage/_extraPages pour le
+  // détail : page 1 temps réel, pages suivantes par curseur et statiques.
+  List<ContactIntake> _firstPage = <ContactIntake>[];
+  List<ContactIntake> _extraPages = <ContactIntake>[];
+  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
+  bool _isLoadingMore = false;
 
   final RxList<ContactIntake> contactIntakes = <ContactIntake>[].obs;
   final RxBool isLoading = true.obs;
@@ -42,6 +52,23 @@ class ContactIntakeController extends GetxController {
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
   _contactIntakesSubscription;
+
+  void _recomputeContactIntakes() {
+    final byId = <String, ContactIntake>{};
+    for (final intake in _extraPages) {
+      byId[intake.id] = intake;
+    }
+    for (final intake in _firstPage) {
+      byId[intake.id] = intake;
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) {
+        final left = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final right = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return right.compareTo(left);
+      });
+    contactIntakes.assignAll(merged);
+  }
 
   @override
   void onInit() {
@@ -76,11 +103,13 @@ class ContactIntakeController extends GetxController {
 
     isLoading.value = true;
     _contactIntakesSubscription?.cancel();
+    _extraPages = <ContactIntake>[];
+    _lastDocument = null;
 
     _contactIntakesSubscription = _firestore!
         .collection('contact_intakes')
-        .orderBy(FieldPath.documentId)
-        .limit(_currentLimit)
+        .orderBy('createdAt', descending: true)
+        .limit(_initialLoadLimit)
         .snapshots()
         .listen(
           (snapshot) {
@@ -96,16 +125,12 @@ class ContactIntakeController extends GetxController {
               }
             }
 
-            parsed.sort((a, b) {
-              final left =
-                  a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-              final right =
-                  b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-              return right.compareTo(left);
-            });
-
-            contactIntakes.assignAll(parsed);
-            hasMore.value = snapshot.docs.length >= _currentLimit;
+            _firstPage = parsed;
+            if (snapshot.docs.isNotEmpty) {
+              _lastDocument = snapshot.docs.last;
+            }
+            _recomputeContactIntakes();
+            hasMore.value = snapshot.docs.length >= _initialLoadLimit;
             lastError.value = '';
             isLoading.value = false;
           },
@@ -120,10 +145,46 @@ class ContactIntakeController extends GetxController {
   }
 
   /// Voir OffreController.loadMoreOffres.
-  void loadMoreContactIntakes() {
-    if (!hasMore.value) return;
-    _currentLimit += _loadMoreIncrement;
-    _listenContactIntakes();
+  Future<void> loadMoreContactIntakes() async {
+    if (!hasMore.value || _isLoadingMore) return;
+    final cursor = _lastDocument;
+    if (cursor == null) return;
+
+    _isLoadingMore = true;
+    try {
+      final snapshot = await _firestore!
+          .collection('contact_intakes')
+          .orderBy('createdAt', descending: true)
+          .startAfterDocument(cursor)
+          .limit(_loadMoreIncrement)
+          .get();
+
+      final parsed = <ContactIntake>[];
+      for (final doc in snapshot.docs) {
+        try {
+          parsed.add(ContactIntake.fromDoc(doc));
+        } catch (error) {
+          debugPrint(
+            'Prise de contact ignorée (parsing) : ${doc.id} -> $error',
+          );
+        }
+      }
+
+      _extraPages = <ContactIntake>[..._extraPages, ...parsed];
+      if (snapshot.docs.isNotEmpty) {
+        _lastDocument = snapshot.docs.last;
+      }
+      hasMore.value = snapshot.docs.length >= _loadMoreIncrement;
+      _recomputeContactIntakes();
+    } catch (error) {
+      debugPrint(
+        'Chargement supplémentaire des mises en relation impossible : $error',
+      );
+      lastError.value =
+          'Impossible de charger plus de mises en relation. Vérifiez votre connexion puis réessayez.';
+    } finally {
+      _isLoadingMore = false;
+    }
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
@@ -144,7 +205,9 @@ class ContactIntakeController extends GetxController {
       lastError.value = '';
       isLoading.value = false;
       hasMore.value = false;
-      _currentLimit = _initialLoadLimit;
+      _firstPage = <ContactIntake>[];
+      _extraPages = <ContactIntake>[];
+      _lastDocument = null;
     }
   }
 

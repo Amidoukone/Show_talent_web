@@ -35,12 +35,36 @@ class OffreController extends GetxController {
 
   // Plafond + "charger plus" plutôt qu'une collection entière en mémoire :
   // voir le même mécanisme sur event/video/contact_intake controllers.
-  // Tri par documentId (et non une date) car c'est le seul champ garanti
-  // présent sur chaque document — trier par une date potentiellement
-  // absente exclurait silencieusement les offres qui ne l'ont pas.
+  //
+  // Tri par dateCreation (champ de création, distinct de dateDebut qui est
+  // la date métier du poste proposé) plutôt que par documentId. Vérifié,
+  // pas supposé : le mobile pose ce champ sans condition au seul point de
+  // création d'une offre (offer_repository.dart:182-184) et l'utilise déjà
+  // lui-même comme tri de référence (offer_repository.dart:446). Un ancien
+  // document pourrait en théorie en être dépourvu (champ ajouté le
+  // 2025-03-18, commit a484641), mais la purge totale des offres du
+  // 2026-09-28 (docs/checklists/test-data-reset-and-migration-2026-09-28.md,
+  // côté mobile) a effacé tout document antérieur à cet ajout : aucune
+  // offre actuellement en base n'en est dépourvue. Un orderBy(documentId)
+  // excluait au contraire silencieusement les offres les plus RÉCENTES dès
+  // que la collection dépassait la fenêtre chargée (un ID auto-généré n'a
+  // aucune corrélation avec la date de création) — l'inverse de
+  // l'intention.
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
-  int _currentLimit = _initialLoadLimit;
+
+  // La première page reste un flux temps réel (un changement sur une offre
+  // déjà chargée s'y reflète tout seul). "Charger plus" ajoute des pages
+  // par curseur (startAfterDocument) plutôt qu'en relisant tout depuis le
+  // début avec une limite grandissante : l'ancien schéma facturait
+  // 500+1000+1500 lectures pour afficher 1500 offres au lieu de
+  // 500+500+500. Ces pages supplémentaires ne sont PAS temps réel — un
+  // changement sur une offre qui s'y trouve n'apparaît qu'au prochain
+  // rechargement complet (retry/reconnexion), pas tout seul.
+  List<Offre> _firstPage = <Offre>[];
+  List<Offre> _extraPages = <Offre>[];
+  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
+  bool _isLoadingMore = false;
 
   final RxList<Offre> offres = <Offre>[].obs;
   final RxBool isLoading = true.obs;
@@ -49,6 +73,23 @@ class OffreController extends GetxController {
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _offresSubscription;
+
+  /// Fusionne la page temps réel et les pages par curseur, en dédoublonnant
+  /// par id (la page temps réel l'emporte en cas de conflit, étant la plus
+  /// fraîche) : un document ne doit jamais apparaître deux fois si son
+  /// curseur de frontière a bougé entre deux "charger plus".
+  void _recomputeOffres() {
+    final byId = <String, Offre>{};
+    for (final offre in _extraPages) {
+      byId[offre.id] = offre;
+    }
+    for (final offre in _firstPage) {
+      byId[offre.id] = offre;
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) => b.dateCreation.compareTo(a.dateCreation));
+    offres.assignAll(merged);
+  }
 
   @override
   void onInit() {
@@ -83,11 +124,13 @@ class OffreController extends GetxController {
 
     isLoading.value = true;
     _offresSubscription?.cancel();
+    _extraPages = <Offre>[];
+    _lastDocument = null;
 
     _offresSubscription = _firestore!
         .collection('offres')
-        .orderBy(FieldPath.documentId)
-        .limit(_currentLimit)
+        .orderBy('dateCreation', descending: true)
+        .limit(_initialLoadLimit)
         .snapshots()
         .listen(
           (snapshot) {
@@ -101,9 +144,12 @@ class OffreController extends GetxController {
               }
             }
 
-            parsed.sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
-            offres.assignAll(parsed);
-            hasMore.value = snapshot.docs.length >= _currentLimit;
+            _firstPage = parsed;
+            if (snapshot.docs.isNotEmpty) {
+              _lastDocument = snapshot.docs.last;
+            }
+            _recomputeOffres();
+            hasMore.value = snapshot.docs.length >= _initialLoadLimit;
             lastError.value = '';
             isLoading.value = false;
           },
@@ -117,13 +163,44 @@ class OffreController extends GetxController {
         );
   }
 
-  /// Agrandit la fenêtre chargée de [_loadMoreIncrement] offres et
-  /// réabonne le flux — [hasMore] repasse à false tout seul si ce lot
-  /// couvrait déjà toute la collection.
-  void loadMoreOffres() {
-    if (!hasMore.value) return;
-    _currentLimit += _loadMoreIncrement;
-    _listenOffres();
+  /// Ajoute un lot de [_loadMoreIncrement] offres après le dernier document
+  /// déjà chargé, par curseur plutôt qu'en relisant tout depuis le début.
+  Future<void> loadMoreOffres() async {
+    if (!hasMore.value || _isLoadingMore) return;
+    final cursor = _lastDocument;
+    if (cursor == null) return;
+
+    _isLoadingMore = true;
+    try {
+      final snapshot = await _firestore!
+          .collection('offres')
+          .orderBy('dateCreation', descending: true)
+          .startAfterDocument(cursor)
+          .limit(_loadMoreIncrement)
+          .get();
+
+      final parsed = <Offre>[];
+      for (final doc in snapshot.docs) {
+        try {
+          parsed.add(Offre.fromDoc(doc));
+        } catch (error) {
+          debugPrint('Offre ignorée (parsing) : ${doc.id} -> $error');
+        }
+      }
+
+      _extraPages = <Offre>[..._extraPages, ...parsed];
+      if (snapshot.docs.isNotEmpty) {
+        _lastDocument = snapshot.docs.last;
+      }
+      hasMore.value = snapshot.docs.length >= _loadMoreIncrement;
+      _recomputeOffres();
+    } catch (error) {
+      debugPrint('Chargement supplémentaire des offres impossible : $error');
+      lastError.value =
+          'Impossible de charger plus d’offres. Vérifiez votre connexion puis réessayez.';
+    } finally {
+      _isLoadingMore = false;
+    }
   }
 
   Future<void> _handleAuthStateChanged(User? user) async {
@@ -144,7 +221,9 @@ class OffreController extends GetxController {
       lastError.value = '';
       isLoading.value = false;
       hasMore.value = false;
-      _currentLimit = _initialLoadLimit;
+      _firstPage = <Offre>[];
+      _extraPages = <Offre>[];
+      _lastDocument = null;
     }
   }
 

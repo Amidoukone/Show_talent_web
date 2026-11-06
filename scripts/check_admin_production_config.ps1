@@ -69,7 +69,7 @@ if ($errors.Count -eq 0) {
 
     Assert-ContainsRegex `
         -Raw $appEnvironmentRaw `
-        -Pattern "String\.fromEnvironment\('APP_ENV',\s*defaultValue:\s*'production'\)" `
+        -Pattern "String\.fromEnvironment\(\s*'APP_ENV',\s*defaultValue:\s*'production',?\s*\)" `
         -Message "APP_ENV default is no longer production."
 
     Assert-ContainsRegex `

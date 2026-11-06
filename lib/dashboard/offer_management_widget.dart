@@ -656,6 +656,9 @@ class _OfferManagementWidgetState extends State<OfferManagementWidget> {
                 totalPages: totalPages,
                 itemLabel: 'offres',
                 hasMore: _offreController.hasMore.value,
+                searchLimited:
+                    _offreController.hasMore.value &&
+                    _searchQuery.trim().isNotEmpty,
                 onLoadMore: _offreController.loadMoreOffres,
                 onPrevious: safePage > 0
                     ? () => setState(() => _currentPage = safePage - 1)

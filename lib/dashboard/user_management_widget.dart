@@ -1335,6 +1335,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 totalPages: totalPages,
                 itemLabel: 'utilisateurs',
                 hasMore: _userController.hasMoreUsers.value,
+                searchLimited:
+                    _userController.hasMoreUsers.value &&
+                    searchQuery.trim().isNotEmpty,
                 onLoadMore: _userController.loadMoreUsers,
                 onPrevious: safePage > 0
                     ? () => setState(() => currentPage = safePage - 1)

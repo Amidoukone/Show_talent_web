@@ -617,6 +617,9 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
                 totalPages: totalPages,
                 itemLabel: 'événements',
                 hasMore: _eventController.hasMore.value,
+                searchLimited:
+                    _eventController.hasMore.value &&
+                    _searchQuery.trim().isNotEmpty,
                 onLoadMore: _eventController.loadMoreEvents,
                 onPrevious: safePage > 0
                     ? () => setState(() => _currentPage = safePage - 1)

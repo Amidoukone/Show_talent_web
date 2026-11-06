@@ -448,6 +448,9 @@ class _VideoAddedWidgetState extends State<VideoAddedWidget> {
                 totalPages: totalPages,
                 itemLabel: 'vidéos',
                 hasMore: videoController.hasMore.value,
+                searchLimited:
+                    videoController.hasMore.value &&
+                    searchQuery.trim().isNotEmpty,
                 onLoadMore: videoController.loadMoreVideos,
                 onPrevious: safePage > 0
                     ? () => setState(() => currentPage = safePage - 1)

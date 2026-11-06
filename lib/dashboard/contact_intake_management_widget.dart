@@ -1223,6 +1223,9 @@ class _ContactIntakeManagementWidgetState
                 totalPages: totalPages,
                 itemLabel: 'mises en relation',
                 hasMore: _contactIntakeController.hasMore.value,
+                searchLimited:
+                    _contactIntakeController.hasMore.value &&
+                    _searchQuery.trim().isNotEmpty,
                 onLoadMore: _contactIntakeController.loadMoreContactIntakes,
                 onPrevious: safePage > 0
                     ? () => setState(() => _currentPage = safePage - 1)

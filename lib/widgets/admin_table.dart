@@ -511,6 +511,7 @@ class AdminListFooter extends StatelessWidget {
     this.hasMore = false,
     this.onLoadMore,
     this.itemLabel = 'éléments',
+    this.searchLimited = false,
     super.key,
   });
 
@@ -528,11 +529,21 @@ class AdminListFooter extends StatelessWidget {
   final VoidCallback? onLoadMore;
   final String itemLabel;
 
+  /// Vrai quand une recherche est active ET que [hasMore] l'est aussi : la
+  /// recherche ne porte alors que sur la fenêtre déjà chargée, pas sur
+  /// l'ensemble de la collection — sans ce signal, « aucun résultat »
+  /// semble dire que l'élément n'existe pas alors qu'il n'a simplement pas
+  /// encore été chargé.
+  final bool searchLimited;
+
   @override
   Widget build(BuildContext context) {
     final position = filteredCount == 0
         ? 'Aucun résultat'
         : '$rangeStart-$rangeEnd sur $filteredCount $itemLabel';
+    final suffix = searchLimited
+        ? ' — recherche limitée aux éléments déjà chargés'
+        : (hasMore ? ' chargés' : '');
 
     return Container(
       height: 44,
@@ -546,7 +557,7 @@ class AdminListFooter extends StatelessWidget {
         children: [
           Flexible(
             child: Text(
-              hasMore ? '$position chargés' : position,
+              '$position$suffix',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AdminType.caption,

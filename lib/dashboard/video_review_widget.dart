@@ -650,6 +650,9 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
                 totalPages: totalPages,
                 itemLabel: 'vidéos en attente',
                 hasMore: videoController.hasMore.value,
+                searchLimited:
+                    videoController.hasMore.value &&
+                    searchQuery.trim().isNotEmpty,
                 onLoadMore: videoController.loadMoreVideos,
                 onPrevious: safePage > 0
                     ? () => setState(() => currentPage = safePage - 1)

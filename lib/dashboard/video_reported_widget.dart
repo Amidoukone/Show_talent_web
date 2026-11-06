@@ -411,6 +411,9 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
                 totalPages: totalPages,
                 itemLabel: 'vidéos signalées',
                 hasMore: videoController.hasMore.value,
+                searchLimited:
+                    videoController.hasMore.value &&
+                    searchQuery.trim().isNotEmpty,
                 onLoadMore: videoController.loadMoreVideos,
                 onPrevious: safePage > 0
                     ? () => setState(() => currentPage = safePage - 1)

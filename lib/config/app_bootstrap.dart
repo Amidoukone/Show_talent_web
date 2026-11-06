@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -17,6 +18,15 @@ class AppBootstrap {
     if (!AppEnvironmentConfig.visualQaMode) {
       await ErrorReportingService.initialize();
       await FirebaseBootstrap.initialize();
+      if (kIsWeb) {
+        // Une session admin (qui peut suspendre des comptes et enregistrer
+        // le consentement parental de mineurs) ne doit pas survivre à la
+        // fermeture de l'onglet/navigateur sur un poste partagé. Le défaut
+        // web de Firebase Auth (Persistence.LOCAL, IndexedDB) garderait
+        // sinon la session active indéfiniment. Doit être appelé avant tout
+        // autre appel sur FirebaseAuth.instance pour prendre effet.
+        await FirebaseAuth.instance.setPersistence(Persistence.SESSION);
+      }
       await FirebaseAuth.instance.setLanguageCode('fr');
     }
 

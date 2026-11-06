@@ -112,7 +112,14 @@ class AdminTheme {
   static const double readingMaxWidth = 1280;
   static const double breakpointCompact = 1120;
   static const double breakpointShellCompact = 1160;
-  static const double breakpointExtendedRail = 1280;
+
+  /// Le rail passe de 56 à 232 px ici : agrandir la fenêtre d'1 px à ce
+  /// seuil retire donc 176 px de largeur de contenu. Fixé au-delà de la
+  /// plus grande largeur minimale de tableau (1040, événements) + rail
+  /// étendu (232) + paddings (2×16) = 1304, pour que ce saut ne fasse
+  /// jamais basculer un tableau d'un affichage sans défilement à un
+  /// défilement horizontal au moment précis où le rail s'étend.
+  static const double breakpointExtendedRail = 1320;
 
   /// Largeur du panneau latéral de consultation d'un enregistrement.
   static const double detailPanelWidth = 440;

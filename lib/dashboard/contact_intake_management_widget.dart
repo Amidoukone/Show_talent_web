@@ -6,6 +6,7 @@ import '../models/contact_intake.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
 import '../utils/admin_date_format.dart';
+import '../utils/admin_pagination.dart';
 import '../widgets/admin_detail_panel.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_page.dart';
@@ -1103,14 +1104,16 @@ class _ContactIntakeManagementWidgetState
           )
           .length;
 
-      final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
-      final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
-      final safePage = _currentPage >= totalPages
-          ? totalPages - 1
-          : _currentPage.clamp(0, totalPages - 1);
-      final start = safePage * _rowsPerPage;
-      final end = (start + _rowsPerPage).clamp(0, filtered.length);
-      final displayed = filtered.sublist(start, end);
+      final page = paginateAdminList(
+        filtered: filtered,
+        currentPage: _currentPage,
+        rowsPerPage: _rowsPerPage,
+      );
+      final totalPages = page.totalPages;
+      final safePage = page.safePage;
+      final start = page.startIndex;
+      final end = page.endIndex;
+      final displayed = page.items;
 
       final Widget body;
       if (filtered.isEmpty) {

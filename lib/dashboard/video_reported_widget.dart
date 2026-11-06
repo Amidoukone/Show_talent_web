@@ -7,6 +7,7 @@ import 'package:show_talent/screens/video_player.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
+import '../utils/admin_pagination.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_page.dart';
 import '../widgets/admin_table.dart';
@@ -290,17 +291,16 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
         ].any((value) => value.toLowerCase().contains(normalizedQuery));
       }).toList();
 
-      final totalPagesRaw = (filteredVideos.length / rowsPerPage).ceil();
-      final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
-      final safePage = currentPage >= totalPages
-          ? totalPages - 1
-          : currentPage.clamp(0, totalPages - 1);
-      final startIndex = safePage * rowsPerPage;
-      final endIndex = (startIndex + rowsPerPage).clamp(
-        0,
-        filteredVideos.length,
+      final page = paginateAdminList(
+        filtered: filteredVideos,
+        currentPage: currentPage,
+        rowsPerPage: rowsPerPage,
       );
-      final displayedVideos = filteredVideos.sublist(startIndex, endIndex);
+      final totalPages = page.totalPages;
+      final safePage = page.safePage;
+      final startIndex = page.startIndex;
+      final endIndex = page.endIndex;
+      final displayedVideos = page.items;
 
       final totalReports = filteredVideos.fold<int>(
         0,

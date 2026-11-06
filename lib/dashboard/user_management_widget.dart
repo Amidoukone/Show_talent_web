@@ -14,6 +14,7 @@ import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
 import '../utils/account_role_policy.dart';
 import '../utils/admin_callable_action_catalog.dart';
+import '../utils/admin_pagination.dart';
 import '../utils/firebase_functions_error.dart';
 import '../utils/player_age.dart';
 import '../widgets/admin_account_status_chips.dart';
@@ -1179,16 +1180,16 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           .where(_matchesStatusFilter)
           .toList();
 
-      final totalPages = (filteredUsers.length / rowsPerPage).ceil();
-      final safePage = totalPages == 0
-          ? 0
-          : currentPage.clamp(0, totalPages - 1);
-      final startIndex = safePage * rowsPerPage;
-      final endIndex = (startIndex + rowsPerPage).clamp(
-        0,
-        filteredUsers.length,
+      final page = paginateAdminList(
+        filtered: filteredUsers,
+        currentPage: currentPage,
+        rowsPerPage: rowsPerPage,
       );
-      final displayedUsers = filteredUsers.sublist(startIndex, endIndex);
+      final totalPages = page.totalPages;
+      final safePage = page.safePage;
+      final startIndex = page.startIndex;
+      final endIndex = page.endIndex;
+      final displayedUsers = page.items;
 
       final stats = AdminStatStrip(
         stats: [

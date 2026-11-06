@@ -6,6 +6,7 @@ import '../models/event.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
 import '../utils/admin_date_format.dart';
+import '../utils/admin_pagination.dart';
 import '../widgets/admin_detail_panel.dart';
 import '../widgets/admin_feedback.dart';
 import '../widgets/admin_page.dart';
@@ -473,14 +474,16 @@ class _EventManagementWidgetState extends State<EventManagementWidget> {
         return statusMatch && searchMatch;
       }).toList();
 
-      final totalPagesRaw = (filtered.length / _rowsPerPage).ceil();
-      final totalPages = totalPagesRaw < 1 ? 1 : totalPagesRaw;
-      final safePage = _currentPage >= totalPages
-          ? totalPages - 1
-          : _currentPage.clamp(0, totalPages - 1);
-      final startIndex = safePage * _rowsPerPage;
-      final endIndex = (startIndex + _rowsPerPage).clamp(0, filtered.length);
-      final displayed = filtered.sublist(startIndex, endIndex);
+      final page = paginateAdminList(
+        filtered: filtered,
+        currentPage: _currentPage,
+        rowsPerPage: _rowsPerPage,
+      );
+      final totalPages = page.totalPages;
+      final safePage = page.safePage;
+      final startIndex = page.startIndex;
+      final endIndex = page.endIndex;
+      final displayed = page.items;
 
       final openedCount = allEvents
           .where((event) => Event.normalizeStatus(event.statut) == 'ouvert')

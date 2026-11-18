@@ -122,6 +122,30 @@ setManagedAccountMembershipAction = AdminCallableActionDescriptor(
   isConnectedInUi: true,
 );
 
+const AdminCallableActionDescriptor
+setClubEnrollmentRightAction = AdminCallableActionDescriptor(
+  id: 'set_club_enrollment_right',
+  label: 'Habiliter un club',
+  callableName: 'setClubEnrollmentRight',
+  summary:
+      "Autorise un club à déclarer ses joueurs, contre un accord signé et pour une durée. Distinct de l’abonnement : l’enrôlement ne s’achète pas.",
+  uiSurfaces: ['Gestion des utilisateurs'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
+const AdminCallableActionDescriptor
+revokeClubEnrollmentAction = AdminCallableActionDescriptor(
+  id: 'revoke_club_enrollment',
+  label: 'Retirer l’habilitation',
+  callableName: 'revokeClubEnrollment',
+  summary:
+      "Retire l’habilitation d’un club et traite ce qu’il a déjà déclaré : déclarations non confirmées annulées, affiliations confirmées signalées pour réexamen.",
+  uiSurfaces: ['Gestion des utilisateurs'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
 const AdminCallableActionDescriptor setOfferStatusAction =
     AdminCallableActionDescriptor(
       id: 'admin_set_offer_status',
@@ -247,6 +271,8 @@ const List<AdminCallableActionDescriptor> adminCallableActions = [
   updateManagedAccountProfileAction,
   withdrawManagedMinorConsentAction,
   setManagedAccountMembershipAction,
+  setClubEnrollmentRightAction,
+  revokeClubEnrollmentAction,
   setOfferStatusAction,
   deleteOfferAction,
   setEventStatusAction,

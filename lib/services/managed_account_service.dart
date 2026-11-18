@@ -204,6 +204,94 @@ class ManagedAccountService {
     return setManagedAccountMembership(uid: uid, tier: MembershipTier.none);
   }
 
+  /// Habilite un club à déclarer ses joueurs, contre un accord signé.
+  ///
+  /// Distinct de [setManagedAccountMembership], et la distinction est le fond
+  /// du sujet : l'enrôlement ne s'achète pas. Un club qui déclare quarante
+  /// joueurs fait le travail de saisie à la place d'Adfoot, là où l'abonnement
+  /// achète de publier, chercher et recevoir des mises en relation. Les deux
+  /// ne se conditionnent jamais l'un l'autre.
+  ///
+  /// [agreementRef] et [validUntil] sont tous deux obligatoires, le callable
+  /// les exige. Une habilitation pointe vers l'accord qui a été signé, parce
+  /// que tous les clubs n'ont pas le même, et elle a un terme, parce qu'un
+  /// droit que personne ne revisite finit par survivre à l'accord qu'il
+  /// représente.
+  ///
+  /// Ce service n'accorde que. Pour retirer, voir [revokeClubEnrollment] : le
+  /// retrait doit aussi traiter ce que le club a déjà déclaré, et le callable
+  /// refuse explicitement un `granted: false` envoyé ici.
+  Future<void> grantClubEnrollment({
+    required String uid,
+    required String agreementRef,
+    required DateTime validUntil,
+  }) async {
+    final normalizedUid = uid.trim();
+    if (normalizedUid.isEmpty) {
+      throw ArgumentError('grantClubEnrollment requiert un uid non vide.');
+    }
+
+    final normalizedReference = agreementRef.trim();
+    if (normalizedReference.isEmpty) {
+      throw ArgumentError(
+        "La référence de l'accord signé est requise : l'habilitation doit "
+        'pointer vers un accord.',
+      );
+    }
+
+    if (!validUntil.isAfter(DateTime.now())) {
+      throw ArgumentError.value(
+        validUntil,
+        'validUntil',
+        "L'échéance doit être dans le futur.",
+      );
+    }
+
+    await _callable(
+      'setClubEnrollmentRight',
+      payload: <String, dynamic>{
+        'uid': normalizedUid,
+        'granted': true,
+        'agreementRef': normalizedReference,
+        'validUntil': validUntil.toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  /// Retire l'habilitation d'un club, et traite ce qu'il a déjà déclaré.
+  ///
+  /// C'est le levier qui rend la délégation sûre : habiliter des clubs à créer
+  /// des comptes sans pouvoir revenir dessus serait un chèque en blanc.
+  ///
+  /// Trois traitements, côté serveur. Une déclaration non confirmée est
+  /// annulée, elle n'a jamais commencé. Une affiliation confirmée n'est pas
+  /// défaite, le joueur l'ayant acceptée, mais elle est signalée pour réexamen
+  /// et la fiche cesse d'être présentée comme adossée à un club habilité. Une
+  /// contestation est laissée à l'administration, qui l'examinait déjà.
+  ///
+  /// Seule porte de retrait, volontairement : deux chemins dont un seul
+  /// applique la cascade se paient une fois en production.
+  Future<void> revokeClubEnrollment({
+    required String uid,
+    String? reason,
+  }) async {
+    final normalizedUid = uid.trim();
+    if (normalizedUid.isEmpty) {
+      throw ArgumentError('revokeClubEnrollment requiert un uid non vide.');
+    }
+
+    final normalizedReason = reason?.trim();
+
+    await _callable(
+      'revokeClubEnrollment',
+      payload: <String, dynamic>{
+        'uid': normalizedUid,
+        if (normalizedReason != null && normalizedReason.isNotEmpty)
+          'reason': normalizedReason,
+      },
+    );
+  }
+
   /// Applies a verified parent or guardian request to withdraw permissions.
   Future<void> withdrawManagedMinorConsent({required String uid}) async {
     final normalizedUid = uid.trim();

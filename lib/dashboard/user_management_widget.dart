@@ -21,6 +21,7 @@ import '../widgets/admin_profile_review.dart';
 import '../widgets/admin_table.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/managed_account_invite_result_dialog.dart';
+import '../widgets/club_enrollment_dialog.dart';
 import '../widgets/managed_membership_dialog.dart';
 import '../widgets/managed_profile_edit_dialog.dart';
 
@@ -130,6 +131,16 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   /// dans les callables, pour ne pas proposer une action déjà perdue.
   bool _isMutableManagedAccount(AppUser user) {
     return _isAdminManagedAccount(user) && !isAdminPortalOnlyRole(user.role);
+  }
+
+  /// Si ce compte peut porter une habilitation à déclarer des joueurs.
+  ///
+  /// Le rôle club et lui seul. Le droit ne vient jamais du rôle pour autant :
+  /// un club sans habilitation ne déclare personne, et cette garde ne dit que
+  /// devant quelles lignes la question se pose.
+  bool _canManageClubEnrollment(AppUser user) {
+    return _isMutableManagedAccount(user) &&
+        normalizeUserRole(user.role) == 'club';
   }
 
   bool _canManageProfileVerification(AppUser user) {
@@ -707,6 +718,59 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
+  /// Accorde ou retire l'habilitation à déclarer des joueurs.
+  ///
+  /// Deux appels distincts derrière un seul dialogue : accorder écrit un
+  /// droit, retirer traite en plus tout ce que le club a déclaré pendant
+  /// qu'il était habilité. Le backend refuse explicitement un retrait envoyé
+  /// par le chemin d'octroi, pour qu'il n'existe qu'une porte de sortie.
+  Future<void> _manageClubEnrollment(AppUser user) async {
+    if (!_canManageClubEnrollment(user)) {
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message:
+            'L’habilitation à déclarer des joueurs ne concerne que les comptes club suivis par l’administration.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    final decision = await showDialog<ClubEnrollmentDecision>(
+      context: context,
+      builder: (context) => ClubEnrollmentDialog(user: user),
+    );
+
+    if (decision == null) {
+      return;
+    }
+
+    if (decision.revoke) {
+      await _runVoidAction(
+        user: user,
+        action: revokeClubEnrollmentAction,
+        request: () => _managedAccountService.revokeClubEnrollment(
+          uid: user.uid,
+          reason: decision.reason,
+        ),
+        successMessage:
+            'L’habilitation de ${user.nom} a été retirée, et ses déclarations traitées.',
+      );
+      return;
+    }
+
+    await _runVoidAction(
+      user: user,
+      action: setClubEnrollmentRightAction,
+      request: () => _managedAccountService.grantClubEnrollment(
+        uid: user.uid,
+        agreementRef: decision.agreementRef!,
+        validUntil: decision.validUntil!,
+      ),
+      successMessage:
+          '${user.nom} peut désormais déclarer ses joueurs, accord ${decision.agreementRef}.',
+    );
+  }
+
   Future<void> _setManagedAccountMembership(AppUser user) async {
     if (!_isMutableManagedAccount(user)) {
       showAdminFeedback(
@@ -904,6 +968,15 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             label: 'Gérer les droits',
             onPressed: () => _setManagedAccountMembership(user),
           ),
+        if (_canManageClubEnrollment(user))
+          AdminRowAction(
+            icon: Icons.groups_outlined,
+            label: user.clubEnrollment.active
+                ? 'Habilitation du club'
+                : 'Habiliter le club',
+            color: AdminTheme.cyan,
+            onPressed: () => _manageClubEnrollment(user),
+          ),
         if (isManaged) ...[
           AdminRowAction(
             icon: Icons.manage_accounts_outlined,
@@ -975,6 +1048,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           OutlinedButton(
             onPressed: busy ? null : () => _setManagedAccountMembership(user),
             child: const Text('Droits'),
+          ),
+        if (_canManageClubEnrollment(user))
+          OutlinedButton(
+            onPressed: busy ? null : () => _manageClubEnrollment(user),
+            child: const Text('Habilitation'),
           ),
         if (canVerify && (user.profileVerified || !user.isMinorProfile))
           ElevatedButton(

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:show_talent/models/event.dart';
+import 'package:show_talent/models/club_enrollment.dart';
 import 'package:show_talent/models/membership.dart';
 import 'package:show_talent/models/org_football_profile.dart';
 import 'package:show_talent/models/player_football_profile.dart';
@@ -42,6 +43,12 @@ class AppUser {
   /// Écrit uniquement par le callable `setManagedAccountMembership` : ni le
   /// mobile ni ce portail n'écrivent ce champ directement.
   Membership membership;
+
+  /// Habilitation a declarer des joueurs, pour un compte club.
+  ///
+  /// Distincte de [membership] par decision : l'enrolement ne s'achete pas.
+  /// Voir club_enrollment.dart.
+  ClubEnrollment clubEnrollment;
 
   DateTime? birthDate;
   bool isMinorProfile;
@@ -131,6 +138,7 @@ class AppUser {
     this.profileVerificationInvalidatedBy,
     this.profileVerificationInvalidationReason,
     this.membership = Membership.none,
+    this.clubEnrollment = ClubEnrollment.absent,
     this.birthDate,
     this.isMinorProfile = false,
     this.minorProfileApproved = false,
@@ -248,6 +256,7 @@ class AppUser {
         map['profileVerificationInvalidationReason'],
       ),
       membership: Membership.fromMap(map['membership']),
+      clubEnrollment: ClubEnrollment.fromMap(map['clubEnrollment']),
       birthDate: _parseNullableDate(map['birthDate']),
       isMinorProfile: map['isMinorProfile'] == true,
       minorProfileApproved: map['minorProfileApproved'] == true,

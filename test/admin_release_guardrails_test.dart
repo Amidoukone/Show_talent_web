@@ -72,6 +72,10 @@ void main() {
       );
       expect(
         releaseTestScript,
+        contains('test/admin_callable_catalog_test.dart'),
+      );
+      expect(
+        releaseTestScript,
         contains('test/contract_proof_review_test.dart'),
       );
       expect(

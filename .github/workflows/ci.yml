@@ -45,6 +45,17 @@ jobs:
       # mobile repo (Cloud Functions, firestore.rules, contract docs) that
       # don't exist in this repo. ADFOOT_CROSS_REPO_TOKEN needs at least
       # read access to Amidoukone/Show-Talent.
+      #
+      # No `ref:` on purpose -- this takes the mobile DEFAULT branch, and that
+      # is the point. The contract check now also verifies that every callable
+      # this portal calls exists in the backend, so a portal that calls a
+      # callable not yet merged on the mobile side fails here. That is the
+      # deploy order made mechanical: Cloud Functions and rules go out from
+      # the mobile repo first, then the mobile build, then this portal.
+      #
+      # Do not pin a feature branch to make this job green. A green job would
+      # then prove nothing about what is actually deployed, which is the one
+      # thing this check exists to prove.
       - uses: actions/checkout@v4
         with:
           repository: Amidoukone/Show-Talent

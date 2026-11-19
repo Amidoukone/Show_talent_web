@@ -38,6 +38,7 @@ const groups = [
       'test/admin_responsive_guardrails_test.dart',
       'test/contact_intake_management_guardrails_test.dart',
       'test/private_contact_cache_test.dart',
+      'test/admin_callable_catalog_test.dart',
     ],
   },
   {

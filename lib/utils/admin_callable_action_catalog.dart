@@ -1,3 +1,13 @@
+/// Une action d'administration, et l'endroit du portail qui l'appelle.
+///
+/// Cette liste n'est pas de la documentation : `contract:mobile` la compare au
+/// dépôt mobile, et `admin_callable_catalog_test.dart` la compare à ce dépôt.
+/// Une entrée fausse fait donc échouer la chaîne de livraison.
+///
+/// [uiSurfaces] porte des **noms de classes Dart existantes**, et non des
+/// libellés. Trois entrées de la famille vidéo avaient dérivé — elles
+/// nommaient des écrans qui n'appellent pas l'action — et rien ne pouvait le
+/// signaler tant que ce champ restait du texte libre.
 class AdminCallableActionDescriptor {
   const AdminCallableActionDescriptor({
     required this.id,
@@ -13,6 +23,11 @@ class AdminCallableActionDescriptor {
   final String label;
   final String callableName;
   final String summary;
+
+  /// Les écrans qui appellent cette action, par nom de classe.
+  ///
+  /// Vérifié : chaque nom doit être une classe déclarée sous `lib/dashboard`
+  /// ou `lib/widgets`, et une action raccordée doit en nommer au moins une.
   final List<String> uiSurfaces;
   final bool isAvailableInBackend;
   final bool isConnectedInUi;
@@ -25,7 +40,7 @@ provisionManagedAccountAction = AdminCallableActionDescriptor(
   callableName: 'provisionManagedAccount',
   summary:
       "Création ou mise à jour d’un compte joueur, fan, club, recruteur ou agent.",
-  uiSurfaces: ['Provisionnement des comptes'],
+  uiSurfaces: ['ManagedAccountsWidget'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -37,7 +52,7 @@ const AdminCallableActionDescriptor deleteManagedAccountAction =
       callableName: 'deleteManagedAccount',
       summary:
           "Suppression traitée par le service sécurisé de l’administration.",
-      uiSurfaces: ['Gestion des utilisateurs'],
+      uiSurfaces: ['UserManagementWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -48,7 +63,7 @@ const AdminCallableActionDescriptor changeManagedAccountRoleAction =
       label: 'Changer le rôle',
       callableName: 'changeManagedAccountRole',
       summary: "Change le rôle d’un compte créé ou suivi par l’administration.",
-      uiSurfaces: ['Gestion des utilisateurs'],
+      uiSurfaces: ['UserManagementWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -59,7 +74,7 @@ const AdminCallableActionDescriptor resendManagedAccountInviteAction =
       label: "Renvoyer l’invitation",
       callableName: 'resendManagedAccountInvite',
       summary: "Régénérer ou renvoyer les liens d’onboarding d’un compte.",
-      uiSurfaces: ['Gestion des utilisateurs'],
+      uiSurfaces: ['UserManagementWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -70,7 +85,7 @@ const AdminCallableActionDescriptor disableManagedAccountAuthAction =
       label: 'Suspendre l’accès',
       callableName: 'disableManagedAccountAuth',
       summary: "Suspend l’accès au compte et bloque les prochaines connexions.",
-      uiSurfaces: ['Gestion des utilisateurs'],
+      uiSurfaces: ['UserManagementWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -81,7 +96,7 @@ const AdminCallableActionDescriptor enableManagedAccountAuthAction =
       label: 'Réactiver l’accès',
       callableName: 'enableManagedAccountAuth',
       summary: "Rétablit l’accès du compte aux prochaines connexions.",
-      uiSurfaces: ['Gestion des utilisateurs'],
+      uiSurfaces: ['UserManagementWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -93,7 +108,7 @@ const AdminCallableActionDescriptor updateManagedAccountProfileAction =
       callableName: 'updateManagedAccountProfile',
       summary:
           "Met à jour les champs de confiance et la certification du profil.",
-      uiSurfaces: ['Gestion des utilisateurs'],
+      uiSurfaces: ['UserManagementWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -105,7 +120,7 @@ withdrawManagedMinorConsentAction = AdminCallableActionDescriptor(
   callableName: 'withdrawManagedMinorConsent',
   summary:
       'Masque la fiche mineure et purge les médias publiés après une demande parentale vérifiée.',
-  uiSurfaces: ['Gestion des utilisateurs'],
+  uiSurfaces: ['UserManagementWidget'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -117,7 +132,7 @@ setManagedAccountMembershipAction = AdminCallableActionDescriptor(
   callableName: 'setManagedAccountMembership',
   summary:
       "Enregistre ou retire les droits d’un compte suivi par l’agence, sans aucun montant.",
-  uiSurfaces: ['Gestion des utilisateurs'],
+  uiSurfaces: ['UserManagementWidget'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -129,7 +144,7 @@ setClubEnrollmentRightAction = AdminCallableActionDescriptor(
   callableName: 'setClubEnrollmentRight',
   summary:
       "Autorise un club à déclarer ses joueurs, contre un accord signé et pour une durée. Distinct de l’abonnement : l’enrôlement ne s’achète pas.",
-  uiSurfaces: ['Gestion des utilisateurs'],
+  uiSurfaces: ['UserManagementWidget'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -141,7 +156,7 @@ revokeClubEnrollmentAction = AdminCallableActionDescriptor(
   callableName: 'revokeClubEnrollment',
   summary:
       "Retire l’habilitation d’un club et traite ce qu’il a déjà déclaré : déclarations non confirmées annulées, affiliations confirmées signalées pour réexamen.",
-  uiSurfaces: ['Gestion des utilisateurs'],
+  uiSurfaces: ['UserManagementWidget'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );
@@ -195,8 +210,10 @@ const AdminCallableActionDescriptor setVideoStatusAction =
       id: 'admin_set_video_status',
       label: 'Changer le statut d’une vidéo',
       callableName: 'adminSetVideoStatus',
-      summary: "Approuve, remet en attente ou republie une vidéo modérée.",
-      uiSurfaces: ['VideoReviewWidget', 'VideoAddedWidget'],
+      summary: "Approuve une vidéo en attente de validation.",
+      // « Vidéos ajoutées » ne propose aucune approbation : l'écran ne sait
+      // que lire et supprimer. L'entrée la nommait depuis le début.
+      uiSurfaces: ['VideoReviewWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -206,8 +223,11 @@ const AdminCallableActionDescriptor rejectVideoAction =
       id: 'admin_reject_video',
       label: 'Rejeter une vidéo',
       callableName: 'adminRejectVideo',
-      summary: "Rejette une vidéo signalée ou en revue, avec motif optionnel.",
-      uiSurfaces: ['VideoReviewWidget', 'VideoReportedWidget'],
+      summary: "Rejette une vidéo en revue, motif obligatoire.",
+      // « Vidéos signalées » ne rejette pas, elle supprime : le motif n'y est
+      // donc pas transmis au joueur, contrairement à ce que cette entrée
+      // laissait croire.
+      uiSurfaces: ['VideoReviewWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );
@@ -218,11 +238,10 @@ const AdminCallableActionDescriptor deleteVideoAction =
       label: 'Supprimer une vidéo',
       callableName: 'adminDeleteVideo',
       summary: "Supprime définitivement une vidéo et ses fichiers de stockage.",
-      uiSurfaces: [
-        'VideoReviewWidget',
-        'VideoReportedWidget',
-        'VideoAddedWidget',
-      ],
+      // Pas « Vidéos à valider » : cet écran approuve ou refuse, et un refus
+      // passe par `adminRejectVideo`, qui notifie le joueur. Supprimer sans
+      // motif n'y est pas proposé, et c'est voulu.
+      uiSurfaces: ['VideoAddedWidget', 'VideoReportedWidget'],
       isAvailableInBackend: true,
       isConnectedInUi: true,
     );

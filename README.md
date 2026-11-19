@@ -150,11 +150,29 @@ Moderation de contenu (voir `lib/services/admin_content_service.dart` et
 - `adminSetContactIntakeFollowUp`
 - `adminDeleteContactIntake`
 - `adminDeleteContactIntakeConversation`
+- `reviewContractStatusProof`
+- `endClubLink`
 
-Ces 19 callables sont catalogues dans
-`lib/utils/admin_callable_action_catalog.dart` et doivent rester en phase
-avec `functions/src/index.ts` cote depot mobile (verifie par
-`npm run contract:mobile`).
+Tous sont catalogues dans `lib/utils/admin_callable_action_catalog.dart`.
+Volontairement sans compte chiffre ici : la version precedente de cette
+phrase en annoncait dix-neuf alors qu'il y en avait vingt-trois, et un
+nombre fige dans de la prose redevient faux au commit suivant. Le
+catalogue est la seule liste.
+
+`npm run contract:mobile` verifie l'accord avec le depot mobile **dans les
+deux sens** :
+
+- chaque callable de la liste requise du depot mobile est bien atteint par
+  ce portail -- un backend livre que rien n'appelle est une capacite qui
+  n'atteint personne ;
+- chaque callable que ce portail appelle existe bien dans
+  `functions/src/index.ts` -- c'est la direction que le runbook raconte
+  comme incident : un appel sans backend rend `not-found`, et l'operateur
+  lit un message qui parle de reseau.
+
+La seconde verification echoue donc tant que les Cloud Functions ne sont
+pas fusionnees cote mobile. C'est voulu : elle materialise l'ordre de
+deploiement.
 
 Le portail admin doit appeler ces fonctions via :
 

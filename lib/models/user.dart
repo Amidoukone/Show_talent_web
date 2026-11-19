@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:show_talent/models/event.dart';
 import 'package:show_talent/models/club_enrollment.dart';
+import 'package:show_talent/models/contract_status_proof.dart';
 import 'package:show_talent/models/membership.dart';
 import 'package:show_talent/models/org_football_profile.dart';
 import 'package:show_talent/models/player_football_profile.dart';
@@ -49,6 +50,13 @@ class AppUser {
   /// Distincte de [membership] par decision : l'enrolement ne s'achete pas.
   /// Voir club_enrollment.dart.
   ClubEnrollment clubEnrollment;
+
+  /// La piece de statut contractuel, et son examen.
+  ///
+  /// Lue seulement : le champ est refuse au client par firestore.rules, et
+  /// seul le callable `reviewContractStatusProof` y ecrit. Voir
+  /// contract_status_proof.dart.
+  ContractStatusProof contractStatusProof;
 
   DateTime? birthDate;
   bool isMinorProfile;
@@ -139,6 +147,7 @@ class AppUser {
     this.profileVerificationInvalidationReason,
     this.membership = Membership.none,
     this.clubEnrollment = ClubEnrollment.absent,
+    this.contractStatusProof = ContractStatusProof.absent,
     this.birthDate,
     this.isMinorProfile = false,
     this.minorProfileApproved = false,
@@ -257,6 +266,9 @@ class AppUser {
       ),
       membership: Membership.fromMap(map['membership']),
       clubEnrollment: ClubEnrollment.fromMap(map['clubEnrollment']),
+      contractStatusProof: ContractStatusProof.fromMap(
+        map['contractStatusProof'],
+      ),
       birthDate: _parseNullableDate(map['birthDate']),
       isMinorProfile: map['isMinorProfile'] == true,
       minorProfileApproved: map['minorProfileApproved'] == true,
@@ -417,6 +429,12 @@ class AppUser {
       // les garder, sinon la relecture d'un utilisateur enrichi de ses champs
       // privés (fetchUserWithPrivateFields) perdrait son dossier.
       'membership': membership.isRecorded ? membership.toMap() : null,
+      // Meme raison que pour les droits juste au-dessus, et un cas concret :
+      // la fiche de revue relit un compte enrichi de ses champs prives par
+      // fetchUserWithPrivateFields, qui repasse par toMap(). Sans cette
+      // ligne, la piece disparaissait de l'objet reconstruit et le panneau
+      // annoncait « aucune piece » juste apres en avoir affiche une.
+      'contractStatusProof': contractStatusProof.toMap(),
       'birthDate': birthDate != null ? Timestamp.fromDate(birthDate!) : null,
       'isMinorProfile': isMinorProfile,
       'minorProfileApproved': minorProfileApproved,

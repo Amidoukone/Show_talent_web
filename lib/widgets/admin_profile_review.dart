@@ -4,6 +4,7 @@ import '../models/membership.dart';
 import '../models/user.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
+import '../utils/admin_date_format.dart';
 import '../utils/season_record_label.dart';
 import 'admin_detail_panel.dart';
 import 'admin_ui.dart';
@@ -165,6 +166,13 @@ class ProfileReviewContent extends StatelessWidget {
             ),
           ],
         ),
+        if (user.isPlayer) ...[
+          const SizedBox(height: 14),
+          _ProfileReviewSection(
+            title: 'Statut contractuel',
+            children: _buildContractStatusItems(user),
+          ),
+        ],
         const SizedBox(height: 14),
         _ProfileReviewSection(
           title: 'Profil métier mobile',
@@ -172,6 +180,74 @@ class ProfileReviewContent extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// L'état de la pièce de statut contractuel, et ce que la fiche publie.
+  ///
+  /// La file d'examen vit dans son propre onglet — elle se traite en lot, pas
+  /// profil par profil. Ce bloc répond à l'autre question, celle qu'on se pose
+  /// devant une fiche : « ce statut est-il adossé à quelque chose ? ».
+  ///
+  /// Les deux lignes qui comptent sont les deux dernières. « Approuvée » ne
+  /// veut pas dire « publiée » : la projection publique ne publie le statut que
+  /// si le joueur déclare encore celui que l'examen a couvert, date de fin
+  /// comprise. Un joueur qui change de statut après coup perd l'affichage, ce
+  /// qui est voulu — une approbation ne sert pas de caution à une déclaration
+  /// que personne n'a lue — mais sans ces deux lignes l'opérateur conclurait à
+  /// une panne.
+  static List<_ProfileReviewItem> _buildContractStatusItems(AppUser user) {
+    final proof = user.contractStatusProof;
+    final declared = user.football.contractStatus;
+    final declaredEnd = user.football.contractEndDate;
+    final published = proof.publishedStatusFor(user.football);
+
+    return [
+      _ProfileReviewItem(
+        label: 'Déclaré par le joueur',
+        value: declared == null
+            ? 'Aucun statut déclaré'
+            : '${declared.labelFr}'
+                  '${declaredEnd == null ? '' : ', jusqu’au ${formatAdminDate(declaredEnd)}'}',
+      ),
+      _ProfileReviewItem(
+        label: 'Pièce justificative',
+        value: proof.statusLabel,
+      ),
+      if (proof.submittedAt != null)
+        _ProfileReviewItem(
+          label: 'Déposée le',
+          value: formatAdminDate(proof.submittedAt!),
+        ),
+      if (proof.reviewedAt != null)
+        _ProfileReviewItem(
+          label: 'Examinée le',
+          value: formatAdminDate(proof.reviewedAt!),
+        ),
+      if (proof.approvedContractStatus != null)
+        _ProfileReviewItem(
+          label: 'Statut couvert par l’examen',
+          value:
+              '${proof.approvedContractStatus!.labelFr}'
+              '${proof.approvedContractEndDate == null ? '' : ', jusqu’au ${formatAdminDate(proof.approvedContractEndDate!)}'}',
+        ),
+      if (proof.reviewNote != null)
+        _ProfileReviewItem(
+          label: 'Motif de l’examen',
+          value: proof.reviewNote!,
+        ),
+      _ProfileReviewItem.boolean(
+        label: 'Statut affiché sur la fiche publique',
+        value: published != null,
+      ),
+      if (proof.isApprovedButSupersededFor(user.football))
+        _ProfileReviewItem(
+          label: 'Pourquoi rien n’est publié',
+          value:
+              'La pièce est approuvée, mais le statut saisi aujourd’hui n’est '
+              'plus celui que l’examen a couvert. Le joueur doit remettre sa '
+              'fiche en accord avec sa pièce, ou déposer une nouvelle pièce.',
+        ),
+    ];
   }
 
   static List<_ProfileReviewItem> _buildRoleProfileItems(AppUser user) {

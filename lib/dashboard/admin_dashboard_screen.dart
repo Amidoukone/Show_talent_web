@@ -13,6 +13,7 @@ import '../theme/admin_type.dart';
 import '../widgets/admin_page.dart';
 import '../widgets/admin_ui.dart';
 import 'contact_intake_management_widget.dart';
+import 'contract_proof_review_widget.dart';
 import 'event_management_widget.dart';
 import 'managed_accounts_widget.dart';
 import 'offer_management_widget.dart';
@@ -107,15 +108,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       subtitle: "Lecture visuelle de l’activité et des ratios du portail.",
       icon: Icons.insights_rounded,
     ),
+    // Ajouté en fin de liste, jamais au milieu : app_routes.dart résout les
+    // liens profonds sur ces index, et une insertion les décalerait tous
+    // sans que rien n'échoue. Le regroupement ci-dessous le rattache à
+    // « Modération », qui est son métier.
+    _DashboardItem(
+      title: 'Statuts contractuels',
+      subtitle: 'Examen des pièces justificatives déposées par les joueurs.',
+      icon: Icons.assignment_turned_in_outlined,
+    ),
   ];
 
-  // Neuf entrées à plat, c'était une liste à relire à chaque fois. Les
+  // Dix entrées à plat, ce serait une liste à relire à chaque fois. Les
   // regrouper par métier donne quatre blocs qu'on repère d'un coup d'oeil.
   // Les index pointent vers _dashboardItems : l'ordre des onglets et les
-  // liens profonds de app_routes.dart restent inchangés.
+  // liens profonds de app_routes.dart restent inchangés. C'est ici, et
+  // nulle part ailleurs, qu'un onglet ajouté en fin de liste rejoint son
+  // métier plutôt que de se retrouver seul en bas du rail.
   static const List<_DashboardGroup> _dashboardGroups = [
     _DashboardGroup(label: 'Communauté', indices: [0, 1]),
-    _DashboardGroup(label: 'Modération', indices: [2, 3, 4]),
+    _DashboardGroup(label: 'Modération', indices: [2, 3, 4, 9]),
     _DashboardGroup(label: 'Activité', indices: [5, 6, 7]),
     _DashboardGroup(label: 'Analyse', indices: [8]),
   ];
@@ -141,6 +153,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         userController: widget.userController,
         videoController: widget.videoController,
       ),
+      const ContractProofReviewWidget(),
     ];
   }
 

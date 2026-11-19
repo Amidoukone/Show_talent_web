@@ -227,6 +227,18 @@ const AdminCallableActionDescriptor deleteVideoAction =
       isConnectedInUi: true,
     );
 
+const AdminCallableActionDescriptor
+reviewContractStatusProofAction = AdminCallableActionDescriptor(
+  id: 'review_contract_status_proof',
+  label: "Examiner une pièce de statut contractuel",
+  callableName: 'reviewContractStatusProof',
+  summary:
+      "Approuve ou écarte la pièce déposée par un joueur. Une approbation dit quel statut la pièce justifie : la fiche publique n’affiche ce statut que si le joueur déclare exactement le même.",
+  uiSurfaces: ['ContractProofReviewWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
 const AdminCallableActionDescriptor setContactIntakeFollowUpAction =
     AdminCallableActionDescriptor(
       id: 'admin_set_contact_intake_follow_up',
@@ -280,6 +292,7 @@ const List<AdminCallableActionDescriptor> adminCallableActions = [
   setVideoStatusAction,
   rejectVideoAction,
   deleteVideoAction,
+  reviewContractStatusProofAction,
   setContactIntakeFollowUpAction,
   deleteContactIntakeAction,
   deleteContactIntakeConversationAction,

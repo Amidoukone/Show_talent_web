@@ -36,6 +36,8 @@ class AppRoutes {
     'videos-ajoutees': 3,
     'videos-reported': 4,
     'videos-signalees': 4,
+    'contract-proofs': 9,
+    'statuts-contractuels': 9,
   };
 
   @visibleForTesting

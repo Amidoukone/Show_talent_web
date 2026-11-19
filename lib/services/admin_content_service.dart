@@ -2,6 +2,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 
 import '../config/app_environment.dart';
 import '../models/admin_action_response.dart';
+import '../models/contract_status_proof.dart';
 import '../utils/firebase_functions_error.dart';
 
 class AdminContentService {
@@ -138,6 +139,93 @@ class AdminContentService {
       'adminDeleteVideo',
       payload: <String, dynamic>{'videoId': videoId.trim()},
       fallbackMessage: 'Suppression de la vidéo impossible pour le moment.',
+    );
+  }
+
+  /// Rend le verdict de l’administration sur une pièce de statut contractuel.
+  ///
+  /// Deux verdicts, et deux seulement : approuver ou écarter. Remettre une
+  /// pièce en attente n’existe pas — le serveur le refuse — parce que ce
+  /// n’est pas une décision mais son absence, et qu’une file dont on peut
+  /// repousser indéfiniment les éléments n’est plus une file.
+  ///
+  /// Approuver demande de dire **quel** statut la pièce justifie, et la date
+  /// de fin quand ce statut en attend une. Ce n’est pas une formalité : c’est
+  /// cette valeur-là que la projection publique recompare au statut saisi par
+  /// le joueur avant de publier quoi que ce soit. Une approbation sans statut,
+  /// ou avec un statut hors de la liste fermée, est refusée par le callable.
+  ///
+  /// Les contrôles sont volontairement répétés ici alors que le serveur les
+  /// refait : le SDK Admin ne voit pas `firestore.rules`, donc un appel mal
+  /// formé coûte un aller-retour réseau et un message d’erreur technique là
+  /// où l’opérateur attend une phrase. Le serveur reste l’autorité.
+  Future<AdminActionResponse> reviewContractStatusProof({
+    required String uid,
+    required String status,
+    String? contractStatus,
+    DateTime? contractEndDate,
+    String? note,
+  }) {
+    final normalizedUid = uid.trim();
+    if (normalizedUid.isEmpty) {
+      return Future.value(
+        AdminActionResponse.failure(
+          code: 'invalid_uid',
+          message: 'Aucun joueur désigné pour cet examen.',
+        ),
+      );
+    }
+
+    final normalizedStatus = status.trim().toLowerCase();
+    if (!ContractStatusProof.verdicts.contains(normalizedStatus)) {
+      return Future.value(
+        AdminActionResponse.failure(
+          code: 'invalid_status',
+          message: 'Le verdict doit être une approbation ou un rejet.',
+        ),
+      );
+    }
+
+    final normalizedNote = note?.trim() ?? '';
+    if (normalizedNote.length > ContractStatusProof.maxReviewNoteLength) {
+      return Future.value(
+        AdminActionResponse.failure(
+          code: 'note_too_long',
+          message:
+              'Le motif dépasse '
+              '${ContractStatusProof.maxReviewNoteLength} caractères.',
+        ),
+      );
+    }
+
+    final normalizedContractStatus = contractStatus?.trim() ?? '';
+    if (normalizedStatus == ContractStatusProof.statusApproved &&
+        normalizedContractStatus.isEmpty) {
+      return Future.value(
+        AdminActionResponse.failure(
+          code: 'missing_contract_status',
+          message:
+              'Approuver une pièce demande de dire quel statut elle justifie.',
+        ),
+      );
+    }
+
+    return _callable(
+      'reviewContractStatusProof',
+      payload: <String, dynamic>{
+        'uid': normalizedUid,
+        'status': normalizedStatus,
+        if (normalizedStatus == ContractStatusProof.statusApproved)
+          'contractStatus': normalizedContractStatus,
+        // Envoyée seulement quand elle existe : le serveur retombe alors sur
+        // la date déjà portée par la fiche du joueur, ce qui est le bon
+        // comportement quand l’opérateur n’a rien à corriger.
+        if (contractEndDate != null)
+          'contractEndDate': contractEndDate.toUtc().toIso8601String(),
+        if (normalizedNote.isNotEmpty) 'note': normalizedNote,
+      },
+      fallbackMessage:
+          'Examen de la pièce impossible pour le moment. Réessayez.',
     );
   }
 

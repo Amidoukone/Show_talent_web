@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 
 import '../controller/contact_intake_controller.dart';
+import '../controller/contract_proof_controller.dart';
 import '../controller/event_controller.dart';
 import '../controller/offre_controller.dart';
 import '../controller/video_controller.dart';
@@ -13,6 +14,9 @@ class AdminDashboardBinding extends Bindings {
     _registerRouteScoped<EventController>(() => EventController());
     _registerRouteScoped<ContactIntakeController>(
       () => ContactIntakeController(),
+    );
+    _registerRouteScoped<ContractProofController>(
+      () => ContractProofController(),
     );
   }
 

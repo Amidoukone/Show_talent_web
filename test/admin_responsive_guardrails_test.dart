@@ -101,12 +101,15 @@ void main() {
       final clubLinks = File(
         'lib/dashboard/club_link_exceptions_widget.dart',
       ).readAsStringSync();
+      final contactLeaks = File(
+        'lib/dashboard/contact_leak_reports_widget.dart',
+      ).readAsStringSync();
 
       expect(adminUi, contains('class AdminToolbar'));
       expect(adminUi, contains('class AdminLoadingState'));
       expect(adminUi, contains('class AdminFormColumn'));
 
-      // Les huit écrans de liste partagent un seul gabarit : barre d'outils
+      // Les neuf écrans de liste partagent un seul gabarit : barre d'outils
       // fixe, tableau sur grand écran (fiches en disposition compacte),
       // pied de liste unique. Avant la refonte chacun réinventait sa mise
       // en page et empilait deux barres de pagination contradictoires.
@@ -119,6 +122,7 @@ void main() {
         contactIntakes,
         contractProofs,
         clubLinks,
+        contactLeaks,
       ]) {
         expect(screen, contains('AdminWorkspace('));
         expect(screen, contains('AdminToolbar('));

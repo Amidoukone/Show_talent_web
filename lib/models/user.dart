@@ -58,6 +58,18 @@ class AppUser {
   /// contract_status_proof.dart.
   ContractStatusProof contractStatusProof;
 
+  /// Si le serveur a retire des coordonnees d'un champ libre de ce profil.
+  ///
+  /// Pose par la projection publique, qui nettoie avant publication et
+  /// consigne son verdict sur le document interne -- en lecture proprietaire
+  /// et administration, ce qui est l'audience exacte de « cet utilisateur a
+  /// tente de publier son numero ». Le document interne garde la valeur
+  /// saisie, donc le champ signale est lisible tel quel.
+  bool contactLeakFlagged;
+
+  /// Les champs concernes, tels que `findContactLeakFields` les a tries.
+  List<String> contactLeakFields;
+
   DateTime? birthDate;
   bool isMinorProfile;
   bool minorProfileApproved;
@@ -148,6 +160,8 @@ class AppUser {
     this.membership = Membership.none,
     this.clubEnrollment = ClubEnrollment.absent,
     this.contractStatusProof = ContractStatusProof.absent,
+    this.contactLeakFlagged = false,
+    this.contactLeakFields = const [],
     this.birthDate,
     this.isMinorProfile = false,
     this.minorProfileApproved = false,
@@ -269,6 +283,11 @@ class AppUser {
       contractStatusProof: ContractStatusProof.fromMap(
         map['contractStatusProof'],
       ),
+      contactLeakFlagged: map['contactLeakFlagged'] == true,
+      contactLeakFields: _safeList(map['contactLeakFields'])
+          .map((entry) => entry.toString())
+          .where((entry) => entry.isNotEmpty)
+          .toList(),
       birthDate: _parseNullableDate(map['birthDate']),
       isMinorProfile: map['isMinorProfile'] == true,
       minorProfileApproved: map['minorProfileApproved'] == true,
@@ -435,6 +454,8 @@ class AppUser {
       // ligne, la piece disparaissait de l'objet reconstruit et le panneau
       // annoncait « aucune piece » juste apres en avoir affiche une.
       'contractStatusProof': contractStatusProof.toMap(),
+      'contactLeakFlagged': contactLeakFlagged,
+      'contactLeakFields': contactLeakFields,
       'birthDate': birthDate != null ? Timestamp.fromDate(birthDate!) : null,
       'isMinorProfile': isMinorProfile,
       'minorProfileApproved': minorProfileApproved,

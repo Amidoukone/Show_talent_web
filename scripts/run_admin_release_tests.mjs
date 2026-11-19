@@ -53,6 +53,10 @@ const groups = [
     tests: ['test/club_link_exceptions_test.dart'],
   },
   {
+    name: 'Contact leak reports',
+    tests: ['test/contact_leak_reports_test.dart'],
+  },
+  {
     name: 'Club enrollment surfaces',
     tests: [
       'test/club_enrollment_visibility_test.dart',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/contact_leak_report.dart';
 import '../models/membership.dart';
 import '../models/user.dart';
 import '../theme/admin_theme.dart';
@@ -173,6 +174,13 @@ class ProfileReviewContent extends StatelessWidget {
             children: _buildContractStatusItems(user),
           ),
         ],
+        if (user.contactLeakFlagged) ...[
+          const SizedBox(height: 14),
+          _ProfileReviewSection(
+            title: 'Coordonnées retirées',
+            children: _buildContactLeakItems(user),
+          ),
+        ],
         if (user.isClub) ...[
           const SizedBox(height: 14),
           _ProfileReviewSection(
@@ -187,6 +195,34 @@ class ProfileReviewContent extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// Les champs libres dont le serveur a retiré des coordonnées.
+  ///
+  /// Montré sur la fiche en plus de l'écran dédié, et pour une autre
+  /// question : l'écran dédié sert à traiter la file, la fiche répond à
+  /// « ce compte a-t-il déjà tenté de contourner ? » au moment où on décide
+  /// de le certifier ou de le suspendre.
+  ///
+  /// Seuls les noms de champs sont listés ici. Les valeurs vivent sur l'écran
+  /// des signalements, qui les montre en entier : la fiche de revue est lue
+  /// pour arbitrer un compte, pas pour relire un texte retiré.
+  static List<_ProfileReviewItem> _buildContactLeakItems(AppUser user) {
+    return [
+      _ProfileReviewItem(
+        label: 'Champs concernés',
+        value: user.contactLeakFields.isEmpty
+            ? 'Signalé sans détail de champ'
+            : user.contactLeakFields.map(describeLeakField).join(', '),
+      ),
+      _ProfileReviewItem(
+        label: 'Ce que cela veut dire',
+        value:
+            'La fiche publique a été nettoyée avant publication. La valeur '
+            'saisie reste sur le compte, et se relit depuis l’écran des '
+            'coordonnées retirées.',
+      ),
+    ];
   }
 
   /// L'habilitation du club à déclarer ses joueurs, et son terme.

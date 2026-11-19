@@ -14,6 +14,7 @@ import '../widgets/admin_page.dart';
 import '../widgets/admin_ui.dart';
 import 'club_link_exceptions_widget.dart';
 import 'contact_intake_management_widget.dart';
+import 'contact_leak_reports_widget.dart';
 import 'contract_proof_review_widget.dart';
 import 'event_management_widget.dart';
 import 'managed_accounts_widget.dart';
@@ -123,6 +124,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       subtitle: 'Arbitrage des contestations, réexamens et doublons.',
       icon: Icons.link_rounded,
     ),
+    _DashboardItem(
+      title: 'Coordonnées retirées',
+      subtitle:
+          'Ce que le nettoyage a retiré des profils, offres et événements.',
+      icon: Icons.phone_disabled_outlined,
+    ),
   ];
 
   // Dix entrées à plat, ce serait une liste à relire à chaque fois. Les
@@ -133,7 +140,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // métier plutôt que de se retrouver seul en bas du rail.
   static const List<_DashboardGroup> _dashboardGroups = [
     _DashboardGroup(label: 'Communauté', indices: [0, 1]),
-    _DashboardGroup(label: 'Modération', indices: [2, 3, 4, 9, 10]),
+    _DashboardGroup(label: 'Modération', indices: [2, 3, 4, 9, 10, 11]),
     _DashboardGroup(label: 'Activité', indices: [5, 6, 7]),
     _DashboardGroup(label: 'Analyse', indices: [8]),
   ];
@@ -161,6 +168,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       const ContractProofReviewWidget(),
       const ClubLinkExceptionsWidget(),
+      const ContactLeakReportsWidget(),
     ];
   }
 

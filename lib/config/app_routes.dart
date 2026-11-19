@@ -40,6 +40,8 @@ class AppRoutes {
     'statuts-contractuels': 9,
     'club-links': 10,
     'rattachements': 10,
+    'contact-leaks': 11,
+    'coordonnees-retirees': 11,
   };
 
   @visibleForTesting

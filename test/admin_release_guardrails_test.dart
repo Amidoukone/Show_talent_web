@@ -74,6 +74,10 @@ void main() {
         releaseTestScript,
         contains('test/contract_proof_review_test.dart'),
       );
+      expect(
+        releaseTestScript,
+        contains('test/video_player_consent_test.dart'),
+      );
       expect(releaseTestScript, contains('spawnSync'));
       expect(releaseTestScript, contains("shell: false"));
     });

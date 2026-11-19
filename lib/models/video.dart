@@ -203,6 +203,11 @@ class Video {
     this.playback,
     this.resolvedUrl,
     this.createdAt,
+    this.playerUid = '',
+    this.playerConsentRequired = false,
+    this.playerConsentDecision = '',
+    this.playerConsentAt,
+    this.playerConsentDecidedAt,
   });
 
   String id;
@@ -229,6 +234,31 @@ class Video {
   /// `FieldValue.serverTimestamp()`). Nullable : les très anciens documents
   /// d'avant ce champ n'en portent pas.
   DateTime? createdAt;
+
+  /// Le joueur montré dans la vidéo, quand ce n'est pas l'auteur.
+  ///
+  /// Absent sur un dépôt où l'auteur est le sujet. Posé par
+  /// `upload_session.ts` quand un club habilité dépose sur un de ses joueurs
+  /// confirmés : la vidéo appartient alors au club (`uid`) et montre quelqu'un
+  /// d'autre (`playerUid`), ce que la file de validation doit dire.
+  String playerUid;
+
+  /// Si la publication attend l'accord du joueur montré.
+  ///
+  /// Posé à `true` sur un dépôt de club, et jamais sur un dépôt que le joueur
+  /// a fait lui-même : son consentement est acquis par construction, et le lui
+  /// demander serait lui demander de consentir à son propre geste.
+  bool playerConsentRequired;
+
+  /// `accepted` ou `refused`, vide tant que le joueur ne s'est pas prononcé.
+  String playerConsentDecision;
+
+  /// Horodatage de l'acceptation. **Reste nul en cas de refus**, et c'est
+  /// exactement ce que le serveur regarde pour refuser une approbation.
+  DateTime? playerConsentAt;
+
+  /// Horodatage de la décision, quelle qu'elle soit, acceptation ou refus.
+  DateTime? playerConsentDecidedAt;
 
   factory Video.fromMap(Map<String, dynamic> map) {
     String readString(dynamic value) =>
@@ -297,6 +327,13 @@ class Video {
       sources: mergedSources,
       playback: playback,
       createdAt: _parseNullableDate(map['createdAt']),
+      playerUid: readString(map['playerUid']),
+      playerConsentRequired: map['playerConsentRequired'] == true,
+      playerConsentDecision: readString(
+        map['playerConsentDecision'],
+      ).toLowerCase(),
+      playerConsentAt: _parseNullableDate(map['playerConsentAt']),
+      playerConsentDecidedAt: _parseNullableDate(map['playerConsentDecidedAt']),
     );
   }
 
@@ -327,6 +364,10 @@ class Video {
       'optimized': optimized,
       'sources': sources.map((source) => source.toMap()).toList(),
       if (playback != null) 'playback': playback!.toMap(),
+      if (playerUid.isNotEmpty) 'playerUid': playerUid,
+      if (playerConsentRequired) 'playerConsentRequired': true,
+      if (playerConsentDecision.isNotEmpty)
+        'playerConsentDecision': playerConsentDecision,
     };
   }
 
@@ -413,6 +454,42 @@ class Video {
         (normalizedModerationStatus == 'approved' ||
             visibility.trim().toLowerCase() == 'public' ||
             isPublic);
+  }
+
+  /// Si la vidéo a été déposée par un club sur un de ses joueurs.
+  bool get isClubUpload => playerUid.isNotEmpty && playerUid != uid;
+
+  /// Si le joueur montré a refusé la publication.
+  ///
+  /// Un refus ne supprime pas la vidéo : il retire la demande et la laisse en
+  /// modération avec le refus inscrit. Supprimer donnerait au joueur un moyen
+  /// d'effacer une pièce d'un litige en cours, et son refus suffit à ce que
+  /// rien ne soit publié.
+  bool get playerRefusedPublication =>
+      playerConsentRequired && playerConsentDecision == 'refused';
+
+  /// Si la publication attend encore une réponse du joueur montré.
+  bool get awaitsPlayerConsent =>
+      playerConsentRequired &&
+      playerConsentAt == null &&
+      !playerRefusedPublication;
+
+  /// Si le serveur refuserait une approbation en l'état.
+  ///
+  /// Miroir exact de la garde de `adminSetVideoStatus`
+  /// (`functions/src/admin_content_actions.ts`) :
+  /// `playerConsentRequired == true && playerConsentAt == null`. Les deux
+  /// doivent lire la même chose, sinon l'écran propose une décision que le
+  /// serveur refuse, et l'opérateur conclut à une panne.
+  bool get approvalBlockedByPlayerConsent =>
+      playerConsentRequired && playerConsentAt == null;
+
+  /// L'état du consentement, tel qu'un opérateur le lit.
+  String get playerConsentLabel {
+    if (!playerConsentRequired) return 'Sans objet';
+    if (playerRefusedPublication) return 'Refusée par le joueur';
+    if (playerConsentAt != null) return 'Acceptée par le joueur';
+    return 'En attente du joueur';
   }
 
   String get moderationLabel {

@@ -70,6 +70,16 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       return AdminTheme.warning;
     }
 
+    // Le consentement passe devant l'etat de moderation : c'est lui qui
+    // decide si une decision est possible aujourd'hui, et un operateur
+    // regarde cette colonne pour savoir quoi faire de la ligne.
+    if (video.playerRefusedPublication) {
+      return AdminTheme.danger;
+    }
+    if (video.awaitsPlayerConsent) {
+      return AdminTheme.cyan;
+    }
+
     switch (video.normalizedModerationStatus) {
       case 'approved':
         return AdminTheme.success;
@@ -88,7 +98,70 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     if (!video.optimized) {
       return 'Optimisation';
     }
+    if (video.playerRefusedPublication) {
+      return 'Refus du joueur';
+    }
+    if (video.awaitsPlayerConsent) {
+      return 'Accord attendu';
+    }
     return 'Prête à publier';
+  }
+
+  /// L'icône qui accompagne [_statusLabel].
+  ///
+  /// Posée ici et non à l'appel : la puce de statut est rendue deux fois, dans
+  /// le tableau et dans la carte compacte, et les deux montraient une coche de
+  /// validation dès que la vidéo était optimisée — y compris sur une ligne que
+  /// le serveur refuse de publier.
+  IconData _statusIcon(Video video) {
+    if (!video.optimized) return Icons.autorenew_rounded;
+    if (video.playerRefusedPublication) return Icons.block_outlined;
+    if (video.awaitsPlayerConsent) return Icons.hourglass_empty_rounded;
+    return Icons.verified_outlined;
+  }
+
+  /// Le nom du joueur montré, qui n'est pas toujours l'auteur.
+  ///
+  /// Sur un dépôt de club, la vidéo appartient au club (`uid`) et montre
+  /// quelqu'un d'autre (`playerUid`). La file de validation parle du joueur
+  /// montré, parce que c'est lui que la publication expose.
+  ///
+  /// Retombe sur l'identifiant plutôt que sur « Inconnu » : la fenêtre de
+  /// comptes chargée est plafonnée, et un joueur hors fenêtre existe
+  /// parfaitement — l'annoncer inconnu ferait douter de la vidéo.
+  String _subjectLabel(Video video) {
+    if (!video.isClubUpload) {
+      return _resolveUserName(video.uid);
+    }
+
+    final name = _resolveUserName(video.playerUid);
+    return name == 'Inconnu' ? video.playerUid : name;
+  }
+
+  /// Pourquoi l'approbation est impossible en l'état, ou `null`.
+  ///
+  /// `adminSetVideoStatus` refuse désormais d'approuver une vidéo de club que
+  /// le joueur n'a pas acceptée, avec le message « Le joueur concerné n'a pas
+  /// encore accepté la publication de cette vidéo. » Sans cet écran,
+  /// l'opérateur butait sur ce refus sans qu'aucune surface ne l'explique, et
+  /// concluait à une panne au premier dépôt de club.
+  ///
+  /// Les deux cas sont distingués parce qu'ils ne demandent pas la même
+  /// chose : une attente se laisse mûrir, un refus se traite — la vidéo ne
+  /// sera jamais publiée, et elle reste en modération avec le refus inscrit.
+  String? _approvalBlockedReason(Video video) {
+    if (!video.optimized) {
+      return 'Attendez la fin de l’optimisation avant de publier.';
+    }
+    if (video.playerRefusedPublication) {
+      return 'Le joueur montré a refusé la publication : cette vidéo ne sera '
+          'pas publiée.';
+    }
+    if (video.awaitsPlayerConsent) {
+      return 'Le joueur montré n’a pas encore accepté la publication. '
+          'L’approbation reste impossible tant qu’il ne s’est pas prononcé.';
+    }
+    return null;
   }
 
   String _secondaryLabel(Video video) {
@@ -111,10 +184,10 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   List<AdminVideoMetaItem> _metadata(Video video) {
     return [
       AdminVideoMetaItem(
-        label: video.optimized ? 'Décision possible' : 'Traitement en cours',
-        icon: video.optimized
-            ? Icons.verified_outlined
-            : Icons.autorenew_rounded,
+        label: _approvalBlockedReason(video) == null
+            ? 'Décision possible'
+            : _statusLabel(video),
+        icon: _statusIcon(video),
         color: _statusColor(video),
       ),
       AdminVideoMetaItem(
@@ -127,6 +200,22 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
           label: '${video.reportCount} signalement(s)',
           icon: Icons.flag_outlined,
           color: AdminTheme.warning,
+        ),
+      // Visible dans le lecteur aussi, et pas seulement dans la liste :
+      // `AdminVideoDecision` n'a pas d'etat desactive, donc « Approuver » y
+      // reste cliquable. Sans cette ligne, l'operateur ne verrait la raison
+      // du refus qu'apres avoir clique.
+      if (video.playerConsentRequired)
+        AdminVideoMetaItem(
+          label: video.playerConsentLabel,
+          icon: video.playerConsentAt != null
+              ? Icons.how_to_reg_outlined
+              : Icons.hourglass_empty_rounded,
+          color: video.playerRefusedPublication
+              ? AdminTheme.danger
+              : (video.playerConsentAt != null
+                    ? AdminTheme.success
+                    : AdminTheme.cyan),
         ),
     ];
   }
@@ -209,10 +298,13 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   }
 
   Future<bool> _approveVideo(Video video) async {
-    if (!video.optimized) {
+    final blocked = _approvalBlockedReason(video);
+    if (blocked != null) {
       showAdminFeedback(
-        title: 'Optimisation en cours',
-        message: "Attendez la fin de l’optimisation avant de publier.",
+        title: video.approvalBlockedByPlayerConsent
+            ? 'Accord du joueur requis'
+            : 'Optimisation en cours',
+        message: blocked,
         tone: AdminBannerTone.warning,
         position: SnackPosition.BOTTOM,
       );
@@ -406,9 +498,12 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   ///
   /// Les trois sont en clair — c'est exactement le travail de cet écran, il
   /// n'y a rien à cacher derrière un menu. « Approuver » reste désactivé
-  /// tant que l'optimisation n'est pas terminée, mais visible : l'opérateur
-  /// voit que la décision existe et qu'elle n'est pas encore possible.
+  /// quand le serveur refuserait la décision, mais visible, et son intitulé
+  /// porte la raison : l'opérateur voit que la décision existe, pourquoi elle
+  /// n'est pas possible, et ce qu'il doit attendre.
   Widget _buildActions(Video video, List<Video> queue) {
+    final blocked = _approvalBlockedReason(video);
+
     return AdminRowActions(
       busy: _processingVideoId == video.id,
       busyLabel: _processingAction == 'approve' ? 'Validation…' : 'Refus…',
@@ -421,11 +516,9 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
         ),
         AdminRowAction(
           icon: Icons.check_circle_outline_rounded,
-          label: video.optimized
-              ? 'Approuver'
-              : 'Approuver (optimisation en cours)',
+          label: blocked ?? 'Approuver',
           color: AdminTheme.success,
-          onPressed: video.optimized ? () => _approveVideo(video) : null,
+          onPressed: blocked == null ? () => _approveVideo(video) : null,
         ),
         AdminRowAction(
           icon: Icons.cancel_outlined,
@@ -444,16 +537,24 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       title: _buildTitleCell(video),
       trailing: AdminPill(
         label: _statusLabel(video),
-        icon: video.optimized
-            ? Icons.verified_outlined
-            : Icons.autorenew_rounded,
+        icon: _statusIcon(video),
         color: _statusColor(video),
       ),
       fields: [
         AdminDataCardField(
-          label: 'Joueur',
-          value: Text(_resolveUserName(video.uid)),
+          label: 'Joueur montré',
+          value: Text(_subjectLabel(video)),
         ),
+        if (video.isClubUpload)
+          AdminDataCardField(
+            label: 'Déposée par',
+            value: Text(_resolveUserName(video.uid)),
+          ),
+        if (video.playerConsentRequired)
+          AdminDataCardField(
+            label: 'Publication',
+            value: Text(video.playerConsentLabel),
+          ),
       ],
       actions: _buildActions(video, queue),
     );
@@ -507,8 +608,18 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       final pendingVideos = allVideos
           .where((video) => video.isPendingReview)
           .toList();
+      // « Prêtes à décider » exclut ce que le serveur refuserait : une vidéo
+      // de club en attente de l'accord du joueur est optimisée et pourtant
+      // indécidable. La compter aurait annoncé un travail disponible qui
+      // n'existe pas.
       final readyForDecision = pendingVideos
-          .where((video) => video.optimized)
+          .where((video) => _approvalBlockedReason(video) == null)
+          .length;
+      final awaitingConsentCount = pendingVideos
+          .where((video) => video.awaitsPlayerConsent)
+          .length;
+      final refusedByPlayerCount = pendingVideos
+          .where((video) => video.playerRefusedPublication)
           .length;
       final processingCount = pendingVideos.length - readyForDecision;
       final publishedCount = allVideos
@@ -526,6 +637,10 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
           video.songName,
           video.uid,
           _resolveUserName(video.uid),
+          // Le joueur montré n'est pas l'auteur sur un dépôt de club, et
+          // c'est son nom qu'un opérateur tape pour retrouver la ligne.
+          video.playerUid,
+          _subjectLabel(video),
           video.status,
           video.moderationStatus,
           video.id,
@@ -556,6 +671,16 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
             tone: readyForDecision > 0 ? AdminTheme.success : null,
           ),
           AdminStat(label: 'en optimisation', value: '$processingCount'),
+          AdminStat(
+            label: 'accord attendu',
+            value: '$awaitingConsentCount',
+            tone: awaitingConsentCount > 0 ? AdminTheme.cyan : null,
+          ),
+          AdminStat(
+            label: 'refus du joueur',
+            value: '$refusedByPlayerCount',
+            tone: refusedByPlayerCount > 0 ? AdminTheme.warning : null,
+          ),
           AdminStat(label: 'publiées', value: '$publishedCount'),
         ],
       );
@@ -602,8 +727,20 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
           columns: const [
             AdminColumn(label: '', width: 80),
             AdminColumn(label: 'Contenu', flex: 4),
-            AdminColumn(label: 'Joueur', flex: 2),
-            AdminColumn(label: 'Statut', width: 148),
+            AdminColumn(
+              label: 'Joueur montré',
+              flex: 2,
+              tooltip:
+                  'Le joueur que la vidéo expose. Sur un dépôt de club, ce '
+                  'n’est pas l’auteur : le club apparaît en dessous.',
+            ),
+            // Largeur souple et non fixe : la colonne portait deux libellés
+            // de longueur connue (« Optimisation », « Prête à publier ») et
+            // en porte maintenant quatre, le consentement du joueur ayant
+            // ses propres états. `AdminPill` ne tronque pas son libellé —
+            // il déborde — donc une largeur figée à 148 px devenait un pari
+            // sur la métrique de la police.
+            AdminColumn(label: 'Statut', flex: 2),
             AdminColumn(label: '', width: 108, alignRight: true),
           ],
           rowCount: displayedVideos.length,
@@ -616,16 +753,19 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
             return [
               _buildPreview(video, dense: true),
               _buildTitleCell(video),
-              Text(
-                _resolveUserName(video.uid),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              video.isClubUpload
+                  ? AdminCellIdentity(
+                      title: _subjectLabel(video),
+                      subtitle: 'Déposée par ${_resolveUserName(video.uid)}',
+                    )
+                  : Text(
+                      _subjectLabel(video),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
               AdminPill(
                 label: _statusLabel(video),
-                icon: video.optimized
-                    ? Icons.verified_outlined
-                    : Icons.autorenew_rounded,
+                icon: _statusIcon(video),
                 color: _statusColor(video),
               ),
               _buildActions(video, filteredVideos),

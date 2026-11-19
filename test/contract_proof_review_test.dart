@@ -77,6 +77,10 @@ AppUser _playerWithProof({
   String? declaredContractStatus,
   DateTime? declaredContractEndDate,
 }) {
+  final endDate = declaredContractEndDate == null
+      ? null
+      : Timestamp.fromDate(declaredContractEndDate);
+
   return AppUser.fromMap(<String, dynamic>{
     'uid': uid,
     'nom': nom,
@@ -84,11 +88,9 @@ AppUser _playerWithProof({
     'emailVerified': true,
     'dateInscription': DateTime(2026, 1, 12),
     'dernierLogin': DateTime(2026, 11, 18),
-    if (proof != null) 'contractStatusProof': proof,
-    if (declaredContractStatus != null)
-      'contractStatus': declaredContractStatus,
-    if (declaredContractEndDate != null)
-      'contractEndDate': Timestamp.fromDate(declaredContractEndDate),
+    'contractStatusProof': ?proof,
+    'contractStatus': ?declaredContractStatus,
+    'contractEndDate': ?endDate,
   });
 }
 

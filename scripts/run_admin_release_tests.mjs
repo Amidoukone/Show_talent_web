@@ -45,6 +45,10 @@ const groups = [
     tests: ['test/contract_proof_review_test.dart'],
   },
   {
+    name: 'Club video player consent',
+    tests: ['test/video_player_consent_test.dart'],
+  },
+  {
     name: 'Managed account services',
     tests: [
       'test/managed_account_service_test.dart',

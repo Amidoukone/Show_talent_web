@@ -15,6 +15,63 @@ Ce document donne, pour chaque surface, ce qui existe déjà côté serveur, les
 noms de champs exacts, et où elle se branche dans ce dépôt. Les formes ont été
 relevées dans le code, pas dans les documents de conception.
 
+## État de livraison, au 19 novembre 2026
+
+Les sept surfaces sont écrites, sur la branche `feature/habilitation-clubs`,
+**non poussée**. La chaîne `npm run release:check` sort verte :
+`production:check`, `contract:mobile`, `test:release` et `analyze`.
+
+| Surface | Commit | Onglet / emplacement |
+| --- | --- | --- |
+| 1. Pièces de statut contractuel | `e334941` | onglet 9, « Statuts contractuels » |
+| 3. Consentement vidéo du joueur | `f1be81d` | « Vidéos à valider », onglet 2 |
+| 2. Exceptions du rattachement | `73ccee1` | onglet 10, « Rattachements » |
+| 5. Accord signé téléversé | `74d7acb` | `club_enrollment_dialog.dart` |
+| 6. État d'habilitation dans la liste | `74d7acb` | « Utilisateurs », onglet 0 |
+| 4. Signalements de coordonnées | `4af0361` | onglet 11, « Coordonnées retirées » |
+| 7. Comptes de support messagerie | `2131f77` | « Statistiques » + runbook |
+| Visibilité de l'accord parental | `2131f77` | « Utilisateurs », compteur et fiche |
+
+133 tests ajoutés, 287 au total. Les quatre onglets neufs sont **ajoutés en
+fin de liste**, indices 9 à 11, et un test vérifie la position de chacun — pas
+sa simple présence. Les assertions de position vivent dans
+`test/test_support/admin_test_helpers.dart` : les deux premières surfaces les
+écrivaient en dur, donc chaque onglet suivant cassait les tests du précédent.
+
+**Aucun index Firestore à déployer.** Vérifié contre
+`firestore.indexes.json` du dépôt mobile : la file des pièces interroge sur
+une égalité seule et trie en mémoire, la file des rattachements emploie
+`status + updatedAt` qui est déjà déclaré, et les signalements trient sur un
+seul champ. Le découpage offres / événements / profils est un filtre
+d'affichage.
+
+Côté dépôt mobile, un seul commit, `672eba0` : `reviewContractStatusProof` et
+`endClubLink` entrent dans la liste requise de
+`scripts/check-admin-mobile-contract.ps1` et dans
+`docs/shared-backend-contract.md`, comme ce document le prévoyait. Aucun
+changement de comportement serveur.
+
+### Les deux suites qui restent
+
+**Un chemin à vérifier à la main.** Le choix du fichier de la surface 5 passe
+par `<input type="file">` et `File.arrayBuffer()`, écrits avec
+`dart:js_interop` comme le plein écran du navigateur. `flutter test` ne peut
+pas l'exercer. Tout ce qui *décide* — validation de taille et de format, nom
+de l'objet stocké, type MIME — vit dans des fonctions pures et testées, mais
+le geste lui-même demande une ouverture dans un navigateur avant la mise en
+ligne : déposer un PDF sur un club de recette, vérifier qu'il apparaît dans la
+liste du dialogue, et l'ouvrir.
+
+**Une pièce qui dépend du dépôt mobile.** La pièce justificative de l'accord
+parental n'est pas faisable ici. `validateGuardianConsent` accepte déjà une
+`evidenceReference` libre de 120 caractères, et
+`managed_profile_edit_dialog.dart` l'envoie — c'est une référence, pas un
+document. Or `storage.rules` ne prévoit aucun chemin pour un document de
+consentement, contrairement à `clubAgreements/{clubUid}/` et à
+`identityDocuments/{uid}/contractProofs/`, provisionnés d'avance. Ouvrir ce
+chemin est une modification du dépôt mobile, et elle doit être déployée avant
+que ce portail ne tente d'y écrire.
+
 ## Le préalable est levé
 
 La collection `contact_leak_reports`, créée au lot L7, était fermée aux deux

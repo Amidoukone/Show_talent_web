@@ -73,6 +73,28 @@ class ClubEnrollment {
   /// Si l'habilitation autorise un enrôlement maintenant.
   bool get active => granted && !expired;
 
+  /// Délai au-delà duquel une échéance n'est pas encore une alerte.
+  ///
+  /// Trente jours : un renouvellement passe par un accord signé entre deux
+  /// parties, ce qui prend des semaines. Prévenir l'avant-veille ne sert à
+  /// rien, et prévenir six mois avant transforme l'alerte en décor.
+  static const Duration renewalWarningWindow = Duration(days: 30);
+
+  /// Si l'habilitation est encore valable mais arrive à son terme.
+  ///
+  /// Dérivé propre à ce portail, et absent du modèle mobile comme du serveur :
+  /// l'application n'a rien à faire de cette nuance — une habilitation est
+  /// active ou elle ne l'est pas — alors que l'administration a besoin de
+  /// repérer un renouvellement à préparer sans ouvrir chaque ligne. Les champs
+  /// lus restent exactement les mêmes des deux côtés.
+  bool expiresSoon({DateTime? now}) {
+    if (!active) return false;
+    final deadline = validUntil;
+    if (deadline == null) return false;
+    final reference = now ?? DateTime.now();
+    return deadline.isBefore(reference.add(renewalWarningWindow));
+  }
+
   /// Ce que le portail affiche sur la ligne d'un club.
   ///
   /// La distinction entre « pas habilité » et « échue » compte : la première

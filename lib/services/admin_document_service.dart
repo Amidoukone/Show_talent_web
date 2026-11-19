@@ -1,5 +1,6 @@
 import 'package:firebase_storage/firebase_storage.dart';
 
+import '../utils/admin_picked_file.dart';
 import '../utils/admin_storage_reference.dart';
 
 /// Ce qu'une tentative d'ouverture de pièce a produit.
@@ -29,6 +30,46 @@ class AdminDocumentLink {
 
   /// La référence d'origine, décomposée.
   final AdminStorageReference? reference;
+}
+
+/// Un document déjà présent dans le stockage.
+class AdminStoredDocument {
+  const AdminStoredDocument({
+    required this.objectPath,
+    required this.name,
+    this.sizeBytes,
+    this.updatedAt,
+  });
+
+  /// Chemin complet de l'objet, tel que le stockage le nomme.
+  final String objectPath;
+
+  /// Nom de fichier seul.
+  final String name;
+
+  final int? sizeBytes;
+  final DateTime? updatedAt;
+}
+
+/// Ce qu'un téléversement a produit.
+class AdminUploadResult {
+  const AdminUploadResult._({
+    required this.success,
+    required this.message,
+    this.document,
+  });
+
+  const AdminUploadResult.failure({required String message})
+    : this._(success: false, message: message);
+
+  const AdminUploadResult.stored({
+    required AdminStoredDocument document,
+    required String message,
+  }) : this._(success: true, message: message, document: document);
+
+  final bool success;
+  final String message;
+  final AdminStoredDocument? document;
 }
 
 /// L'ouverture des pièces justificatives déposées par les utilisateurs.
@@ -85,6 +126,182 @@ class AdminDocumentService {
       return const AdminDocumentLink.failure(
         message:
             'Ouverture de la pièce impossible pour le moment. Vérifiez votre '
+            'connexion puis réessayez.',
+      );
+    }
+  }
+
+  /// Résout un chemin d'objet que **ce code a fabriqué**.
+  ///
+  /// Séparé de [resolve] à dessein. [resolve] n'accepte qu'une référence
+  /// `gs://` parce qu'elle vient d'un document écrit par un utilisateur, et ce
+  /// refus est une propriété de sécurité qu'il ne faut pas diluer. Ici le
+  /// chemin est construit par le portail — `clubAgreements/{clubUid}/…` — donc
+  /// il n'y a rien à valider, et exiger un `gs://` obligerait à recomposer une
+  /// chaîne pour la redécomposer juste après.
+  Future<AdminDocumentLink> resolvePath(String objectPath) async {
+    final normalized = objectPath.trim();
+    if (normalized.isEmpty) {
+      return const AdminDocumentLink.failure(
+        message: 'Aucun document désigné.',
+      );
+    }
+
+    if (_visualQaMode) {
+      return const AdminDocumentLink.failure(
+        message: 'Ouverture indisponible pendant la revue locale.',
+      );
+    }
+
+    final reference = AdminStorageReference(
+      bucket: _storage!.bucket,
+      objectPath: normalized,
+    );
+
+    try {
+      final url = await _storage.ref(normalized).getDownloadURL();
+      return AdminDocumentLink.resolved(url: url, reference: reference);
+    } on FirebaseException catch (error) {
+      return AdminDocumentLink.failure(message: _describe(error, reference));
+    } catch (_) {
+      return const AdminDocumentLink.failure(
+        message:
+            'Ouverture du document impossible pour le moment. Vérifiez votre '
+            'connexion puis réessayez.',
+      );
+    }
+  }
+
+  /// Le dossier des accords signés d'un club.
+  ///
+  /// `storage.rules` réserve `clubAgreements/{clubUid}/` à l'administration
+  /// **dans les deux sens** : le club n'y accède pas, volontairement, parce
+  /// qu'un accord est un acte signé entre deux parties et non une pièce que
+  /// son propriétaire dépose. Il en a son exemplaire, et l'application mobile
+  /// n'en parle à personne.
+  static String clubAgreementFolder(String clubUid) =>
+      'clubAgreements/${clubUid.trim()}';
+
+  /// Les accords déjà déposés pour ce club, du plus récent au plus ancien.
+  ///
+  /// Lus et non déduits de la seule référence portée par l'habilitation : sans
+  /// cette liste, le téléversement serait une écriture que personne ne peut
+  /// relire, ce qui est exactement le défaut que ce lot corrige ailleurs.
+  Future<List<AdminStoredDocument>> listClubAgreements(String clubUid) async {
+    final uid = clubUid.trim();
+    if (uid.isEmpty || _visualQaMode) {
+      return const <AdminStoredDocument>[];
+    }
+
+    final listing = await _storage!.ref(clubAgreementFolder(uid)).listAll();
+    final documents = await Future.wait(
+      listing.items.map((item) async {
+        // Les métadonnées valent un aller-retour par fichier. Un club en a
+        // un, parfois deux : le coût est connu et borné, et afficher une
+        // taille et une date est ce qui permet de reconnaître le bon accord.
+        try {
+          final metadata = await item.getMetadata();
+          return AdminStoredDocument(
+            objectPath: item.fullPath,
+            name: item.name,
+            sizeBytes: metadata.size,
+            updatedAt: metadata.updated,
+          );
+        } catch (_) {
+          return AdminStoredDocument(
+            objectPath: item.fullPath,
+            name: item.name,
+          );
+        }
+      }),
+    );
+
+    documents.sort((a, b) {
+      final left = a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final right = b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return right.compareTo(left);
+    });
+    return documents;
+  }
+
+  /// Dépose l'accord signé d'un club.
+  ///
+  /// **Le dépôt n'est pas transactionnel avec l'habilitation**, et ne peut pas
+  /// l'être : l'un est une écriture de stockage, l'autre un callable. L'ordre
+  /// retenu est de déposer puis d'accorder — un fichier déposé sans
+  /// habilitation est un document inerte dans un dossier que seule
+  /// l'administration lit, alors qu'une habilitation accordée sans son
+  /// document laisse une référence qui ne pointe sur rien.
+  ///
+  /// Le nom de l'objet est fabriqué et non repris du poste de travail, et un
+  /// second dépôt n'écrase jamais le premier : voir
+  /// [adminAgreementObjectName].
+  Future<AdminUploadResult> uploadClubAgreement({
+    required String clubUid,
+    required String agreementRef,
+    required AdminPickedFile file,
+  }) async {
+    final uid = clubUid.trim();
+    if (uid.isEmpty) {
+      return const AdminUploadResult.failure(
+        message: 'Aucun club désigné pour ce dépôt.',
+      );
+    }
+
+    final rejection = describeAgreementRejection(file);
+    if (rejection != null) {
+      return AdminUploadResult.failure(message: rejection);
+    }
+
+    if (_visualQaMode) {
+      return const AdminUploadResult.failure(
+        message: 'Dépôt indisponible pendant la revue locale.',
+      );
+    }
+
+    final objectName = adminAgreementObjectName(
+      agreementRef: agreementRef,
+      extension: file.extension,
+    );
+    final objectPath = '${clubAgreementFolder(uid)}/$objectName';
+
+    try {
+      await _storage!
+          .ref(objectPath)
+          .putData(
+            file.bytes,
+            SettableMetadata(
+              contentType: adminAgreementContentType(file.extension),
+              // Le nom d'origine est conservé en métadonnée plutôt que dans le
+              // chemin : il renseigne sans pouvoir changer où l'objet atterrit.
+              customMetadata: <String, String>{'originalName': file.name},
+            ),
+          );
+
+      return AdminUploadResult.stored(
+        document: AdminStoredDocument(
+          objectPath: objectPath,
+          name: objectName,
+          sizeBytes: file.sizeBytes,
+          updatedAt: DateTime.now(),
+        ),
+        message: 'Accord déposé : $objectName.',
+      );
+    } on FirebaseException catch (error) {
+      if (error.code == 'unauthorized' || error.code == 'permission-denied') {
+        return const AdminUploadResult.failure(
+          message:
+              'Dépôt refusé par le stockage. Votre session n’a plus les '
+              'droits d’administration : reconnectez-vous.',
+        );
+      }
+      return AdminUploadResult.failure(
+        message: 'Dépôt de l’accord impossible (${error.code}).',
+      );
+    } catch (_) {
+      return const AdminUploadResult.failure(
+        message:
+            'Dépôt de l’accord impossible pour le moment. Vérifiez votre '
             'connexion puis réessayez.',
       );
     }

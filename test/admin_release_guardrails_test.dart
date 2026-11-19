@@ -82,6 +82,14 @@ void main() {
         releaseTestScript,
         contains('test/club_link_exceptions_test.dart'),
       );
+      expect(
+        releaseTestScript,
+        contains('test/club_enrollment_visibility_test.dart'),
+      );
+      expect(
+        releaseTestScript,
+        contains('test/club_agreement_upload_test.dart'),
+      );
       expect(releaseTestScript, contains('spawnSync'));
       expect(releaseTestScript, contains("shell: false"));
     });

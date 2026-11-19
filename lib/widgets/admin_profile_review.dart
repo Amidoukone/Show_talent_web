@@ -173,6 +173,13 @@ class ProfileReviewContent extends StatelessWidget {
             children: _buildContractStatusItems(user),
           ),
         ],
+        if (user.isClub) ...[
+          const SizedBox(height: 14),
+          _ProfileReviewSection(
+            title: 'Habilitation à déclarer',
+            children: _buildClubEnrollmentItems(user),
+          ),
+        ],
         const SizedBox(height: 14),
         _ProfileReviewSection(
           title: 'Profil métier mobile',
@@ -180,6 +187,46 @@ class ProfileReviewContent extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// L'habilitation du club à déclarer ses joueurs, et son terme.
+  ///
+  /// Distincte des droits enregistrés juste au-dessus, et la fiche doit le
+  /// montrer : l'enrôlement ne s'achète pas. Un club peut déclarer son
+  /// effectif sans rien payer, et payer le jour où il veut recruter — les
+  /// confondre ferait réclamer un abonnement pour un service gratuit.
+  static List<_ProfileReviewItem> _buildClubEnrollmentItems(AppUser user) {
+    final enrollment = user.clubEnrollment;
+
+    return [
+      _ProfileReviewItem(label: 'État', value: enrollment.statusLabel),
+      _ProfileReviewItem(
+        label: 'Terme',
+        value: enrollment.validUntil == null
+            ? (enrollment.granted ? 'Terme illisible' : 'Sans objet')
+            : formatAdminDate(enrollment.validUntil!),
+      ),
+      if (enrollment.grantedAt != null)
+        _ProfileReviewItem(
+          label: 'Accordée le',
+          value: formatAdminDate(enrollment.grantedAt!),
+        ),
+      _ProfileReviewItem(
+        label: 'Accord signé',
+        value: enrollment.agreementRef ?? 'Aucune référence',
+      ),
+      if (enrollment.expiresSoon())
+        _ProfileReviewItem(
+          label: 'À préparer',
+          value:
+              'L’habilitation arrive à son terme : un renouvellement passe '
+              'par un accord signé, qui prend des semaines.',
+        ),
+      _ProfileReviewItem.boolean(
+        label: 'Peut déclarer des joueurs aujourd’hui',
+        value: enrollment.active,
+      ),
+    ];
   }
 
   /// L'état de la pièce de statut contractuel, et ce que la fiche publie.

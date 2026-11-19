@@ -53,6 +53,13 @@ const groups = [
     tests: ['test/club_link_exceptions_test.dart'],
   },
   {
+    name: 'Club enrollment surfaces',
+    tests: [
+      'test/club_enrollment_visibility_test.dart',
+      'test/club_agreement_upload_test.dart',
+    ],
+  },
+  {
     name: 'Managed account services',
     tests: [
       'test/managed_account_service_test.dart',

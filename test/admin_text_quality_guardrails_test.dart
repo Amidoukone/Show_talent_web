@@ -159,6 +159,7 @@ void main() {
       'lib/dashboard/statistiques_screen.dart',
       'lib/dashboard/user_management_widget.dart',
       'lib/dashboard/contract_proof_review_widget.dart',
+      'lib/dashboard/club_link_exceptions_widget.dart',
       'lib/utils/admin_access_messages.dart',
       'lib/utils/admin_callable_action_catalog.dart',
     ]) {

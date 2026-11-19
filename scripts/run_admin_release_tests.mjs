@@ -49,6 +49,10 @@ const groups = [
     tests: ['test/video_player_consent_test.dart'],
   },
   {
+    name: 'Club link exceptions',
+    tests: ['test/club_link_exceptions_test.dart'],
+  },
+  {
     name: 'Managed account services',
     tests: [
       'test/managed_account_service_test.dart',

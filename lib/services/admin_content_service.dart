@@ -229,6 +229,40 @@ class AdminContentService {
     );
   }
 
+  /// Clôt un rattachement joueur-club.
+  ///
+  /// **La seule issue dont le portail dispose pour trancher**, et c'est une
+  /// contrainte du serveur, pas un manque d'interface : `confirmClubLink`
+  /// exige `playerUid == uid`, donc aucun callable ne permet de confirmer à la
+  /// place du joueur. Un doublon se résout en closant le rattachement de trop,
+  /// jamais en validant l'autre d'office — valider pour quelqu'un reviendrait
+  /// à signer son affiliation à sa place.
+  ///
+  /// Le rattachement passe en `ended`, `endedBy` enregistre l'opérateur, et la
+  /// fiche du joueur perd `currentClubName` et `clubAffiliation`. Les faits
+  /// sportifs lui restent : son poste et sa nationalité ne changent pas parce
+  /// qu'il a quitté un club.
+  ///
+  /// Le serveur refuse un rattachement déjà clos.
+  Future<AdminActionResponse> endClubLink({required String linkId}) {
+    final normalizedId = linkId.trim();
+    if (normalizedId.isEmpty) {
+      return Future.value(
+        AdminActionResponse.failure(
+          code: 'invalid_link_id',
+          message: 'Aucun rattachement désigné.',
+        ),
+      );
+    }
+
+    return _callable(
+      'endClubLink',
+      payload: <String, dynamic>{'linkId': normalizedId},
+      fallbackMessage:
+          'Clôture du rattachement impossible pour le moment. Réessayez.',
+    );
+  }
+
   Future<AdminActionResponse> setContactIntakeFollowUp({
     required String contactIntakeId,
     required String status,

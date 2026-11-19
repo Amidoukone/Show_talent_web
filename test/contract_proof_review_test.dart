@@ -19,7 +19,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:show_talent/config/app_environment.dart';
 import 'package:show_talent/config/app_routes.dart';
 import 'package:show_talent/controller/contract_proof_controller.dart';
-import 'package:show_talent/dashboard/admin_dashboard_screen.dart';
 import 'package:show_talent/dashboard/contract_proof_review_widget.dart';
 import 'package:show_talent/models/contract_status_proof.dart';
 import 'package:show_talent/models/football_vocabulary.dart';
@@ -470,29 +469,22 @@ void main() {
       );
     });
 
-    test('l onglet est monte, et ajoute en FIN de liste', () {
+    test('l onglet est monte a la position que les liens profonds visent', () {
       // _dashboardItems et _widgetOptions() sont indexes par position, et
       // app_routes.dart resout les liens profonds sur ces index. Une
       // insertion au milieu decalerait tous les liens suivants sans que rien
-      // n'echoue : d'ou cette verification d'ordre, et pas seulement de
+      // n'echoue : d'ou cette verification de POSITION, et pas seulement de
       // presence.
-      final shell = File(
-        'lib/dashboard/admin_dashboard_screen.dart',
-      ).readAsStringSync();
-
-      expect(AdminDashboardScreen.tabCount, 10);
-
-      final lastExistingItem = shell.indexOf("title: 'Statistiques'");
-      final newItem = shell.indexOf("title: 'Statuts contractuels'");
-      expect(lastExistingItem, greaterThan(-1));
-      expect(newItem, greaterThan(lastExistingItem));
-
-      final lastExistingScreen = shell.indexOf('StatisticsOverviewPanel(');
-      final newScreen = shell.indexOf('const ContractProofReviewWidget(),');
-      expect(newScreen, greaterThan(lastExistingScreen));
+      //
+      // Les helpers lisent la source parce que les deux listes sont privees.
+      // Volontairement pas d'assertion sur le nombre total d'onglets : un
+      // onglet ajoute plus tard derriere celui-ci est legitime, et un test
+      // qui l'interdirait ne protegerait rien.
+      expect(dashboardItemIndex('Statuts contractuels'), 9);
+      expect(dashboardScreenIndex('ContractProofReviewWidget'), 9);
 
       // Rattache a « Moderation » : son metier, et non une categorie neuve.
-      expect(shell, contains("label: 'Modération', indices: [2, 3, 4, 9]"));
+      expect(dashboardGroupIndices('Modération'), contains(9));
     });
 
     test('le lien profond resout vers le dernier onglet', () {

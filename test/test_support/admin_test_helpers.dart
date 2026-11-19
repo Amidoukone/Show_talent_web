@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -153,4 +155,89 @@ Future<void> pumpAdminTestApp(WidgetTester tester, Widget child) async {
   });
 
   await tester.pumpWidget(buildAdminTestApp(child));
+}
+
+/// Le code source de la coquille d'administration.
+const String _shellPath = 'lib/dashboard/admin_dashboard_screen.dart';
+
+/// La position d'un onglet dans `_dashboardItems`, ou -1.
+///
+/// Lue dans la source parce que la liste est privée, et vérifiée par position
+/// parce que c'est la position qui compte : `_widgetOptions()` et les liens
+/// profonds de `app_routes.dart` sont indexés dessus, donc un onglet inséré au
+/// milieu décale tous les suivants sans que rien n'échoue.
+///
+/// Assertion de POSITION et non de présence : c'est précisément la différence
+/// entre un garde-fou qui voit l'incident et un garde-fou qui reste vert pour
+/// toujours.
+int dashboardItemIndex(String title) {
+  final shell = File(_shellPath).readAsStringSync();
+  final start = shell.indexOf('_dashboardItems = [');
+  final end = shell.indexOf('];', start);
+  if (start < 0 || end < 0) {
+    throw StateError('Liste _dashboardItems introuvable dans $_shellPath.');
+  }
+
+  return _declaredTitles(shell.substring(start, end)).indexOf(title);
+}
+
+/// Le nombre d'onglets déclarés, lu dans la même source.
+int get dashboardItemCount {
+  final shell = File(_shellPath).readAsStringSync();
+  final start = shell.indexOf('_dashboardItems = [');
+  final end = shell.indexOf('];', start);
+  return _declaredTitles(shell.substring(start, end)).length;
+}
+
+/// Les intitulés d'onglets d'un littéral, dans l'ordre déclaré.
+///
+/// Le motif est ancré en début de ligne, et c'est indispensable : sans l'ancre
+/// il tombait aussi sur `subtitle: '...'`, qui contient la sous-chaîne
+/// `title: '`, et comptait donc chaque onglet deux fois.
+List<String> _declaredTitles(String literal) {
+  return RegExp(
+    "^ *title: ['\"]([^'\"]+)['\"]",
+    multiLine: true,
+  ).allMatches(literal).map((match) => match.group(1)!).toList();
+}
+
+/// Les index regroupés sous [label] dans le rail de navigation.
+///
+/// Un onglet ajouté en fin de liste doit rejoindre son métier, sinon il reste
+/// seul en bas du rail sans que rien ne le signale.
+List<int> dashboardGroupIndices(String label) {
+  final shell = File(_shellPath).readAsStringSync();
+  final match = RegExp(
+    "label: '$label', indices: "
+    r"\[([^\]]*)\]",
+  ).firstMatch(shell);
+  if (match == null) {
+    throw StateError('Groupe « $label » introuvable dans $_shellPath.');
+  }
+
+  return match
+      .group(1)!
+      .split(',')
+      .map((value) => int.parse(value.trim()))
+      .toList();
+}
+
+/// La position d'un écran dans `_widgetOptions()`, ou -1.
+///
+/// L'ordre de `_widgetOptions()` doit suivre celui de `_dashboardItems` :
+/// c'est la même position qui sélectionne les deux.
+int dashboardScreenIndex(String widgetConstructor) {
+  final shell = File(_shellPath).readAsStringSync();
+  final start = shell.indexOf('List<Widget> _widgetOptions() {');
+  final end = shell.indexOf('];', start);
+  if (start < 0 || end < 0) {
+    throw StateError('_widgetOptions() introuvable dans $_shellPath.');
+  }
+
+  final body = shell.substring(start, end);
+  final screens = RegExp(
+    r'^\s+(?:const )?([A-Z][A-Za-z]*)\(',
+    multiLine: true,
+  ).allMatches(body).map((match) => match.group(1)).toList();
+  return screens.indexOf(widgetConstructor);
 }

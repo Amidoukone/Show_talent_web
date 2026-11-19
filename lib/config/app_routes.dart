@@ -38,6 +38,8 @@ class AppRoutes {
     'videos-signalees': 4,
     'contract-proofs': 9,
     'statuts-contractuels': 9,
+    'club-links': 10,
+    'rattachements': 10,
   };
 
   @visibleForTesting

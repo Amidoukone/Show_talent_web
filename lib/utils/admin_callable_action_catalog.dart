@@ -239,6 +239,18 @@ reviewContractStatusProofAction = AdminCallableActionDescriptor(
   isConnectedInUi: true,
 );
 
+const AdminCallableActionDescriptor
+endClubLinkAction = AdminCallableActionDescriptor(
+  id: 'end_club_link',
+  label: 'Clore un rattachement',
+  callableName: 'endClubLink',
+  summary:
+      "Clôt un rattachement joueur-club et retire le club courant de la fiche du joueur. Seule issue d’arbitrage : aucun callable ne permet de confirmer à la place du joueur.",
+  uiSurfaces: ['ClubLinkExceptionsWidget'],
+  isAvailableInBackend: true,
+  isConnectedInUi: true,
+);
+
 const AdminCallableActionDescriptor setContactIntakeFollowUpAction =
     AdminCallableActionDescriptor(
       id: 'admin_set_contact_intake_follow_up',
@@ -293,6 +305,7 @@ const List<AdminCallableActionDescriptor> adminCallableActions = [
   rejectVideoAction,
   deleteVideoAction,
   reviewContractStatusProofAction,
+  endClubLinkAction,
   setContactIntakeFollowUpAction,
   deleteContactIntakeAction,
   deleteContactIntakeConversationAction,

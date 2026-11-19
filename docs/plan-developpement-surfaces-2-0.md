@@ -1,7 +1,7 @@
 # Les surfaces manquantes du portail, lots L4 à L7
 
 Document de développement. Rédigé le 19 novembre 2026, après relecture des
-vingt-deux commits du dépôt mobile et de l'état réel de ce dépôt-ci.
+vingt-trois commits du dépôt mobile et de l'état réel de ce dépôt-ci.
 
 Le backend d'ADFOOT 2.0 est écrit et testé : un club est habilité contre un
 accord signé, il déclare ses joueurs, le joueur relit et confirme, le club
@@ -15,23 +15,27 @@ Ce document donne, pour chaque surface, ce qui existe déjà côté serveur, les
 noms de champs exacts, et où elle se branche dans ce dépôt. Les formes ont été
 relevées dans le code, pas dans les documents de conception.
 
-## Avant tout : une ligne de règle à ouvrir dans le dépôt mobile
+## Le préalable est levé
 
-La collection `contact_leak_reports`, créée au lot L7, est fermée aux deux sens
-dans `firestore.rules` :
+La collection `contact_leak_reports`, créée au lot L7, était fermée aux deux
+sens dans `firestore.rules`, et les règles ne distinguent pas l'opérateur admin
+d'un client : ce portail ne pouvait pas la lire. C'est réglé depuis le
+19 novembre 2026, commit `4dfe0d4` du dépôt mobile :
 
 ```
 match /contact_leak_reports/{docId} {
-  allow read, write: if false;
+  allow get, list: if signedInAndActive() && isAdminOperator();
+  allow write: if false;
 }
 ```
 
-Les règles ne distinguent pas l'opérateur admin d'un client, donc **ce portail
-ne peut pas la lire**. La lecture doit passer à `isAdminOperator()`, comme
-`player_club_links` le fait déjà. C'est un changement de dix minutes dans le
-dépôt mobile, et il doit voyager avec le déploiement de règles qui précède
-celui du portail : sinon la surface 4 ci-dessous est bloquée et il faut un
-second déploiement de règles.
+La lecture demande donc le **claim admin signé**, celui que
+`scripts/create_admin_account.mjs` pose à côté du rôle, et un compte
+d'opérateur actif. L'écriture reste fermée à tout le monde, opérateur compris :
+les déclencheurs écrivent par le SDK Admin, qui ne passe pas par ces règles, et
+une trace de modération ne se retouche pas. La surface 4 ci-dessous n'a donc
+plus de préalable, à condition que la règle soit déployée avant le portail, ce
+que l'ordre impose de toute façon.
 
 ## Rappel de l'ordre, qui n'est pas négociable
 
@@ -245,8 +249,9 @@ par document signalé, identifiant `{collection}__{docId}` :
 Un signalement par document et non par écriture : une offre corrigée trois fois
 produit une ligne mise à jour, pas trois lignes à trier.
 
-**Prérequis : la ligne de règle en tête de ce document.** Sans elle, la lecture
-est refusée au portail.
+**Lecture.** Le claim admin signé suffit, voir la section « Le préalable est
+levé » en tête. Requête : `contact_leak_reports`, triée par `flaggedAt`, avec
+un filtre sur `collection` pour séparer les offres des événements.
 
 **Charge : 1 à 1,5 jour.**
 

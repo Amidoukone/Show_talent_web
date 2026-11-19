@@ -2,22 +2,28 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../controller/messaging_config_controller.dart';
 import '../controller/user_controller.dart';
 import '../controller/video_controller.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
 import '../utils/account_role_policy.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/messaging_config_panel.dart';
 
 class StatisticsOverviewPanel extends StatelessWidget {
   const StatisticsOverviewPanel({
     required this.userController,
     required this.videoController,
+    this.messagingConfigController,
     super.key,
   });
 
   final UserController userController;
   final VideoController videoController;
+
+  /// Injectable pour les tests ; resolu depuis GetX par le panneau sinon.
+  final MessagingConfigController? messagingConfigController;
 
   @override
   Widget build(BuildContext context) {
@@ -373,6 +379,16 @@ class StatisticsOverviewPanel extends StatelessWidget {
                   ],
                 );
               },
+            ),
+            const SizedBox(height: AdminTheme.space3),
+            // Un reglage de plateforme, pas un indicateur d'activite, et
+            // pourtant sa place est ici : c'est le seul ecran qui parle de
+            // l'etat du portail plutot que d'une file a traiter, et un mode
+            // median active sans compte de support ferme toute la messagerie
+            // sans que rien ne l'annonce.
+            MessagingConfigPanel(
+              controller: messagingConfigController,
+              userController: userController,
             ),
           ],
         ),

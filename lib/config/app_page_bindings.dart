@@ -5,6 +5,7 @@ import '../controller/contact_intake_controller.dart';
 import '../controller/contact_leak_controller.dart';
 import '../controller/contract_proof_controller.dart';
 import '../controller/event_controller.dart';
+import '../controller/messaging_config_controller.dart';
 import '../controller/offre_controller.dart';
 import '../controller/video_controller.dart';
 
@@ -22,6 +23,9 @@ class AdminDashboardBinding extends Bindings {
     );
     _registerRouteScoped<ClubLinkController>(() => ClubLinkController());
     _registerRouteScoped<ContactLeakController>(() => ContactLeakController());
+    _registerRouteScoped<MessagingConfigController>(
+      () => MessagingConfigController(),
+    );
   }
 
   void _registerRouteScoped<T>(T Function() builder) {

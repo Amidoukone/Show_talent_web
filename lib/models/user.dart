@@ -73,6 +73,15 @@ class AppUser {
   DateTime? birthDate;
   bool isMinorProfile;
   bool minorProfileApproved;
+
+  /// Si le representant legal a autorise la publication de medias.
+  ///
+  /// Pose par `updateManagedAccountProfile` depuis `guardianConsent.mediaAllowed`,
+  /// et distinct de [minorProfileApproved] : un representant peut accepter que
+  /// la fiche existe sans accepter qu'on y publie des videos de l'enfant. Les
+  /// confondre reviendrait a publier un media sur un accord qui ne le couvre
+  /// pas.
+  bool minorMediaConsentApproved;
   String? country;
   String? city;
   String? region;
@@ -165,6 +174,7 @@ class AppUser {
     this.birthDate,
     this.isMinorProfile = false,
     this.minorProfileApproved = false,
+    this.minorMediaConsentApproved = false,
     this.country,
     this.city,
     this.region,
@@ -291,6 +301,7 @@ class AppUser {
       birthDate: _parseNullableDate(map['birthDate']),
       isMinorProfile: map['isMinorProfile'] == true,
       minorProfileApproved: map['minorProfileApproved'] == true,
+      minorMediaConsentApproved: map['minorMediaConsentApproved'] == true,
       country: _normalizeNullableString(map['country']),
       city: _normalizeNullableString(map['city']),
       region: _normalizeNullableString(map['region']),
@@ -459,6 +470,7 @@ class AppUser {
       'birthDate': birthDate != null ? Timestamp.fromDate(birthDate!) : null,
       'isMinorProfile': isMinorProfile,
       'minorProfileApproved': minorProfileApproved,
+      'minorMediaConsentApproved': minorMediaConsentApproved,
       'country': country,
       'city': city,
       'region': region,
@@ -517,6 +529,17 @@ class AppUser {
   bool get isFan => role == 'fan';
 
   bool get isEffectivelyActiveAccount => !authDisabled && emailVerified;
+
+  /// Une fiche mineure qui attend l'accord d'un representant legal.
+  ///
+  /// La fiche existe, le compte fonctionne, et la projection publique refuse
+  /// de la publier : `minorProfileApproved` est la condition, et seule
+  /// l'administration l'accorde en enregistrant l'accord parental. Un club
+  /// peut declarer un mineur avant que l'accord soit recueilli -- ce n'est pas
+  /// une entorse, le compte existe et la fiche publique non -- donc cet etat
+  /// est normal, transitoire, et doit etre visible : personne ne le reclamera
+  /// a la place de l'enfant.
+  bool get awaitsGuardianConsent => isMinorProfile && !minorProfileApproved;
   bool get isProfileTrusted => profileVerified && isEffectivelyActiveAccount;
   bool get profileVerificationNeedsReview =>
       !profileVerified && profileVerificationStatus == 'pending';

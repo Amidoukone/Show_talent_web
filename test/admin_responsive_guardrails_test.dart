@@ -57,6 +57,10 @@ void main() {
             child: StatisticsOverviewPanel(
               userController: userController,
               videoController: videoController,
+              // Fourni explicitement : le panneau « Messagerie » le resout
+              // sinon depuis GetX, et une liaison absente doit echouer fort
+              // en production plutot que de masquer un reglage de plateforme.
+              messagingConfigController: TestMessagingConfigController(),
             ),
           ),
         ),

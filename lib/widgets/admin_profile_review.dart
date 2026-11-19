@@ -174,6 +174,13 @@ class ProfileReviewContent extends StatelessWidget {
             children: _buildContractStatusItems(user),
           ),
         ],
+        if (user.isMinorProfile) ...[
+          const SizedBox(height: 14),
+          _ProfileReviewSection(
+            title: 'Accord du représentant légal',
+            children: _buildGuardianConsentItems(user),
+          ),
+        ],
         if (user.contactLeakFlagged) ...[
           const SizedBox(height: 14),
           _ProfileReviewSection(
@@ -195,6 +202,46 @@ class ProfileReviewContent extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// L'accord parental d'une fiche mineure, et ce qu'il couvre.
+  ///
+  /// Deux autorisations distinctes, et les confondre se paierait : un
+  /// représentant peut accepter que la fiche existe sans accepter qu'on y
+  /// publie des vidéos de l'enfant. La première conditionne la publication de
+  /// la fiche, la seconde celle des médias.
+  ///
+  /// L'accord s'enregistre par « Gérer le profil », qui envoie
+  /// `guardianConsent` au callable — y compris sur un compte déjà créé, ce qui
+  /// est exactement ce qu'il faut quand un club déclare un mineur avant
+  /// d'avoir recueilli l'accord.
+  static List<_ProfileReviewItem> _buildGuardianConsentItems(AppUser user) {
+    return [
+      _ProfileReviewItem.boolean(
+        label: 'Fiche publiable',
+        value: user.minorProfileApproved,
+      ),
+      _ProfileReviewItem.boolean(
+        label: 'Publication de médias autorisée',
+        value: user.minorMediaConsentApproved,
+      ),
+      if (user.awaitsGuardianConsent)
+        _ProfileReviewItem(
+          label: 'Ce qui bloque',
+          value:
+              'La projection publique refuse de publier une fiche mineure '
+              'sans accord enregistré. Le compte fonctionne, la fiche '
+              'n’apparaît nulle part. Enregistrez l’accord par « Gérer le '
+              'profil ».',
+        ),
+      if (user.minorProfileApproved && !user.minorMediaConsentApproved)
+        _ProfileReviewItem(
+          label: 'Portée de l’accord',
+          value:
+              'La fiche est publiable, les médias ne le sont pas : l’accord '
+              'recueilli ne couvre pas la publication de vidéos.',
+        ),
+    ];
   }
 
   /// Les champs libres dont le serveur a retiré des coordonnées.

@@ -86,6 +86,11 @@ void main() {
         releaseTestScript,
         contains('test/contact_leak_reports_test.dart'),
       );
+      expect(releaseTestScript, contains('test/messaging_config_test.dart'));
+      expect(
+        releaseTestScript,
+        contains('test/guardian_consent_visibility_test.dart'),
+      );
       expect(
         releaseTestScript,
         contains('test/club_enrollment_visibility_test.dart'),

@@ -53,6 +53,13 @@ const groups = [
     tests: ['test/club_link_exceptions_test.dart'],
   },
   {
+    name: 'Messaging config and guardian consent',
+    tests: [
+      'test/messaging_config_test.dart',
+      'test/guardian_consent_visibility_test.dart',
+    ],
+  },
+  {
     name: 'Contact leak reports',
     tests: ['test/contact_leak_reports_test.dart'],
   },

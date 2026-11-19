@@ -265,6 +265,91 @@ En cas de derive inter-depots :
 - verifier contrat de roles
 - verifier regles Firestore et garde d acces admin/mobile
 
+## Messagerie mediatisee
+
+Le mode mediatise fait passer toute mise en relation par un compte Adfoot. Il
+vit dans `config/messaging`, et **il ne se modifie pas depuis le portail
+admin** : `firestore.rules` pose `allow write: if false` sur toute la
+collection `config`, et aucune Cloud Function ne l ecrit.
+
+Ce n est pas un manque. Deux raisons, dans cet ordre.
+
+La premiere est que la bascule doit rester possible quand tout va mal.
+Refermer un mode qui aurait mal tourne ne doit pas dependre d un build publie,
+ni d un callable deploye, ni du portail lui-meme.
+
+La seconde est que la decision d activer n est pas technique. Coordonner les
+mises en relation rapproche Adfoot de l activite d intermediaire, et l avis
+juridique n est pas rendu ; et si tout arrive dans une seule boite, il faut
+repondre, car une boite muette abime la confiance plus vite qu une
+fonctionnalite absente. Les deux se mesurent avant, pas apres.
+
+Le portail **lit** ce reglage et l affiche dans l onglet Statistiques, bloc
+« Messagerie ». C est la seule chose qui lui manquait : activer le mode sans
+nommer de compte de support ferme toute la messagerie de la plateforme, et
+rien nulle part ne l annoncait.
+
+### Forme du document
+
+`config/messaging` porte exactement deux champs :
+
+| Champ | Type | Contenu |
+| --- | --- | --- |
+| `mediatedOnly` | booleen | si toute conversation doit passer par un compte Adfoot |
+| `supportUids` | liste de chaines | les uid des comptes Adfoot qui tiennent la messagerie |
+
+Les comptes sont **nommes par leur uid**, et non reconnus a leur role ni a
+leur claim. Le role se modifie par une console ou une mauvaise fusion, et une
+regle Firestore ne sait pas lire le claim d un autre utilisateur : une liste
+ecrite a la main est la seule designation qui tienne ici.
+
+### Activer le mode
+
+L ordre des deux etapes n est pas interchangeable.
+
+1. Provisionner le ou les comptes de support depuis le portail, onglet
+   « Comptes administres ». Un compte de support est un compte ordinaire : il
+   n a besoin d aucun claim admin, seulement d exister, d etre actif et d avoir
+   son e-mail verifie.
+2. Relever leur uid dans l onglet Utilisateurs, fiche du compte, ligne
+   « Identifiant ».
+3. Console Firebase > Firestore > collection `config` > document `messaging`.
+   Creer le document s il n existe pas.
+4. Ecrire `supportUids` **d abord**, avec les uid releves.
+5. Verifier dans le portail, onglet Statistiques, bloc « Messagerie », que les
+   comptes apparaissent.
+6. Passer `mediatedOnly` a `true`.
+7. Verifier que le bloc affiche « Mediatisee » et non « Mediatisee, sans compte
+   de support ».
+
+Inverser 4 et 6 ferme toute la messagerie entre les deux ecritures. Le portail
+affiche alors un bandeau rouge, ce qui est le seul filet : les regles exigent
+qu une conversation ait un compte nomme d un cote, donc plus aucune ne peut s
+ouvrir. C est le bon echec -- ferme plutot qu ouvert -- mais ce n est pas un
+etat a laisser en production, meme une minute.
+
+### Desactiver le mode
+
+Passer `mediatedOnly` a `false`. Les conversations ouvertes pendant le mode ne
+sont pas touchees : le controle porte sur l ouverture d une conversation, pas
+sur l envoi d un message.
+
+`supportUids` peut rester en place. Le laisser ne change rien hors mode
+mediatise et evite de retrouver les uid a la prochaine bascule.
+
+### Ce qu il ne faut pas faire
+
+- Ne pas supprimer le document pour desactiver : un document absent et
+  `mediatedOnly: false` donnent la meme messagerie ouverte, mais le portail les
+  distingue (« Non configuree » contre « Ouverte »), et perdre `supportUids`
+  oblige a tout retrouver.
+- Ne pas nommer un compte suspendu : il satisfait la regle d ouverture de
+  conversation sans pouvoir repondre, ce qui produit exactement la boite muette
+  que ce mode est cense eviter.
+- Ne pas ecrire ce document par un script de deploiement. Il porte une decision
+  d exploitation, pas une configuration d environnement, et un deploiement qui
+  le reecrirait annulerait une fermeture decidee en urgence.
+
 ## Decision d exploitation
 
 La plateforme est exploitable si :

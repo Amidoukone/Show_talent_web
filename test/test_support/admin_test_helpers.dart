@@ -4,7 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:show_talent/controller/messaging_config_controller.dart';
 import 'package:show_talent/controller/user_controller.dart';
+import 'package:show_talent/models/messaging_config.dart';
 import 'package:show_talent/models/membership.dart';
 import 'package:show_talent/models/user.dart';
 import 'package:show_talent/theme/admin_theme.dart';
@@ -80,6 +83,33 @@ class TestUserController extends UserController {
     }
     return AppUser.fromMap(baseUser.toMap(), privateContact: contact);
   }
+}
+
+/// Une instance Firestore qui n'est jamais appelee.
+///
+/// Les controleurs resolvent `FirebaseFirestore.instance` dans leur liste
+/// d'initialisation, ce qui leverait sans Firebase initialise. Leur passer
+/// cette doublure suffit : les methodes qui l'utilisent sont neutralisees par
+/// les sous-classes de test.
+class FakeFirestore extends Fake implements FirebaseFirestore {}
+
+/// Le reglage de messagerie, seme a la main et sans aucun flux.
+class TestMessagingConfigController extends MessagingConfigController {
+  TestMessagingConfigController({
+    MessagingConfig seeded = MessagingConfig.absent,
+    String error = '',
+  }) : super(firestore: FakeFirestore()) {
+    config.value = seeded;
+    lastError.value = error;
+    isLoading.value = false;
+  }
+
+  @override
+  // ignore: must_call_super
+  void onInit() {}
+
+  @override
+  Future<void> refreshConfig() async {}
 }
 
 AppUser buildTestUser({

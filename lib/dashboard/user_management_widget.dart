@@ -1125,6 +1125,8 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         return user.profileVerified;
       case _UserStatusFilter.needsReview:
         return user.profileVerificationNeedsReview;
+      case _UserStatusFilter.awaitingGuardianConsent:
+        return user.awaitsGuardianConsent;
       case null:
         return true;
     }
@@ -1234,6 +1236,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       final suspendedAccess = roleAndSearchMatches
           .where((user) => user.authDisabled)
           .length;
+      // Une fiche mineure sans accord parental est un état normal et
+      // transitoire : un club peut déclarer un mineur avant que l'accord soit
+      // recueilli, le compte existe et la fiche publique non. Normal ne veut
+      // pas dire invisible — personne ne réclamera cet accord à la place de
+      // l'enfant, et sans ce compteur la fiche attendait indéfiniment.
+      final awaitingGuardianConsent = roleAndSearchMatches
+          .where((user) => user.awaitsGuardianConsent)
+          .length;
 
       final filteredUsers = roleAndSearchMatches
           .where(_matchesStatusFilter)
@@ -1281,6 +1291,19 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
             selected: _statusFilter == _UserStatusFilter.suspended,
             onTap: () => _toggleStatusFilter(_UserStatusFilter.suspended),
             tooltip: 'Comptes dont la connexion est bloquée',
+          ),
+          AdminStat(
+            label: 'accord parental attendu',
+            value: '$awaitingGuardianConsent',
+            tone: awaitingGuardianConsent > 0 ? AdminTheme.cyan : null,
+            selected:
+                _statusFilter == _UserStatusFilter.awaitingGuardianConsent,
+            onTap: () =>
+                _toggleStatusFilter(_UserStatusFilter.awaitingGuardianConsent),
+            tooltip:
+                'Fiches mineures que la projection publique refuse de publier '
+                'tant que l’accord d’un représentant légal n’est pas '
+                'enregistré, par « Gérer le profil »',
           ),
         ],
       );
@@ -1411,6 +1434,12 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 }
 
-/// Les quatre états sur lesquels la bande de synthèse peut restreindre la
+/// Les cinq états sur lesquels la bande de synthèse peut restreindre la
 /// liste.
-enum _UserStatusFilter { managed, verified, needsReview, suspended }
+enum _UserStatusFilter {
+  managed,
+  verified,
+  needsReview,
+  suspended,
+  awaitingGuardianConsent,
+}

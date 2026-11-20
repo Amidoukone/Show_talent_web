@@ -61,9 +61,16 @@ class AdminStorageReference {
     final bucket = uri.host.trim();
     if (bucket.isEmpty) return null;
 
-    final path = Uri.decodeComponent(
-      uri.path.startsWith('/') ? uri.path.substring(1) : uri.path,
-    ).trim();
+    final String path;
+    try {
+      path = Uri.decodeComponent(
+        uri.path.startsWith('/') ? uri.path.substring(1) : uri.path,
+      ).trim();
+    } on FormatException {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
     if (path.isEmpty || path.endsWith('/')) return null;
 
     // Un segment vide (`a//b`) ne désigne rien : `Uri` le conserve tel quel,

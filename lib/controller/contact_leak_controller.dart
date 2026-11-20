@@ -66,10 +66,16 @@ class ContactLeakController extends GetxController {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
   _profilesSubscription;
 
+  String _reportsError = '';
+  String _profilesError = '';
   bool _reportsLoaded = false;
   bool _profilesLoaded = false;
 
   void _markLoaded() {
+    lastError.value = [
+      _reportsError,
+      _profilesError,
+    ].where((message) => message.isNotEmpty).join(' ');
     if (_reportsLoaded && _profilesLoaded) {
       isLoading.value = false;
     }
@@ -164,14 +170,14 @@ class ContactLeakController extends GetxController {
             }
             reports.assignAll(parsed);
             _updateTruncated(snapshot.docs.length, profiles.length);
-            lastError.value = '';
+            _reportsError = '';
             _reportsLoaded = true;
             _markLoaded();
           },
           onError: (Object error) {
             debugPrint('Flux Firestore des signalements indisponible : $error');
             reports.clear();
-            lastError.value =
+            _reportsError =
                 'Impossible de charger les signalements. Un claim admin '
                 'signé est requis : reconnectez-vous, puis réessayez.';
             _reportsLoaded = true;
@@ -202,6 +208,7 @@ class ContactLeakController extends GetxController {
               (a, b) => a.nom.toLowerCase().compareTo(b.nom.toLowerCase()),
             );
             profiles.assignAll(parsed);
+            _profilesError = '';
             _updateTruncated(reports.length, snapshot.docs.length);
             _profilesLoaded = true;
             _markLoaded();
@@ -211,6 +218,8 @@ class ContactLeakController extends GetxController {
               'Flux Firestore des profils signales indisponible : $error',
             );
             profiles.clear();
+            _profilesError =
+                'Impossible de charger les profils signalés. Réessayez.';
             _profilesLoaded = true;
             _markLoaded();
           },

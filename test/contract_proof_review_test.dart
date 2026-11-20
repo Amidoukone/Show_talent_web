@@ -6,6 +6,7 @@
 // `expect(repository, contains('submitProfileForReview('))` et serait reste
 // vert pour toujours. Ces tests exercent donc l'appelant -- la charge utile
 // reellement envoyee, l'onglet reellement monte, l'action reellement desarmee.
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,6 +29,7 @@ import 'package:show_talent/services/admin_content_service.dart';
 import 'package:show_talent/services/admin_document_service.dart';
 import 'package:show_talent/utils/admin_callable_action_catalog.dart';
 import 'package:show_talent/utils/admin_storage_reference.dart';
+import 'package:show_talent/widgets/admin_ui.dart';
 
 import 'test_support/admin_test_helpers.dart';
 
@@ -37,6 +39,20 @@ class _MockHttpsCallable extends Mock implements HttpsCallable {}
 
 class _MockHttpsCallableResult extends Mock
     implements HttpsCallableResult<dynamic> {}
+
+class _DocumentFixture extends AdminDocumentService {
+  _DocumentFixture() : super.visualQa();
+
+  @override
+  Future<AdminDocumentLink> resolve(Object? rawReference) async {
+    return AdminDocumentLink.resolved(
+      reference: AdminStorageReference.parse(rawReference)!,
+      bytes: base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gMQFwcdLl4wmwAAAAtJREFUCNdjYAACAAAFAAHiJgWbAAAAAElFTkSuQmCC',
+      ),
+    );
+  }
+}
 
 class _MockFirestore extends Mock implements FirebaseFirestore {}
 
@@ -95,6 +111,16 @@ AppUser _playerWithProof({
 
 void main() {
   group('reference de stockage', () {
+    test(
+      'un chemin avec un octet UTF-8 invalide reste affichable en erreur',
+      () {
+        expect(
+          AdminStorageReference.parse('gs://bucket/contract_%FF.pdf'),
+          isNull,
+        );
+      },
+    );
+
     test('une reference gs:// est decomposee', () {
       final reference = AdminStorageReference.parse(
         'gs://adfoot-production.firebasestorage.app/identityDocuments/u1/'
@@ -347,6 +373,7 @@ void main() {
       () async {
         final response = await service.reviewContractStatusProof(
           uid: ' u1 ',
+          expectedFileUrl: 'gs://bucket/proof.pdf',
           status: 'Approved',
           contractStatus: 'under_contract',
           contractEndDate: DateTime.utc(2028, 6, 30),
@@ -360,6 +387,8 @@ void main() {
         verify(
           () => callable.call(<String, dynamic>{
             'uid': 'u1',
+            'expectedFileUrl': 'gs://bucket/proof.pdf',
+            'expectedStatus': 'pending',
             'status': 'approved',
             'contractStatus': 'under_contract',
             'contractEndDate': '2028-06-30T00:00:00.000Z',
@@ -372,6 +401,7 @@ void main() {
     test('un rejet n envoie ni statut ni date', () async {
       await service.reviewContractStatusProof(
         uid: 'u1',
+        expectedFileUrl: 'gs://bucket/proof.pdf',
         status: 'rejected',
         contractStatus: 'free',
         note: 'Document illisible.',
@@ -380,11 +410,42 @@ void main() {
       verify(
         () => callable.call(<String, dynamic>{
           'uid': 'u1',
+          'expectedFileUrl': 'gs://bucket/proof.pdf',
+          'expectedStatus': 'pending',
           'status': 'rejected',
           'note': 'Document illisible.',
         }),
       ).called(1);
     });
+
+    test(
+      'la réponse à un ancien verdict laisse visible le nouveau dépôt',
+      () async {
+        final controller = ContractProofController(
+          firestore: _MockFirestore(),
+          adminContentService: service,
+        );
+        final original = _playerWithProof(
+          uid: 'joueur',
+          nom: 'Joueur',
+          proof: {'status': 'pending', 'fileUrl': 'gs://bucket/original.pdf'},
+        );
+        final replacement = _playerWithProof(
+          uid: 'joueur',
+          nom: 'Joueur',
+          proof: {'status': 'pending', 'fileUrl': 'gs://bucket/nouveau.pdf'},
+        );
+        controller.pendingProofs.assignAll([original]);
+        final response = controller.reviewProof(
+          uid: original.uid,
+          expectedFileUrl: original.contractStatusProof.fileUrl!,
+          status: 'rejected',
+        );
+        controller.pendingProofs.assignAll([replacement]);
+        expect((await response).success, isTrue);
+        expect(controller.pendingProofs.single, same(replacement));
+      },
+    );
 
     test(
       'approuver sans dire quel statut ne part jamais sur le reseau',
@@ -448,7 +509,7 @@ void main() {
         final link = await service.resolve('https://exemple.test/piece.pdf');
 
         expect(link.success, isFalse);
-        expect(link.url, isNull);
+        expect(link.bytes, isNull);
         expect(link.message, contains('référence de stockage'));
       },
     );
@@ -513,6 +574,26 @@ void main() {
   });
 
   group('ecran d examen', () {
+    testWidgets('un dossier illisible ne transforme pas la file en file vide', (
+      tester,
+    ) async {
+      final controller = _SeededContractProofController();
+      addTearDown(controller.onClose);
+      controller.unreadableProfiles.value = 1;
+      await pumpAdminTestApp(
+        tester,
+        ContractProofReviewWidget(
+          controller: controller,
+          documentService: AdminDocumentService.visualQa(),
+        ),
+      );
+      expect(find.text('Dossiers en attente illisibles'), findsOneWidget);
+      expect(find.text('Aucune pièce à examiner'), findsNothing);
+      controller.hasMore.value = true;
+      await tester.pump();
+      expect(find.text('Charger les pièces suivantes'), findsOneWidget);
+    });
+
     testWidgets('une piece en attente est listee avec son attente', (
       tester,
     ) async {
@@ -551,6 +632,13 @@ void main() {
       // Neuf jours d'attente : la bande de synthese doit le compter comme
       // en retard, c'est tout l'interet du compteur.
       expect(find.text('depuis plus de 7 jours'), findsOneWidget);
+      final stats = tester.widget<AdminStatStrip>(find.byType(AdminStatStrip));
+      expect(
+        stats.stats
+            .singleWhere((s) => s.label == 'sans fichier exploitable')
+            .value,
+        '0',
+      );
     });
 
     testWidgets(
@@ -613,6 +701,66 @@ void main() {
         );
       },
     );
+
+    testWidgets('la consultation ne valide que la version affichée', (
+      tester,
+    ) async {
+      AppUser player(String version) => _playerWithProof(
+        uid: 'reader',
+        nom: 'Joueur test',
+        proof: {
+          'status': 'pending',
+          'fileUrl':
+              'gs://bucket/identityDocuments/reader/contractProofs/contract_$version.png',
+        },
+      );
+      final controller = _SeededContractProofController(seeded: [player('1')]);
+      addTearDown(controller.onClose);
+      await pumpAdminTestApp(
+        tester,
+        ContractProofReviewWidget(
+          controller: controller,
+          documentService: _DocumentFixture(),
+        ),
+      );
+      final open = find
+          .ancestor(
+            of: find.byIcon(Icons.description_outlined),
+            matching: find.byType(IconButton),
+          )
+          .first;
+      final verdict = find.ancestor(
+        of: find.byIcon(Icons.gavel_rounded),
+        matching: find.byType(IconButton),
+      );
+      expect(tester.widget<IconButton>(verdict).onPressed, isNull);
+      await tester.tap(open);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Fermer'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<IconButton>(verdict).onPressed, isNull);
+      await tester.tap(open);
+      await tester.pumpAndSettle();
+      final confirm = find.widgetWithText(FilledButton, 'Pièce consultée');
+      // Decoding is asynchronous in the engine, outside the fake widget clock.
+      for (
+        var i = 0;
+        i < 50 && tester.widget<FilledButton>(confirm).onPressed == null;
+        i++
+      ) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+      await tester.tap(confirm);
+      await tester.pumpAndSettle();
+      expect(tester.widget<IconButton>(verdict).onPressed, isNotNull);
+      controller.pendingProofs.assignAll([player('2')]);
+      await tester.pump();
+      expect(tester.widget<IconButton>(verdict).onPressed, isNull);
+    });
 
     testWidgets('une file vide le dit sans proposer de verdict', (
       tester,

@@ -40,21 +40,14 @@ class ContractProofController extends GetxController {
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
 
-  /// Page temps réel, pages par curseur, et le curseur de frontière.
-  ///
-  /// Voir `OffreController` pour le détail du mécanisme : la première page
-  /// reste un flux (une pièce examinée disparaît de la file toute seule), les
-  /// suivantes sont des lots statiques ajoutés par curseur.
-  List<AppUser> _firstPage = <AppUser>[];
-  List<AppUser> _extraPages = <AppUser>[];
-  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
-  bool _isLoadingMore = false;
+  int _loadLimit = _initialLoadLimit;
 
   /// Les joueurs dont une pièce attend un examen, la plus ancienne d'abord.
   final RxList<AppUser> pendingProofs = <AppUser>[].obs;
   final RxBool isLoading = true.obs;
   final RxString lastError = ''.obs;
   final RxBool hasMore = false.obs;
+  final unreadableProfiles = 0.obs;
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _proofsSubscription;
@@ -73,7 +66,7 @@ class ContractProofController extends GetxController {
   ///
   /// L'ordre par identifiant de document n'est donc **pas** l'ordre affiché :
   /// il ne sert qu'à paginer de façon stable. Le tri par date de dépôt est
-  /// fait dans [_recomputePendingProofs], sur l'ensemble des pages chargées —
+  /// fait dans [_setPendingProofs], sur l'ensemble des pièces chargées —
   /// c'est ce qui évite le défaut que `OffreController` documente, où un tri
   /// par identifiant écartait silencieusement les documents les plus récents.
   Query<Map<String, dynamic>> _pendingQuery() {
@@ -83,33 +76,25 @@ class ContractProofController extends GetxController {
         .orderBy(FieldPath.documentId);
   }
 
-  /// Fusionne les pages et trie par date de dépôt, la plus ancienne d'abord.
+  /// Trie les pièces par date de dépôt, la plus ancienne d'abord.
   ///
   /// Ascendant volontairement, à l'inverse des autres écrans : une file
   /// d'attente se traite par le haut, et la pièce qui attend depuis trois
   /// semaines passe avant celle déposée ce matin. Une pièce sans date de dépôt
   /// lisible est poussée en tête plutôt qu'en queue — un document à moitié
   /// écrit est précisément ce qu'un opérateur doit voir.
-  void _recomputePendingProofs() {
-    final byUid = <String, AppUser>{};
-    for (final user in _extraPages) {
-      byUid[user.uid] = user;
-    }
-    for (final user in _firstPage) {
-      byUid[user.uid] = user;
-    }
-
-    final merged = byUid.values.toList()
-      ..sort((a, b) {
-        final left =
-            a.contractStatusProof.submittedAt ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        final right =
-            b.contractStatusProof.submittedAt ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        return left.compareTo(right);
-      });
-    pendingProofs.assignAll(merged);
+  void _setPendingProofs(List<AppUser> users) {
+    users.sort((a, b) {
+      final left =
+          a.contractStatusProof.submittedAt ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final right =
+          b.contractStatusProof.submittedAt ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final order = left.compareTo(right);
+      return order == 0 ? a.uid.compareTo(b.uid) : order;
+    });
+    pendingProofs.assignAll(users);
   }
 
   @override
@@ -145,7 +130,7 @@ class ContractProofController extends GetxController {
   }
 
   Future<void> _stopStream({bool clearData = false}) async {
-    await _proofsSubscription?.cancel();
+    final subscription = _proofsSubscription;
     _proofsSubscription = null;
 
     if (clearData) {
@@ -153,13 +138,13 @@ class ContractProofController extends GetxController {
       lastError.value = '';
       isLoading.value = false;
       hasMore.value = false;
-      _firstPage = <AppUser>[];
-      _extraPages = <AppUser>[];
-      _lastDocument = null;
+      unreadableProfiles.value = 0;
+      _loadLimit = _initialLoadLimit;
     }
+    await subscription?.cancel();
   }
 
-  void _listenPendingProofs() {
+  void _listenPendingProofs({int limit = _initialLoadLimit}) {
     if (FirebaseAuth.instance.currentUser == null) {
       pendingProofs.clear();
       lastError.value = '';
@@ -169,20 +154,19 @@ class ContractProofController extends GetxController {
 
     isLoading.value = true;
     _proofsSubscription?.cancel();
-    _extraPages = <AppUser>[];
-    _lastDocument = null;
+    _loadLimit = limit;
+    hasMore.value = false;
 
     _proofsSubscription = _pendingQuery()
-        .limit(_initialLoadLimit)
+        .limit(limit + 1)
         .snapshots()
         .listen(
           (snapshot) {
-            _firstPage = _parse(snapshot.docs);
-            if (snapshot.docs.isNotEmpty) {
-              _lastDocument = snapshot.docs.last;
-            }
-            _recomputePendingProofs();
-            hasMore.value = snapshot.docs.length >= _initialLoadLimit;
+            final docs = snapshot.docs.take(limit).toList();
+            final users = _parse(docs);
+            unreadableProfiles.value = docs.length - users.length;
+            _setPendingProofs(users);
+            hasMore.value = snapshot.docs.length > limit;
             lastError.value = '';
             isLoading.value = false;
           },
@@ -197,14 +181,13 @@ class ContractProofController extends GetxController {
         );
   }
 
-  List<AppUser> _parse(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+  List<AppUser> _parse(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
     final parsed = <AppUser>[];
     for (final doc in docs) {
       try {
-        final data = Map<String, dynamic>.from(doc.data());
-        if ((data['uid']?.toString().trim() ?? '').isEmpty) {
-          data['uid'] = doc.id;
-        }
+        final data = {...doc.data(), 'uid': doc.id};
         parsed.add(AppUser.fromMap(data));
       } catch (error) {
         debugPrint('Piece ignoree (parsing) : ${doc.id} -> $error');
@@ -213,32 +196,11 @@ class ContractProofController extends GetxController {
     return parsed;
   }
 
-  /// Ajoute un lot après le dernier document chargé, par curseur.
+  /// Étend la fenêtre suivie pour que les verdicts des autres opérateurs
+  /// et les dépôts de remplacement soient visibles sur toutes ses pages.
   Future<void> loadMoreProofs() async {
-    if (!hasMore.value || _isLoadingMore) return;
-    final cursor = _lastDocument;
-    if (cursor == null) return;
-
-    _isLoadingMore = true;
-    try {
-      final snapshot = await _pendingQuery()
-          .startAfterDocument(cursor)
-          .limit(_loadMoreIncrement)
-          .get();
-
-      _extraPages = <AppUser>[..._extraPages, ..._parse(snapshot.docs)];
-      if (snapshot.docs.isNotEmpty) {
-        _lastDocument = snapshot.docs.last;
-      }
-      hasMore.value = snapshot.docs.length >= _loadMoreIncrement;
-      _recomputePendingProofs();
-    } catch (error) {
-      debugPrint('Chargement supplementaire des pieces impossible : $error');
-      lastError.value =
-          'Impossible de charger plus de pièces. Vérifiez votre connexion '
-          'puis réessayez.';
-    } finally {
-      _isLoadingMore = false;
+    if (hasMore.value) {
+      _listenPendingProofs(limit: _loadLimit + _loadMoreIncrement);
     }
   }
 
@@ -261,6 +223,7 @@ class ContractProofController extends GetxController {
   /// rende pas deux fois le verdict sur la même pièce pendant l'aller-retour.
   Future<AdminActionResponse> reviewProof({
     required String uid,
+    required String expectedFileUrl,
     required String status,
     String? contractStatus,
     DateTime? contractEndDate,
@@ -268,6 +231,7 @@ class ContractProofController extends GetxController {
   }) async {
     final response = await _adminContentService.reviewContractStatusProof(
       uid: uid,
+      expectedFileUrl: expectedFileUrl,
       status: status,
       contractStatus: contractStatus,
       contractEndDate: contractEndDate,
@@ -275,9 +239,11 @@ class ContractProofController extends GetxController {
     );
 
     if (response.success) {
-      _firstPage = _firstPage.where((user) => user.uid != uid).toList();
-      _extraPages = _extraPages.where((user) => user.uid != uid).toList();
-      _recomputePendingProofs();
+      pendingProofs.removeWhere(
+        (user) =>
+            user.uid == uid &&
+            user.contractStatusProof.fileUrl == expectedFileUrl,
+      );
     }
 
     return response;

@@ -9,7 +9,7 @@ import '../services/admin_document_service.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
 import '../utils/admin_date_format.dart';
-import '../utils/admin_external_link.dart';
+import '../widgets/admin_document_preview.dart';
 import '../utils/admin_pagination.dart';
 import '../utils/admin_storage_reference.dart';
 import '../widgets/admin_detail_panel.dart';
@@ -65,6 +65,7 @@ class _ContractProofReviewWidgetState extends State<ContractProofReviewWidget> {
 
   /// Compte dont une action est en vol, pour désarmer sa ligne.
   String? _actionUid;
+  final Map<String, String> _openedProofs = {};
 
   /// Pièce ouverte dans la fiche latérale. L'identifiant plutôt que l'objet :
   /// la file se rafraîchit en continu, et une copie figée afficherait un état
@@ -146,6 +147,9 @@ class _ContractProofReviewWidgetState extends State<ContractProofReviewWidget> {
     if (!AdminStorageReference.isSupported(proof.fileUrl)) {
       return 'La référence du fichier n’est pas exploitable par le portail.';
     }
+    if (_openedProofs[user.uid] != proof.fileUrl) {
+      return 'Ouvrez cette pièce avant de rendre le verdict.';
+    }
     return null;
   }
 
@@ -178,18 +182,9 @@ class _ContractProofReviewWidgetState extends State<ContractProofReviewWidget> {
       return;
     }
 
-    if (!openAdminExternalLink(link.url!)) {
-      // Le navigateur a refusé, ou il n'y a pas de navigateur du tout. Dire
-      // lequel des deux ne servirait à rien : dans les deux cas l'opérateur a
-      // besoin de l'adresse, pas d'un diagnostic.
-      showAdminFeedback(
-        title: 'Onglet bloqué',
-        message:
-            'Le navigateur a refusé d’ouvrir la pièce. Autorisez les fenêtres '
-            'surgissantes pour ce portail, puis réessayez.',
-        tone: AdminBannerTone.warning,
-        position: SnackPosition.BOTTOM,
-      );
+    final consulted = await showAdminDocumentPreview(context, link);
+    if (mounted && consulted) {
+      setState(() => _openedProofs[user.uid] = proof.fileUrl!);
     }
   }
 
@@ -205,6 +200,7 @@ class _ContractProofReviewWidgetState extends State<ContractProofReviewWidget> {
       return;
     }
 
+    final expectedFileUrl = _openedProofs[user.uid]!;
     final verdict = await showDialog<ContractProofVerdict>(
       context: context,
       builder: (context) => ContractProofVerdictDialog(user: user),
@@ -216,6 +212,7 @@ class _ContractProofReviewWidgetState extends State<ContractProofReviewWidget> {
 
     final response = await _controller.reviewProof(
       uid: user.uid,
+      expectedFileUrl: expectedFileUrl,
       status: verdict.approved
           ? ContractStatusProof.statusApproved
           : ContractStatusProof.statusRejected,
@@ -493,12 +490,25 @@ class _ContractProofReviewWidgetState extends State<ContractProofReviewWidget> {
           .where((user) => _isStale(user.contractStatusProof))
           .length;
       final unreadableCount = allProofs
-          .where((user) => _verdictBlockedReason(user) != null)
+          .where(
+            (user) => !AdminStorageReference.isSupported(
+              user.contractStatusProof.fileUrl,
+            ),
+          )
           .length;
 
       final stats = AdminStatStrip(
         stats: [
-          AdminStat(label: 'en attente', value: '${allProofs.length}'),
+          AdminStat(
+            label: 'en attente',
+            value: '${allProofs.length + _controller.unreadableProfiles.value}',
+          ),
+          if (_controller.unreadableProfiles.value > 0)
+            AdminStat(
+              label: 'dossiers illisibles',
+              value: '${_controller.unreadableProfiles.value}',
+              tone: AdminTheme.warning,
+            ),
           AdminStat(
             label: 'depuis plus de 7 jours',
             value: '$staleCount',
@@ -513,7 +523,24 @@ class _ContractProofReviewWidgetState extends State<ContractProofReviewWidget> {
       );
 
       final Widget body;
-      if (filtered.isEmpty) {
+      if (filtered.isEmpty && _controller.hasMore.value) {
+        body = AdminEmptyState(
+          title: 'Aucun résultat parmi les pièces chargées',
+          message: 'La file contient encore des dossiers à consulter.',
+          icon: Icons.search,
+          actionLabel: 'Charger les pièces suivantes',
+          onAction: _controller.loadMoreProofs,
+        );
+      } else if (allProofs.isEmpty &&
+          _controller.unreadableProfiles.value > 0) {
+        body = AdminEmptyState(
+          title: 'Dossiers en attente illisibles',
+          message: 'Les données de ces dossiers ne permettent pas leur examen.',
+          icon: Icons.error_outline,
+          actionLabel: 'Recharger',
+          onAction: _controller.refreshProofs,
+        );
+      } else if (filtered.isEmpty) {
         body = allProofs.isEmpty
             ? AdminEmptyState(
                 title: 'Aucune pièce à examiner',

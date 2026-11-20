@@ -58,6 +58,11 @@ class ClubEnrollment {
   /// Durée maximale accordable en un appel, alignée sur le callable.
   static const Duration maxValidity = Duration(days: 5 * 365);
 
+  static bool isGrantDateValid(DateTime deadline) {
+    final now = DateTime.now();
+    return deadline.isAfter(now) && deadline.difference(now) <= maxValidity;
+  }
+
   /// Si l'habilitation a dépassé son terme.
   ///
   /// Une habilitation sans terme lisible est traitée comme échue, exactement

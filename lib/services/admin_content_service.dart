@@ -161,6 +161,7 @@ class AdminContentService {
   /// où l’opérateur attend une phrase. Le serveur reste l’autorité.
   Future<AdminActionResponse> reviewContractStatusProof({
     required String uid,
+    String? expectedFileUrl,
     required String status,
     String? contractStatus,
     DateTime? contractEndDate,
@@ -210,10 +211,20 @@ class AdminContentService {
       );
     }
 
+    if (expectedFileUrl == null || expectedFileUrl.trim().isEmpty) {
+      return Future.value(
+        AdminActionResponse.failure(
+          code: 'missing_proof_identity',
+          message: 'Ouvrez et examinez la pièce avant de rendre le verdict.',
+        ),
+      );
+    }
     return _callable(
       'reviewContractStatusProof',
       payload: <String, dynamic>{
         'uid': normalizedUid,
+        'expectedFileUrl': expectedFileUrl.trim(),
+        'expectedStatus': ContractStatusProof.statusPending,
         'status': normalizedStatus,
         if (normalizedStatus == ContractStatusProof.statusApproved)
           'contractStatus': normalizedContractStatus,

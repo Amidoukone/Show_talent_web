@@ -8,7 +8,7 @@ import '../services/admin_document_service.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
 import '../utils/admin_date_format.dart';
-import '../utils/admin_external_link.dart';
+import 'admin_document_preview.dart';
 import '../utils/admin_file_picker.dart';
 import 'admin_feedback.dart';
 import 'admin_ui.dart';
@@ -94,6 +94,7 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
     );
     _reasonController = TextEditingController();
     _validUntil = _current.validUntil;
+    _revoking = _user.clubEnrollmentRevocationPending;
     _documentService =
         widget.documentService ??
         (AppEnvironmentConfig.visualQaMode
@@ -149,16 +150,7 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
       return;
     }
 
-    if (!openAdminExternalLink(link.url!)) {
-      showAdminFeedback(
-        title: 'Onglet bloqué',
-        message:
-            'Le navigateur a refusé d’ouvrir le document. Autorisez les '
-            'fenêtres surgissantes pour ce portail, puis réessayez.',
-        tone: AdminBannerTone.warning,
-        position: SnackPosition.BOTTOM,
-      );
-    }
+    await showAdminDocumentPreview(context, link);
   }
 
   /// Choisit un fichier et le dépose.
@@ -262,11 +254,19 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
   }
 
   bool get _canSubmit {
+    if (_busyOnDocument) return false;
+    if (_user.clubEnrollmentRevocationPending) return _revoking;
     if (_revoking) return _current.granted;
-    return _agreementController.text.trim().isNotEmpty && _validUntil != null;
+    return _agreementController.text.trim().isNotEmpty &&
+        _validUntil != null &&
+        ClubEnrollment.isGrantDateValid(_validUntil!);
   }
 
   void _submit() {
+    if (!_canSubmit) {
+      setState(() {});
+      return;
+    }
     if (_revoking) {
       final reason = _reasonController.text.trim();
       Navigator.of(context).pop(
@@ -414,9 +414,16 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
               ),
               const SizedBox(height: 16),
               SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment<bool>(value: false, label: Text('Accorder')),
-                  ButtonSegment<bool>(value: true, label: Text('Retirer')),
+                segments: [
+                  ButtonSegment<bool>(
+                    value: false,
+                    enabled: !_user.clubEnrollmentRevocationPending,
+                    label: const Text('Accorder'),
+                  ),
+                  const ButtonSegment<bool>(
+                    value: true,
+                    label: Text('Retirer'),
+                  ),
                 ],
                 selected: {_revoking},
                 onSelectionChanged: (selection) {
@@ -435,16 +442,22 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _reasonController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Motif du retrait',
-                    hintText: 'Accord non renouvelé, litige en cours…',
-                    border: OutlineInputBorder(),
+                if (!_user.clubEnrollmentRevocationPending)
+                  TextField(
+                    controller: _reasonController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Motif du retrait',
+                      hintText: 'Accord non renouvelé, litige en cours…',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                if (!_current.granted) ...[
+                if (_user.clubEnrollmentRevocationPending)
+                  const Text(
+                    'Le droit est retiré. Le traitement des rattachements reprendra automatiquement. Vous pouvez aussi le relancer maintenant.',
+                  ),
+                if (!_current.granted &&
+                    !_user.clubEnrollmentRevocationPending) ...[
                   const SizedBox(height: 12),
                   Text(
                     'Ce club n’a aucune habilitation à retirer.',
@@ -454,6 +467,7 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
               ] else ...[
                 TextField(
                   controller: _agreementController,
+                  enabled: !_busyOnDocument,
                   decoration: const InputDecoration(
                     labelText: 'Référence de l’accord signé',
                     hintText: 'ACCORD-2026-011',
@@ -480,6 +494,11 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                if (until != null && !ClubEnrollment.isGrantDateValid(until))
+                  _caption(
+                    'Choisissez une échéance future dans la limite de cinq ans.',
+                    color: AdminTheme.danger,
+                  ),
                 _caption(
                   'Le terme est obligatoire, contrairement à l’abonnement : '
                   'un droit que personne ne revisite finit par survivre à '
@@ -497,7 +516,11 @@ class _ClubEnrollmentDialogState extends State<ClubEnrollmentDialog> {
         ),
         FilledButton(
           onPressed: _canSubmit ? _submit : null,
-          child: Text(_revoking ? 'Retirer' : 'Accorder'),
+          child: Text(
+            _user.clubEnrollmentRevocationPending
+                ? 'Reprendre le retrait'
+                : (_revoking ? 'Retirer' : 'Accorder'),
+          ),
         ),
       ],
     );

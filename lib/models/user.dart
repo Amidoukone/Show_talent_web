@@ -50,6 +50,7 @@ class AppUser {
   /// Distincte de [membership] par decision : l'enrolement ne s'achete pas.
   /// Voir club_enrollment.dart.
   ClubEnrollment clubEnrollment;
+  final bool clubEnrollmentRevocationPending;
 
   /// La piece de statut contractuel, et son examen.
   ///
@@ -168,6 +169,7 @@ class AppUser {
     this.profileVerificationInvalidationReason,
     this.membership = Membership.none,
     this.clubEnrollment = ClubEnrollment.absent,
+    this.clubEnrollmentRevocationPending = false,
     this.contractStatusProof = ContractStatusProof.absent,
     this.contactLeakFlagged = false,
     this.contactLeakFields = const [],
@@ -290,6 +292,9 @@ class AppUser {
       ),
       membership: Membership.fromMap(map['membership']),
       clubEnrollment: ClubEnrollment.fromMap(map['clubEnrollment']),
+      clubEnrollmentRevocationPending:
+          map['clubEnrollmentRevocation'] is Map &&
+          map['clubEnrollmentRevocation']['state'] == 'pending',
       contractStatusProof: ContractStatusProof.fromMap(
         map['contractStatusProof'],
       ),
@@ -458,6 +463,14 @@ class AppUser {
       // compte recopié dans le document d'un autre. Ici en revanche il faut
       // les garder, sinon la relecture d'un utilisateur enrichi de ses champs
       // privés (fetchUserWithPrivateFields) perdrait son dossier.
+      if (clubEnrollment.granted)
+        'clubEnrollment': {
+          'agreementRef': clubEnrollment.agreementRef,
+          'grantedAt': clubEnrollment.grantedAt,
+          'validUntil': clubEnrollment.validUntil,
+        },
+      if (clubEnrollmentRevocationPending)
+        'clubEnrollmentRevocation': {'state': 'pending'},
       'membership': membership.isRecorded ? membership.toMap() : null,
       // Meme raison que pour les droits juste au-dessus, et un cas concret :
       // la fiche de revue relit un compte enrichi de ses champs prives par

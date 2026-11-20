@@ -1,7 +1,9 @@
 import 'package:cloud_functions/cloud_functions.dart';
 
 import '../config/app_environment.dart';
+import '../models/club_enrollment.dart';
 import '../models/managed_account_provision_result.dart';
+import '../models/admin_action_response.dart';
 import '../models/membership.dart';
 import '../utils/account_role_policy.dart';
 
@@ -86,11 +88,14 @@ class ManagedAccountService {
     return ManagedAccountProvisionResult.fromMap(data);
   }
 
-  Future<void> deleteManagedAccount({required String uid}) async {
-    await _callable(
+  Future<AdminActionResponse> deleteManagedAccount({
+    required String uid,
+  }) async {
+    final result = await _callable(
       'deleteManagedAccount',
       payload: <String, dynamic>{'uid': uid},
     );
+    return AdminActionResponse.fromMap(result);
   }
 
   Future<void> changeManagedAccountRole({
@@ -239,11 +244,11 @@ class ManagedAccountService {
       );
     }
 
-    if (!validUntil.isAfter(DateTime.now())) {
+    if (!ClubEnrollment.isGrantDateValid(validUntil)) {
       throw ArgumentError.value(
         validUntil,
         'validUntil',
-        "L'échéance doit être dans le futur.",
+        "L'échéance doit être dans le futur, dans la limite de cinq ans.",
       );
     }
 
@@ -271,7 +276,7 @@ class ManagedAccountService {
   ///
   /// Seule porte de retrait, volontairement : deux chemins dont un seul
   /// applique la cascade se paient une fois en production.
-  Future<void> revokeClubEnrollment({
+  Future<AdminActionResponse> revokeClubEnrollment({
     required String uid,
     String? reason,
   }) async {
@@ -282,7 +287,7 @@ class ManagedAccountService {
 
     final normalizedReason = reason?.trim();
 
-    await _callable(
+    final result = await _callable(
       'revokeClubEnrollment',
       payload: <String, dynamic>{
         'uid': normalizedUid,
@@ -290,6 +295,7 @@ class ManagedAccountService {
           'reason': normalizedReason,
       },
     );
+    return AdminActionResponse.fromMap(result);
   }
 
   /// Applies a verified parent or guardian request to withdraw permissions.

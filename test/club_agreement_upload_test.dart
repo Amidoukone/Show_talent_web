@@ -59,12 +59,14 @@ class _FakeDocumentService extends AdminDocumentService {
   }
 }
 
-AppUser _clubUser() {
+AppUser _clubUser({DateTime? validUntil}) {
   return AppUser.fromMap(<String, dynamic>{
     'uid': 'club-1',
     'nom': 'Académie Abidjan Nord',
     'email': 'club@exemple.test',
     'role': 'club',
+    if (validUntil != null)
+      'clubEnrollment': {'agreementRef': 'ACCORD-1', 'validUntil': validUntil},
     'emailVerified': true,
     'dateInscription': DateTime(2026, 1, 1),
     'dernierLogin': DateTime(2026, 11, 18),
@@ -75,6 +77,7 @@ Future<_FakeDocumentService> _pumpDialog(
   WidgetTester tester, {
   List<AdminStoredDocument> documents = const <AdminStoredDocument>[],
   bool listThrows = false,
+  DateTime? validUntil,
 }) async {
   final service = _FakeDocumentService(
     documents: documents,
@@ -89,8 +92,10 @@ Future<_FakeDocumentService> _pumpDialog(
   await pumpAdminTestApp(
     tester,
     Builder(
-      builder: (context) =>
-          ClubEnrollmentDialog(user: _clubUser(), documentService: service),
+      builder: (context) => ClubEnrollmentDialog(
+        user: _clubUser(validUntil: validUntil),
+        documentService: service,
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -261,11 +266,26 @@ void main() {
       final link = await AdminDocumentService.visualQa().resolvePath('   ');
 
       expect(link.success, isFalse);
-      expect(link.url, isNull);
+      expect(link.bytes, isNull);
     });
   });
 
   group('dialogue d habilitation', () {
+    testWidgets('un accord échu exige une nouvelle échéance', (tester) async {
+      await _pumpDialog(
+        tester,
+        validUntil: DateTime.now().subtract(const Duration(days: 1)),
+      );
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+      expect(
+        find.textContaining('Choisissez une échéance future'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('les accords deja deposes sont listes et ouvrables', (
       tester,
     ) async {

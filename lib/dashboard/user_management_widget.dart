@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../controller/user_controller.dart';
 import '../models/managed_account_provision_result.dart';
+import '../models/admin_action_response.dart';
 import '../models/membership.dart';
 import '../models/user.dart';
 import '../services/managed_account_service.dart';
@@ -202,25 +203,32 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
-  Future<void> _runVoidAction({
+  Future<void> _runAccountAction({
     required AppUser user,
     required AdminCallableActionDescriptor action,
-    required Future<void> Function() request,
+    required Future<dynamic> Function() request,
     required String successMessage,
   }) async {
     _setActionInFlight(user, action.label);
 
     try {
-      await request();
+      final response = await request();
       if (!mounted) {
         return;
       }
 
-      showAdminFeedback(
-        title: action.label,
-        message: successMessage,
-        tone: AdminBannerTone.success,
-      );
+      var message = successMessage;
+      var tone = AdminBannerTone.success;
+      if (response is AdminActionResponse) {
+        if (response.message.trim().isNotEmpty) message = response.message;
+        if (!response.success) {
+          tone = AdminBannerTone.danger;
+        } else if (response.data?['authDeleted'] == false ||
+            response.data?['cascadePending'] == true) {
+          tone = AdminBannerTone.info;
+        }
+      }
+      showAdminFeedback(title: action.label, message: message, tone: tone);
     } on FirebaseFunctionsException catch (error) {
       if (!mounted) {
         return;
@@ -278,7 +286,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: deleteManagedAccountAction,
       request: () => _managedAccountService.deleteManagedAccount(uid: user.uid),
@@ -297,7 +305,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: disableManagedAccountAuthAction,
       request: () =>
@@ -308,7 +316,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
   }
 
   Future<void> _enableManagedAccountAuth(AppUser user) async {
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: enableManagedAccountAuthAction,
       request: () =>
@@ -393,7 +401,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: changeManagedAccountRoleAction,
       request: () => _managedAccountService.changeManagedAccountRole(
@@ -426,11 +434,6 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         return;
       }
 
-      showAdminFeedback(
-        title: 'Invitation renvoyée',
-        message: 'Les liens d’invitation ont été régénérés pour ${user.email}.',
-        tone: AdminBannerTone.success,
-      );
       await _showInviteResultDialog(result, user.nom);
     } on FirebaseFunctionsException catch (error) {
       if (!mounted) {
@@ -581,7 +584,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: updateManagedAccountProfileAction,
       request: () => _managedAccountService.updateManagedAccountProfile(
@@ -609,7 +612,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       confirmLabel: 'Retirer les autorisations',
     );
     if (!confirmed) return;
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: withdrawManagedMinorConsentAction,
       request: () =>
@@ -667,7 +670,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: updateManagedAccountProfileAction,
       request: () => _managedAccountService.verifyManagedAccountProfile(
@@ -707,7 +710,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: updateManagedAccountProfileAction,
       request: () => _managedAccountService.unverifyManagedAccountProfile(
@@ -745,7 +748,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     }
 
     if (decision.revoke) {
-      await _runVoidAction(
+      await _runAccountAction(
         user: user,
         action: revokeClubEnrollmentAction,
         request: () => _managedAccountService.revokeClubEnrollment(
@@ -758,7 +761,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: setClubEnrollmentRightAction,
       request: () => _managedAccountService.grantClubEnrollment(
@@ -805,7 +808,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       return;
     }
 
-    await _runVoidAction(
+    await _runAccountAction(
       user: user,
       action: setManagedAccountMembershipAction,
       request: () => _managedAccountService.setManagedAccountMembership(
@@ -971,7 +974,9 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
         if (_canManageClubEnrollment(user))
           AdminRowAction(
             icon: Icons.groups_outlined,
-            label: user.clubEnrollment.active
+            label: user.clubEnrollmentRevocationPending
+                ? 'Reprendre le retrait'
+                : user.clubEnrollment.active
                 ? 'Habilitation du club'
                 : 'Habiliter le club',
             color: AdminTheme.cyan,

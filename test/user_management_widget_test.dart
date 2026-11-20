@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:show_talent/dashboard/user_management_widget.dart';
 import 'package:show_talent/services/managed_account_service.dart';
@@ -6,6 +7,112 @@ import 'package:show_talent/services/managed_account_service.dart';
 import 'test_support/admin_test_helpers.dart';
 
 void main() {
+  testWidgets('un échec du relais laisse le lien disponible dans le dialogue', (
+    tester,
+  ) async {
+    addTearDown(Get.reset);
+    final controller = TestUserController(
+      users: [
+        buildTestUser(
+          uid: 'invite',
+          nom: 'Joueur',
+          email: 'invite@example.invalid',
+          role: 'joueur',
+          createdByAdmin: true,
+        ),
+      ],
+    );
+    await pumpAdminTestApp(
+      tester,
+      UserManagementWidget(
+        selectedRole: 'Tous',
+        userController: controller,
+        managedAccountService: ManagedAccountService(
+          callableExecutor: (_, _) async => {
+            'success': true,
+            'data': {
+              'uid': 'invite',
+              'email': 'invite@example.invalid',
+              'role': 'joueur',
+              'existingUser': true,
+              'passwordSetupLink': 'https://example.invalid/demo',
+              'inviteEmailSent': false,
+              'inviteEmailReason': 'send_failed',
+            },
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final menu = find.byType(PopupMenuButton<int>);
+    await tester.ensureVisible(menu);
+    await tester.tap(menu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Renvoyer l’invitation').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Invitation renvoyée'), findsNothing);
+    expect(find.textContaining('L’envoi automatique a échoué.'), findsOneWidget);
+    expect(find.text('https://example.invalid/demo'), findsOneWidget);
+    Navigator.of(tester.element(find.byType(AlertDialog))).pop();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets(
+    'an incomplete Auth deletion is explained after the admin action',
+    (tester) async {
+      addTearDown(Get.reset);
+      final controller = TestUserController(
+        users: [
+          buildTestUser(
+            uid: 'pending-user',
+            nom: 'Compte en attente',
+            email: 'pending@example.invalid',
+            role: 'joueur',
+            createdByAdmin: true,
+          ),
+        ],
+      );
+      final service = ManagedAccountService(
+        callableExecutor: (name, payload) async => {
+          'success': true,
+          'code': 'managed_account_deleted_auth_pending',
+          'message': 'Donnees supprimees. Finalisation du compte en cours.',
+          'data': {'authDeleted': false},
+        },
+      );
+      await pumpAdminTestApp(
+        tester,
+        UserManagementWidget(
+          selectedRole: 'Tous',
+          userController: controller,
+          managedAccountService: service,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final menu = find.byType(PopupMenuButton<int>);
+      await tester.ensureVisible(menu);
+      await tester.tap(menu);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Supprimer').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Supprimer').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(
+        find.text('Donnees supprimees. Finalisation du compte en cours.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('La suppression admin a ete demandee'),
+        findsNothing,
+      );
+      Get.closeAllSnackbars();
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('loading failures are visible and can be retried', (
     tester,
   ) async {

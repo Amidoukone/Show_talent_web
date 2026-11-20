@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../utils/admin_picked_file.dart';
+import '../utils/private_document_bytes_native.dart'
+    if (dart.library.js_interop) '../utils/private_document_bytes_web.dart';
 import '../utils/admin_storage_reference.dart';
 
 /// Ce qu'une tentative d'ouverture de pièce a produit.
@@ -8,7 +12,7 @@ class AdminDocumentLink {
   const AdminDocumentLink._({
     required this.success,
     required this.message,
-    this.url,
+    this.bytes,
     this.reference,
   });
 
@@ -16,17 +20,17 @@ class AdminDocumentLink {
     : this._(success: false, message: message);
 
   const AdminDocumentLink.resolved({
-    required String url,
+    required Uint8List bytes,
     required AdminStorageReference reference,
-  }) : this._(success: true, message: '', url: url, reference: reference);
+  }) : this._(success: true, message: '', bytes: bytes, reference: reference);
 
   final bool success;
 
   /// Pourquoi la pièce n'a pas pu être ouverte, en clair pour l'opérateur.
   final String message;
 
-  /// Adresse de lecture, valable pour la session en cours.
-  final String? url;
+  /// Contenu remis à l’aperçu après contrôle des droits.
+  final Uint8List? bytes;
 
   /// La référence d'origine, décomposée.
   final AdminStorageReference? reference;
@@ -72,24 +76,7 @@ class AdminUploadResult {
   final AdminStoredDocument? document;
 }
 
-/// L'ouverture des pièces justificatives déposées par les utilisateurs.
-///
-/// Le portail n'ouvrait jusqu'ici aucun document : la fiche de revue se
-/// contentait d'annoncer « Présent » ou « Absent » pour le CV et la photo de
-/// passeport. Examiner une pièce de statut contractuel demande de la lire,
-/// donc cette plomberie existe, une fois, pour toutes les pièces.
-///
-/// **Aucune URL signée n'est fabriquée ici, et c'est le point important.** La
-/// référence `gs://` est convertie en référence Storage, et le SDK présente le
-/// jeton d'authentification de l'opérateur à chaque lecture :
-/// `storage.rules` contrôle donc l'accès au moment où le fichier est servi.
-/// Un lien signé, lui, resterait ouvert après la révocation du claim admin —
-/// voir `canReadContractProof(uid)` dans `storage.rules`, qui exige
-/// `isAdminOperator()` et rien de moins.
-///
-/// L'adresse obtenue est volontairement non mémorisée : elle se redemande à
-/// chaque ouverture. Un opérateur dont les droits viennent d'être retirés ne
-/// doit pas pouvoir rejouer une adresse obtenue cinq minutes plus tôt.
+/// Lecture authentifiée des pièces privées et dépôt des accords.
 class AdminDocumentService {
   AdminDocumentService({FirebaseStorage? storage})
     : _storage = storage ?? FirebaseStorage.instance,
@@ -100,7 +87,7 @@ class AdminDocumentService {
   final FirebaseStorage? _storage;
   final bool _visualQaMode;
 
-  /// Résout une référence `gs://` en adresse de lecture.
+  /// Charge les octets depuis le bucket configuré pour cet environnement.
   Future<AdminDocumentLink> resolve(Object? rawReference) async {
     final reference = AdminStorageReference.parse(rawReference);
     if (reference == null) {
@@ -117,18 +104,12 @@ class AdminDocumentService {
       );
     }
 
-    try {
-      final url = await _storage!.refFromURL(reference.uri).getDownloadURL();
-      return AdminDocumentLink.resolved(url: url, reference: reference);
-    } on FirebaseException catch (error) {
-      return AdminDocumentLink.failure(message: _describe(error, reference));
-    } catch (_) {
+    if (reference.bucket != _storage!.bucket) {
       return const AdminDocumentLink.failure(
-        message:
-            'Ouverture de la pièce impossible pour le moment. Vérifiez votre '
-            'connexion puis réessayez.',
+        message: 'Bucket de stockage inattendu.',
       );
     }
+    return _read(reference);
   }
 
   /// Résout un chemin d'objet que **ce code a fabriqué**.
@@ -158,9 +139,24 @@ class AdminDocumentService {
       objectPath: normalized,
     );
 
+    return _read(reference);
+  }
+
+  Future<AdminDocumentLink> _read(AdminStorageReference reference) async {
     try {
-      final url = await _storage.ref(normalized).getDownloadURL();
-      return AdminDocumentLink.resolved(url: url, reference: reference);
+      final file = _storage!.ref(reference.objectPath);
+      final bytes = await readPrivateDocumentBytes(
+        file,
+        adminAgreementMaxBytes,
+      );
+      if (bytes == null ||
+          bytes.isEmpty ||
+          bytes.length > adminAgreementMaxBytes) {
+        return const AdminDocumentLink.failure(
+          message: 'Document vide ou supérieur à 8 Mo.',
+        );
+      }
+      return AdminDocumentLink.resolved(bytes: bytes, reference: reference);
     } on FirebaseException catch (error) {
       return AdminDocumentLink.failure(message: _describe(error, reference));
     } catch (_) {
@@ -272,6 +268,7 @@ class AdminDocumentService {
             file.bytes,
             SettableMetadata(
               contentType: adminAgreementContentType(file.extension),
+              cacheControl: 'private, no-store',
               // Le nom d'origine est conservé en métadonnée plutôt que dans le
               // chemin : il renseigne sans pouvoir changer où l'objet atterrit.
               customMetadata: <String, String>{'originalName': file.name},

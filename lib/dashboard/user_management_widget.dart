@@ -2,11 +2,14 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../config/app_environment.dart';
 import '../controller/user_controller.dart';
+import '../models/contract_status_proof.dart';
 import '../models/managed_account_provision_result.dart';
 import '../models/admin_action_response.dart';
 import '../models/membership.dart';
 import '../models/user.dart';
+import '../services/admin_content_service.dart';
 import '../services/managed_account_service.dart';
 import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
@@ -31,12 +34,14 @@ class UserManagementWidget extends StatefulWidget {
     required this.selectedRole,
     this.userController,
     this.managedAccountService,
+    this.adminContentService,
     super.key,
   });
 
   final String selectedRole;
   final UserController? userController;
   final ManagedAccountService? managedAccountService;
+  final AdminContentService? adminContentService;
 
   @override
   State<UserManagementWidget> createState() => _UserManagementWidgetState();
@@ -53,6 +58,14 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
 
   late final UserController _userController;
   late final ManagedAccountService _managedAccountService;
+  AdminContentService? _adminContentServiceInstance;
+
+  AdminContentService get _adminContentService =>
+      _adminContentServiceInstance ??=
+          widget.adminContentService ??
+          (AppEnvironmentConfig.visualQaMode
+              ? AdminContentService.visualQa()
+              : AdminContentService());
   String searchQuery = '';
   String? selectedRole;
   int currentPage = 0;
@@ -595,6 +608,49 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
     );
   }
 
+  bool _canRevokeContractProof(AppUser user) {
+    return user.isPlayer &&
+        !user.authDisabled &&
+        user.contractStatusProof.isApproved &&
+        user.contractStatusProof.hasFile;
+  }
+
+  Future<void> _revokeApprovedContractProof(AppUser user) async {
+    final proof = user.contractStatusProof;
+    if (!_canRevokeContractProof(user) || proof.fileUrl == null) {
+      showAdminFeedback(
+        title: 'Action indisponible',
+        message:
+            'Aucune pièce de statut contractuel approuvée à révoquer sur ce compte.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    final note = await showDialog<String?>(
+      context: context,
+      builder: (_) => _ContractProofRevokeReasonDialog(playerName: user.nom),
+    );
+    if (note == null || !mounted) {
+      return;
+    }
+
+    await _runAccountAction(
+      user: user,
+      action: reviewContractStatusProofAction,
+      request: () => _adminContentService.reviewContractStatusProof(
+        uid: user.uid,
+        expectedFileUrl: proof.fileUrl,
+        expectedStatus: ContractStatusProof.statusApproved,
+        expectedReviewRevision: proof.reviewRevision,
+        status: ContractStatusProof.statusRejected,
+        note: note,
+      ),
+      successMessage:
+          'Le statut contractuel publié de ${user.nom} a été révoqué.',
+    );
+  }
+
   Future<void> _withdrawMinorConsent(AppUser user) async {
     if (!user.isPlayer || !user.isMinorProfile) {
       showAdminFeedback(
@@ -608,7 +664,7 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
       title: withdrawManagedMinorConsentAction.label,
       message:
           'Confirmez-vous que la demande du parent ou tuteur a été vérifiée ? '
-          'La fiche sera masquée et les photos, CV et vidéos publiés seront supprimés.',
+          'La fiche sera masquée et les photos (y compris le passeport), CV et vidéos publiés seront supprimés.',
       confirmLabel: 'Retirer les autorisations',
     );
     if (!confirmed) return;
@@ -942,15 +998,21 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           icon: user.authDisabled
               ? Icons.lock_open_rounded
               : Icons.lock_outline_rounded,
-          label: user.authDisabled ? 'Réactiver l’accès' : 'Suspendre l’accès',
+          label: user.authDisabled
+              ? (user.awaitsGuardianConsent
+                    ? 'Enregistrez d’abord l’accord parental avant de réactiver l’accès'
+                    : 'Réactiver l’accès')
+              : 'Suspendre l’accès',
           color: user.authDisabled ? AdminTheme.success : AdminTheme.warning,
-          onPressed: () {
-            if (user.authDisabled) {
-              _enableManagedAccountAuth(user);
-            } else {
-              _disableManagedAccountAuth(user);
-            }
-          },
+          onPressed: user.authDisabled && user.awaitsGuardianConsent
+              ? null
+              : () {
+                  if (user.authDisabled) {
+                    _enableManagedAccountAuth(user);
+                  } else {
+                    _disableManagedAccountAuth(user);
+                  }
+                },
         ),
       ],
       overflow: [
@@ -981,6 +1043,13 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
                 : 'Habiliter le club',
             color: AdminTheme.cyan,
             onPressed: () => _manageClubEnrollment(user),
+          ),
+        if (_canRevokeContractProof(user))
+          AdminRowAction(
+            icon: Icons.gavel_rounded,
+            label: 'Révoquer le statut contractuel',
+            color: AdminTheme.warning,
+            onPressed: () => _revokeApprovedContractProof(user),
           ),
         if (isManaged) ...[
           AdminRowAction(
@@ -1058,6 +1127,11 @@ class _UserManagementWidgetState extends State<UserManagementWidget> {
           OutlinedButton(
             onPressed: busy ? null : () => _manageClubEnrollment(user),
             child: const Text('Habilitation'),
+          ),
+        if (_canRevokeContractProof(user))
+          OutlinedButton(
+            onPressed: busy ? null : () => _revokeApprovedContractProof(user),
+            child: const Text('Révoquer le statut contractuel'),
           ),
         if (canVerify && (user.profileVerified || !user.isMinorProfile))
           ElevatedButton(
@@ -1447,4 +1521,82 @@ enum _UserStatusFilter {
   needsReview,
   suspended,
   awaitingGuardianConsent,
+}
+
+class _ContractProofRevokeReasonDialog extends StatefulWidget {
+  const _ContractProofRevokeReasonDialog({required this.playerName});
+
+  final String playerName;
+
+  @override
+  State<_ContractProofRevokeReasonDialog> createState() =>
+      _ContractProofRevokeReasonDialogState();
+}
+
+class _ContractProofRevokeReasonDialogState
+    extends State<_ContractProofRevokeReasonDialog> {
+  final TextEditingController _noteController = TextEditingController();
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = _noteController.text.trim();
+    final canSubmit =
+        trimmed.isNotEmpty &&
+        trimmed.length <= ContractStatusProof.maxReviewNoteLength;
+
+    return AlertDialog(
+      title: Text('Révoquer le statut contractuel - ${widget.playerName}'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'La fiche publique cessera d’afficher le statut contractuel '
+              'approuvé. Cette révocation reste possible même si le fichier '
+              'justificatif a déjà été purgé.',
+              style: AdminType.caption.copyWith(color: AdminTheme.textSecondary),
+            ),
+            const SizedBox(height: AdminTheme.space3),
+            TextField(
+              controller: _noteController,
+              maxLines: 3,
+              maxLength: ContractStatusProof.maxReviewNoteLength,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Motif transmis au joueur',
+                hintText: 'Contrat expiré, pièce invalidée…',
+                border: const OutlineInputBorder(),
+                errorText: trimmed.isEmpty
+                    ? 'Un motif est requis pour révoquer une approbation.'
+                    : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AdminTheme.dangerText,
+            foregroundColor: AdminTheme.background,
+          ),
+          onPressed: canSubmit ? () => Navigator.of(context).pop(trimmed) : null,
+          icon: const Icon(Icons.gavel_rounded),
+          label: const Text('Révoquer'),
+        ),
+      ],
+    );
+  }
 }

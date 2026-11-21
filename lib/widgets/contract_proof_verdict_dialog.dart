@@ -117,7 +117,7 @@ class _ContractProofVerdictDialogState
     final declaredEnd = _declaredEndDate;
     final chosenEnd = _contractEndDate;
     if (declaredEnd == null || chosenEnd == null) return null;
-    if (!declaredEnd.isAtSameMomentAs(chosenEnd)) {
+    if (!ContractStatusProof.isSameUtcCalendarDate(declaredEnd, chosenEnd)) {
       return 'La fin de contrat déclarée est le '
           '${formatAdminDate(declaredEnd)} et vous approuvez le '
           '${formatAdminDate(chosenEnd)}. Rien ne sera publié tant que les '
@@ -160,7 +160,13 @@ class _ContractProofVerdictDialogState
     );
 
     if (picked == null) return;
-    setState(() => _contractEndDate = picked);
+    setState(
+      () => _contractEndDate = DateTime.utc(
+        picked.year,
+        picked.month,
+        picked.day,
+      ),
+    );
   }
 
   bool get _canSubmit {

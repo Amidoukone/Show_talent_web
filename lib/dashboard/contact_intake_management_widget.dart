@@ -256,159 +256,16 @@ class _ContactIntakeManagementWidgetState
     ContactIntake intake, {
     String? initialStatus,
   }) {
-    final noteController = TextEditingController(
-      text: intake.agencyFollowUpNote ?? '',
-    );
-    var selectedStatus = AgencyFollowUpStatus.normalize(
-      initialStatus ?? intake.agencyFollowUpStatus,
-    );
-    String? validationError;
-
     return showDialog<_FollowUpUpdateDraft>(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(
-                initialStatus == null
-                    ? 'Mettre à jour le suivi agence'
-                    : 'Avancer l’opportunité',
-              ),
-              content: SizedBox(
-                width: 560,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${intake.requesterDisplayName} -> ${intake.targetDisplayName}',
-                        style: const TextStyle(
-                          color: AdminTheme.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Motif : ${intake.reasonLabel}',
-                        style: const TextStyle(color: AdminTheme.textSecondary),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _pipelineStages.map((stage) {
-                          final selected = selectedStatus == stage.status;
-                          final color = _followUpColor(stage.status);
-                          return ChoiceChip(
-                            label: Text(stage.title),
-                            selected: selected,
-                            showCheckmark: false,
-                            selectedColor: color.withValues(alpha: 0.22),
-                            backgroundColor: AdminTheme.surfaceSoft.withValues(
-                              alpha: 0.48,
-                            ),
-                            side: BorderSide(
-                              color: selected
-                                  ? color.withValues(alpha: 0.72)
-                                  : AdminTheme.border.withValues(alpha: 0.74),
-                            ),
-                            labelStyle: TextStyle(
-                              color: selected
-                                  ? color
-                                  : AdminTheme.textSecondary,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                            ),
-                            onSelected: (_) {
-                              setDialogState(() {
-                                selectedStatus = stage.status;
-                                validationError = null;
-                              });
-                            },
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 14),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedStatus,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Statut de suivi',
-                        ),
-                        items: ContactIntakeController.followUpStatuses
-                            .map(
-                              (status) => DropdownMenuItem<String>(
-                                value: status,
-                                child: Text(AgencyFollowUpStatus.label(status)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setDialogState(() {
-                            selectedStatus = value;
-                            validationError = null;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: noteController,
-                        maxLines: 4,
-                        maxLength: 500,
-                        decoration: InputDecoration(
-                          labelText: 'Note agence',
-                          hintText:
-                              'Contexte terrain, action demandée ou suite donnée.',
-                          errorText: validationError,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _requiresFollowUpNote(selectedStatus)
-                            ? 'Note requise pour garder une trace exploitable de la décision.'
-                            : 'La note reste optionnelle au stade nouveau lead.',
-                        style: AdminType.caption,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Annuler'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    final note = noteController.text.trim();
-                    if (_requiresFollowUpNote(selectedStatus) &&
-                        note.length < 8) {
-                      setDialogState(() {
-                        validationError =
-                            'Ajoutez une note concrète avant de changer ce statut.';
-                      });
-                      return;
-                    }
-
-                    Navigator.of(dialogContext).pop(
-                      _FollowUpUpdateDraft(status: selectedStatus, note: note),
-                    );
-                  },
-                  icon: const Icon(Icons.save_outlined),
-                  label: const Text('Enregistrer'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).whenComplete(noteController.dispose);
+      builder: (_) => _ContactIntakeFollowUpDialog(
+        intake: intake,
+        initialStatus: initialStatus,
+        pipelineStages: _pipelineStages,
+        followUpColor: _followUpColor,
+        requiresFollowUpNote: _requiresFollowUpNote,
+      ),
+    );
   }
 
   Future<void> _updateFollowUp(
@@ -1202,4 +1059,184 @@ class _FollowUpUpdateDraft {
 
   final String status;
   final String note;
+}
+
+class _ContactIntakeFollowUpDialog extends StatefulWidget {
+  const _ContactIntakeFollowUpDialog({
+    required this.intake,
+    required this.initialStatus,
+    required this.pipelineStages,
+    required this.followUpColor,
+    required this.requiresFollowUpNote,
+  });
+
+  final ContactIntake intake;
+  final String? initialStatus;
+  final List<_PipelineStage> pipelineStages;
+  final Color Function(String status) followUpColor;
+  final bool Function(String status) requiresFollowUpNote;
+
+  @override
+  State<_ContactIntakeFollowUpDialog> createState() =>
+      _ContactIntakeFollowUpDialogState();
+}
+
+class _ContactIntakeFollowUpDialogState
+    extends State<_ContactIntakeFollowUpDialog> {
+  late final TextEditingController _noteController;
+  late String _selectedStatus;
+  String? _validationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _noteController = TextEditingController(
+      text: widget.intake.agencyFollowUpNote ?? '',
+    );
+    _selectedStatus = AgencyFollowUpStatus.normalize(
+      widget.initialStatus ?? widget.intake.agencyFollowUpStatus,
+    );
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        widget.initialStatus == null
+            ? 'Mettre à jour le suivi agence'
+            : 'Avancer l’opportunité',
+      ),
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${widget.intake.requesterDisplayName} -> ${widget.intake.targetDisplayName}',
+                style: const TextStyle(
+                  color: AdminTheme.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Motif : ${widget.intake.reasonLabel}',
+                style: const TextStyle(color: AdminTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: widget.pipelineStages.map((stage) {
+                  final selected = _selectedStatus == stage.status;
+                  final color = widget.followUpColor(stage.status);
+                  return ChoiceChip(
+                    label: Text(stage.title),
+                    selected: selected,
+                    showCheckmark: false,
+                    selectedColor: color.withValues(alpha: 0.22),
+                    backgroundColor: AdminTheme.surfaceSoft.withValues(
+                      alpha: 0.48,
+                    ),
+                    side: BorderSide(
+                      color: selected
+                          ? color.withValues(alpha: 0.72)
+                          : AdminTheme.border.withValues(alpha: 0.74),
+                    ),
+                    labelStyle: TextStyle(
+                      color: selected ? color : AdminTheme.textSecondary,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedStatus = stage.status;
+                        _validationError = null;
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedStatus,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Statut de suivi',
+                ),
+                items: ContactIntakeController.followUpStatuses
+                    .map(
+                      (status) => DropdownMenuItem<String>(
+                        value: status,
+                        child: Text(AgencyFollowUpStatus.label(status)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedStatus = value;
+                    _validationError = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _noteController,
+                maxLines: 4,
+                maxLength: 500,
+                decoration: InputDecoration(
+                  labelText: 'Note agence',
+                  hintText:
+                      'Contexte terrain, action demandée ou suite donnée.',
+                  errorText: _validationError,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.requiresFollowUpNote(_selectedStatus)
+                    ? 'Note requise pour garder une trace exploitable de la décision.'
+                    : 'La note reste optionnelle au stade nouveau lead.',
+                style: AdminType.caption,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton.icon(
+          onPressed: () {
+            final note = _noteController.text.trim();
+            if (widget.requiresFollowUpNote(_selectedStatus) &&
+                note.length < 8) {
+              setState(() {
+                _validationError =
+                    'Ajoutez une note concrète avant de changer ce statut.';
+              });
+              return;
+            }
+
+            Navigator.of(
+              context,
+            ).pop(_FollowUpUpdateDraft(status: _selectedStatus, note: note));
+          },
+          icon: const Icon(Icons.save_outlined),
+          label: const Text('Enregistrer'),
+        ),
+      ],
+    );
+  }
 }

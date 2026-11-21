@@ -83,7 +83,11 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       lastDate: latestEligibleDate,
       helpText: 'Date de naissance du joueur',
     );
-    if (picked != null && mounted) setState(() => _birthDate = picked);
+    if (picked != null && mounted) {
+      setState(
+        () => _birthDate = DateTime.utc(picked.year, picked.month, picked.day),
+      );
+    }
   }
 
   Map<String, dynamic>? _guardianConsentPayload() {

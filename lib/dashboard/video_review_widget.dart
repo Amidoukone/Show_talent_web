@@ -407,76 +407,11 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     }
   }
 
-  Future<String?> _askRejectionReason(Video video) async {
-    final controller = TextEditingController();
-    try {
-      return await showDialog<String?>(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              final hasReason = controller.text.trim().isNotEmpty;
-              return AlertDialog(
-                title: const Text('Refuser la vidéo'),
-                content: SizedBox(
-                  width: 480,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        video.displayTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: controller,
-                        maxLines: 3,
-                        maxLength: 500,
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: 'Motif envoyé au joueur',
-                          hintText:
-                              'Exemple : action peu visible, qualité insuffisante…',
-                          errorText: hasReason
-                              ? null
-                              // This deletes the video permanently once
-                              // confirmed -- a reason is required so an
-                              // empty-text misclick can't slip through.
-                              : 'Un motif est requis avant suppression.',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(null),
-                    child: const Text('Annuler'),
-                  ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AdminTheme.dangerText,
-                      foregroundColor: AdminTheme.background,
-                    ),
-                    onPressed: hasReason
-                        ? () =>
-                              Navigator.of(context).pop(controller.text.trim())
-                        : null,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    label: const Text('Refuser et supprimer'),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      controller.dispose();
-    }
+  Future<String?> _askRejectionReason(Video video) {
+    return showDialog<String?>(
+      context: context,
+      builder: (_) => _VideoRejectionReasonDialog(title: video.displayTitle),
+    );
   }
 
   Widget _buildPreview(Video video, {required bool dense}) {
@@ -803,5 +738,85 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
               ),
       );
     });
+  }
+}
+
+class _VideoRejectionReasonDialog extends StatefulWidget {
+  const _VideoRejectionReasonDialog({required this.title});
+
+  final String title;
+
+  @override
+  State<_VideoRejectionReasonDialog> createState() =>
+      _VideoRejectionReasonDialogState();
+}
+
+class _VideoRejectionReasonDialogState
+    extends State<_VideoRejectionReasonDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasReason = _controller.text.trim().isNotEmpty;
+
+    return AlertDialog(
+      title: const Text('Refuser la vidéo'),
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _controller,
+              maxLines: 3,
+              maxLength: 500,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Motif envoyé au joueur',
+                hintText:
+                    'Exemple : action peu visible, qualité insuffisante…',
+                errorText: hasReason
+                    ? null
+                    // This deletes the video permanently once confirmed -- a
+                    // reason is required so an empty-text misclick cannot slip
+                    // through.
+                    : 'Un motif est requis avant suppression.',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AdminTheme.dangerText,
+            foregroundColor: AdminTheme.background,
+          ),
+          onPressed: hasReason
+              ? () => Navigator.of(context).pop(_controller.text.trim())
+              : null,
+          icon: const Icon(Icons.delete_outline_rounded),
+          label: const Text('Refuser et supprimer'),
+        ),
+      ],
+    );
   }
 }

@@ -253,7 +253,7 @@ reviewContractStatusProofAction = AdminCallableActionDescriptor(
   callableName: 'reviewContractStatusProof',
   summary:
       "Approuve ou écarte la pièce déposée par un joueur. Une approbation dit quel statut la pièce justifie : la fiche publique n’affiche ce statut que si le joueur déclare exactement le même.",
-  uiSurfaces: ['ContractProofReviewWidget'],
+  uiSurfaces: ['ContractProofReviewWidget', 'UserManagementWidget'],
   isAvailableInBackend: true,
   isConnectedInUi: true,
 );

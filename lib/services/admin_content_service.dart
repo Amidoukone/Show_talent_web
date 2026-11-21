@@ -162,6 +162,8 @@ class AdminContentService {
   Future<AdminActionResponse> reviewContractStatusProof({
     required String uid,
     String? expectedFileUrl,
+    String expectedStatus = ContractStatusProof.statusPending,
+    int? expectedReviewRevision,
     required String status,
     String? contractStatus,
     DateTime? contractEndDate,
@@ -173,6 +175,16 @@ class AdminContentService {
         AdminActionResponse.failure(
           code: 'invalid_uid',
           message: 'Aucun joueur désigné pour cet examen.',
+        ),
+      );
+    }
+
+    final normalizedExpectedStatus = expectedStatus.trim().toLowerCase();
+    if (!ContractStatusProof.allStatuses.contains(normalizedExpectedStatus)) {
+      return Future.value(
+        AdminActionResponse.failure(
+          code: 'invalid_expected_status',
+          message: 'État de réexamen invalide.',
         ),
       );
     }
@@ -224,15 +236,19 @@ class AdminContentService {
       payload: <String, dynamic>{
         'uid': normalizedUid,
         'expectedFileUrl': expectedFileUrl.trim(),
-        'expectedStatus': ContractStatusProof.statusPending,
+        'expectedStatus': normalizedExpectedStatus,
+        'expectedReviewRevision': ?expectedReviewRevision,
         'status': normalizedStatus,
         if (normalizedStatus == ContractStatusProof.statusApproved)
           'contractStatus': normalizedContractStatus,
         // Envoyée seulement quand elle existe : le serveur retombe alors sur
         // la date déjà portée par la fiche du joueur, ce qui est le bon
-        // comportement quand l’opérateur n’a rien à corriger.
+        // comportement quand l’opérateur n’a rien à corriger. Normalisée au
+        // jour calendaire UTC pour éviter un décalage d’un jour hors UTC+0.
         if (contractEndDate != null)
-          'contractEndDate': contractEndDate.toUtc().toIso8601String(),
+          'contractEndDate': ContractStatusProof.toUtcCalendarDateIso(
+            contractEndDate,
+          ),
         if (normalizedNote.isNotEmpty) 'note': normalizedNote,
       },
       fallbackMessage:

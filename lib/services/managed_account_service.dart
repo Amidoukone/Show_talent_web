@@ -80,7 +80,11 @@ class ManagedAccountService {
         if (phone case final value? when value.trim().isNotEmpty)
           'phone': value.trim(),
         if (birthDate case final value?)
-          'birthDate': value.toUtc().toIso8601String(),
+          'birthDate': DateTime.utc(
+            value.year,
+            value.month,
+            value.day,
+          ).toIso8601String(),
         'guardianConsent': guardianConsent,
       },
     );

@@ -181,7 +181,9 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
     if (picked == null || !mounted) {
       return;
     }
-    setState(() => _birthDate = picked);
+    setState(
+      () => _birthDate = DateTime.utc(picked.year, picked.month, picked.day),
+    );
   }
 
   Widget _buildBirthDateField() {
@@ -214,17 +216,6 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
             style: AdminType.caption,
           ),
         ),
-        if (_user.profileVerified) ...[
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Modifier la date retire la certification jusqu’à un nouveau '
-              'contrôle : l’âge est un fait que le recruteur croit sur parole.',
-              style: AdminType.caption.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -255,7 +246,10 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
       // l'année — et la stocke en `Timestamp`, la forme que le mobile écrit
       // déjà. `null` efface, ce qui est le bon geste pour une date inventée.
       if (widget.contactLoaded && !_isSameDay(_birthDate, _user.birthDate)) {
-        patch['birthDate'] = _birthDate?.toIso8601String();
+        final date = _birthDate;
+        patch['birthDate'] = date == null
+            ? null
+            : DateTime.utc(date.year, date.month, date.day).toIso8601String();
       }
       if (_requiresGuardianConsent && _hasValidGuardianConsent()) {
         patch['guardianConsent'] = _guardianConsentPayload();
@@ -332,6 +326,18 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (_user.profileVerified) ...[
+                  Text(
+                    'Ce profil est certifié : modifier les informations '
+                    'd’identité, de date de naissance, de poste, de club, de '
+                    'parcours ou de licence retire la certification jusqu’à un '
+                    'nouveau contrôle.',
+                    style: AdminType.caption.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 TextFormField(
                   controller: _nomController,
                   decoration: const InputDecoration(labelText: 'Nom'),

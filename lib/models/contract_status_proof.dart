@@ -34,6 +34,7 @@ class ContractStatusProof {
     this.reviewNote,
     this.approvedContractStatus,
     this.approvedContractEndDate,
+    this.reviewRevision = 0,
   });
 
   /// L'état d'un joueur qui n'a jamais rien déposé.
@@ -54,6 +55,13 @@ class ContractStatusProof {
   /// refuse qu'un examen y ramène une pièce. Remettre une pièce en attente
   /// n'est pas une décision, c'est l'absence de décision.
   static const List<String> verdicts = <String>[statusApproved, statusRejected];
+
+  /// Tous les états connus d'une pièce, utilisés comme précondition d'examen.
+  static const List<String> allStatuses = <String>[
+    statusPending,
+    statusApproved,
+    statusRejected,
+  ];
 
   /// Longueur maximale d'un motif d'examen, alignée sur le callable
   /// (`MAX_REVIEW_NOTE_LENGTH`).
@@ -83,9 +91,29 @@ class ContractStatusProof {
   /// Fin de contrat couverte par l'examen, quand le statut en attend une.
   final DateTime? approvedContractEndDate;
 
+  /// Révision d'examen incrémentée par le backend à chaque verdict.
+  ///
+  /// Sert de précondition optimiste pour révoquer une pièce déjà approuvée
+  /// sans écraser une décision concurrente.
+  final int reviewRevision;
+
   bool get isPending => submitted && status == statusPending;
   bool get isApproved => submitted && status == statusApproved;
   bool get isRejected => submitted && status == statusRejected;
+
+  /// Compare deux dates au jour calendaire UTC (sans exiger l'égalité à la
+  /// milliseconde, qui varie selon le fuseau horaire du navigateur).
+  static bool isSameUtcCalendarDate(DateTime left, DateTime right) {
+    final a = left.toUtc();
+    final b = right.toUtc();
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  /// Sérialise une date calendaire (ex. issue d'un sélecteur) à minuit UTC
+  /// sans subir de décalage de fuseau horaire.
+  static String toUtcCalendarDateIso(DateTime date) {
+    return DateTime.utc(date.year, date.month, date.day).toIso8601String();
+  }
 
   /// Si une pièce est lisible, c'est-à-dire ouvrable par le portail.
   bool get hasFile => (fileUrl?.trim().isNotEmpty ?? false);
@@ -141,7 +169,7 @@ class ContractStatusProof {
     final declaredEnd = football.contractEndDate;
     final approvedEnd = approvedContractEndDate;
     if (declaredEnd == null || approvedEnd == null) return null;
-    return declaredEnd.isAtSameMomentAs(approvedEnd) ? approved : null;
+    return isSameUtcCalendarDate(declaredEnd, approvedEnd) ? approved : null;
   }
 
   /// Si une pièce approuvée ne publie rien, le joueur ayant changé d'avis.
@@ -165,6 +193,13 @@ class ContractStatusProof {
     return (normalized == null || normalized.isEmpty) ? null : normalized;
   }
 
+  static int _readNonNegativeInt(Object? value) {
+    if (value is int && value >= 0) return value;
+    if (value is num && value >= 0) return value.toInt();
+    final parsed = int.tryParse(value?.toString() ?? '');
+    return (parsed != null && parsed >= 0) ? parsed : 0;
+  }
+
   factory ContractStatusProof.fromMap(Object? raw) {
     if (raw is! Map) return absent;
     final map = Map<String, dynamic>.from(raw);
@@ -181,6 +216,7 @@ class ContractStatusProof {
         map['approvedContractStatus'],
       ),
       approvedContractEndDate: _readDate(map['approvedContractEndDate']),
+      reviewRevision: _readNonNegativeInt(map['reviewRevision']),
     );
   }
 
@@ -204,6 +240,7 @@ class ContractStatusProof {
         'approvedContractStatus': approvedContractStatus!.code,
       if (approvedContractEndDate != null)
         'approvedContractEndDate': Timestamp.fromDate(approvedContractEndDate!),
+      if (reviewRevision > 0) 'reviewRevision': reviewRevision,
     };
   }
 }

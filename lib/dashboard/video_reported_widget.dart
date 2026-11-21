@@ -64,6 +64,15 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
         .nom;
   }
 
+  String _subjectLabel(Video video) {
+    if (!video.isClubUpload) {
+      return _resolveUserName(video.uid);
+    }
+
+    final name = _resolveUserName(video.playerUid);
+    return name == 'Inconnu' ? video.playerUid : name;
+  }
+
   String _secondaryLabel(Video video) {
     final songName = video.songName.trim();
     if (songName.isNotEmpty &&
@@ -124,7 +133,9 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       userId: video.uid,
       videoId: video.id,
       title: video.displayTitle,
-      authorName: _resolveUserName(video.uid),
+      authorName: video.isClubUpload
+          ? '${_subjectLabel(video)} (via ${_resolveUserName(video.uid)})'
+          : _resolveUserName(video.uid),
       metadata: _metadata(video),
       decisions: [
         AdminVideoDecision(
@@ -215,9 +226,14 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
       ),
       fields: [
         AdminDataCardField(
-          label: 'Ajoutée par',
-          value: Text(_resolveUserName(video.uid)),
+          label: 'Joueur montré',
+          value: Text(_subjectLabel(video)),
         ),
+        if (video.isClubUpload)
+          AdminDataCardField(
+            label: 'Déposée par',
+            value: Text(_resolveUserName(video.uid)),
+          ),
         AdminDataCardField(
           label: 'Référence',
           value: Text(_compactVideoId(video.id)),
@@ -283,6 +299,8 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
           video.songName,
           video.uid,
           _resolveUserName(video.uid),
+          video.playerUid,
+          _subjectLabel(video),
           video.status,
           video.moderationStatus,
           video.id,
@@ -363,8 +381,14 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
           columns: const [
             AdminColumn(label: '', width: 80),
             AdminColumn(label: 'Contenu', flex: 4),
-            AdminColumn(label: 'Ajoutée par', flex: 2),
-            AdminColumn(label: 'Signalements', width: 140),
+            AdminColumn(
+              label: 'Joueur montré',
+              flex: 2,
+              tooltip:
+                  'Le joueur que la vidéo expose. Sur un dépôt de club, ce '
+                  'n’est pas l’auteur : le club apparaît en dessous.',
+            ),
+            AdminColumn(label: 'Signalements', flex: 2),
             AdminColumn(label: '', width: 72, alignRight: true),
           ],
           rowCount: displayedVideos.length,
@@ -377,11 +401,16 @@ class _VideoReportedWidgetState extends State<VideoReportedWidget> {
             return [
               _buildPreview(video, dense: true),
               _buildTitleCell(video),
-              Text(
-                _resolveUserName(video.uid),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              video.isClubUpload
+                  ? AdminCellIdentity(
+                      title: _subjectLabel(video),
+                      subtitle: 'Déposée par ${_resolveUserName(video.uid)}',
+                    )
+                  : Text(
+                      _subjectLabel(video),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
               AdminPill(
                 label: '${video.reportCount} signalement(s)',
                 icon: Icons.flag_outlined,

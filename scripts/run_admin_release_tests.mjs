@@ -86,6 +86,10 @@ const groups = [
     name: 'User management widget',
     tests: ['test/user_management_widget_test.dart'],
   },
+  {
+    name: 'Audit 2026-11-21 cross-repo coherence',
+    tests: ['test/audit_2026_11_21_coherence_test.dart'],
+  },
 ];
 
 for (const group of groups) {

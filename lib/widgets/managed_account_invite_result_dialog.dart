@@ -81,6 +81,14 @@ class ManagedAccountInviteSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!result.hasPasswordSetupLink && !result.inviteEmailSent) {
+      return AdminInfoBanner(
+        title: 'Invitation en attente',
+        message: result.inviteEmailStatusMessage,
+        icon: Icons.hourglass_empty_rounded,
+        tone: AdminBannerTone.warning,
+      );
+    }
     final whatsappMessage = result.buildWhatsappMessage(
       recipientName: recipientName,
     );

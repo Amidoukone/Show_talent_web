@@ -359,8 +359,8 @@ class _ManagedAccountsWidgetState extends State<ManagedAccountsWidget> {
       ),
       if (!_guardianConsentReceived)
         const Text(
-          'Vous pouvez créer le compte sans cette information et enregistrer '
-          'l’accord plus tard depuis la gestion du compte.',
+          'Le dossier peut être préparé. Avant l’invitation, enregistrez '
+          'l’accord parental puis activez le compte.',
           style: AdminType.caption,
         )
       else ...[

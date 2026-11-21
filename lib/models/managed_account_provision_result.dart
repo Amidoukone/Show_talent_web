@@ -57,6 +57,10 @@ class ManagedAccountProvisionResult {
     }
 
     switch (inviteEmailReason) {
+      case 'guardian_consent_pending':
+        return 'Enregistrez l’accord parental, activez le compte puis renvoyez l’invitation.';
+      case 'account_disabled':
+        return 'Activez le compte avant de renvoyer l’invitation.';
       case 'not_configured':
         return 'L’envoi automatique n’est pas configuré sur le serveur. '
             'Transmettez le lien ci-dessous au titulaire.';

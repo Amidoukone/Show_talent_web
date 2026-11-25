@@ -131,8 +131,12 @@ class PlayerFootballProfile {
   /// liste, et une liste ne se filtre plus utilement.
   static const int maxNationalities = 3;
 
+  // birthYear est volontairement exclu : c'est une donnee d'inscription,
+  // posee par le club ou l'administration a la creation du compte, jamais
+  // une information footballistique que le joueur a ajoutee. La compter ici
+  // faisait passer n'importe quel compte neuf pour un profil avance des
+  // sa creation, sans qu'aucun fait reel n'ait ete saisi.
   bool get isEmpty =>
-      birthYear == null &&
       nationalities.isEmpty &&
       positions.isEmpty &&
       strongFoot == null &&

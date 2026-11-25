@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
@@ -145,10 +146,16 @@ class AdminDocumentService {
   Future<AdminDocumentLink> _read(AdminStorageReference reference) async {
     try {
       final file = _storage!.ref(reference.objectPath);
+      // readPrivateDocumentBytes sur le web appelle le SDK JS modulaire par
+      // interop brut (voir private_document_bytes_web.dart) : une promesse
+      // JS qui ne se resout ni ne rejette jamais laisserait cet appel
+      // suspendu pour toujours, sans la moindre erreur a attraper -- le
+      // bouton resterait discretement desactive, sans aucun message. Cette
+      // limite transforme ce silence en un echec explicite et reessayable.
       final bytes = await readPrivateDocumentBytes(
         file,
         adminAgreementMaxBytes,
-      );
+      ).timeout(const Duration(seconds: 20));
       if (bytes == null ||
           bytes.isEmpty ||
           bytes.length > adminAgreementMaxBytes) {
@@ -157,6 +164,12 @@ class AdminDocumentService {
         );
       }
       return AdminDocumentLink.resolved(bytes: bytes, reference: reference);
+    } on TimeoutException {
+      return const AdminDocumentLink.failure(
+        message:
+            'Le document n’a pas répondu à temps. Vérifiez votre connexion '
+            'puis réessayez.',
+      );
     } on FirebaseException catch (error) {
       return AdminDocumentLink.failure(message: _describe(error, reference));
     } catch (_) {

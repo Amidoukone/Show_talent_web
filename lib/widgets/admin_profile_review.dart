@@ -435,7 +435,9 @@ class ProfileReviewContent extends StatelessWidget {
         _ProfileReviewItem(
           label: 'Numéro de licence du club',
           value:
-              user.clubProfile?['licenseNumber']?.toString() ?? 'Non renseigné',
+              user.club.federationId ??
+              user.clubProfile?['licenseNumber']?.toString() ??
+              'Non renseigné',
         ),
         _ProfileReviewItem(
           label: 'Profil club avancé',
@@ -459,6 +461,7 @@ class ProfileReviewContent extends StatelessWidget {
               ? 'Numéro de licence'
               : 'Référence de licence ou d’agrément',
           value:
+              user.agent.licenceNumber ??
               user.agentProfile?['licenseNumber']?.toString() ??
               'Non renseigné',
         ),
@@ -488,12 +491,20 @@ class ProfileReviewContent extends StatelessWidget {
         .join(' | ');
   }
 
+  // Recursif plutot que figé sur les champs d'un seul role : ce resume sert
+  // aux profils joueur, club et agent/recruteur a la fois, avec chacun ses
+  // propres champs legues. Une liste de maps (ex. `clubProfile.needs`)
+  // appelait auparavant le toString() brut de chaque Map Dart ("{priority:
+  // null, position: Défenseurs}"), illisible pour un operateur.
   static String _formatValue(dynamic value) {
     if (value is List) {
-      return value.join(', ');
+      return value.map(_formatValue).join(', ');
     }
     if (value is Map) {
-      return '${value.length} champs';
+      if (value.isEmpty) return 'Non renseigné';
+      return value.entries
+          .map((entry) => '${entry.key}: ${_formatValue(entry.value)}')
+          .join(', ');
     }
     return value?.toString() ?? 'Non renseigné';
   }

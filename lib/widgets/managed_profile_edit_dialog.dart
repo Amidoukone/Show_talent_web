@@ -105,10 +105,12 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
       return _user.playerProfile?['licenseNumber']?.toString();
     }
     if (_user.isClub) {
-      return _user.clubProfile?['licenseNumber']?.toString();
+      return _user.club.federationId ??
+          _user.clubProfile?['licenseNumber']?.toString();
     }
     if (_user.isRecruiter) {
-      return _user.agentProfile?['licenseNumber']?.toString();
+      return _user.agent.licenceNumber ??
+          _user.agentProfile?['licenseNumber']?.toString();
     }
     return null;
   }
@@ -278,7 +280,7 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
       }
       final license = _trimOrNull(_licenseController.text);
       if (license != _currentLicenseNumber()) {
-        patch['agentProfile'] = {'licenseNumber': license};
+        patch['agentLicenceNumber'] = license;
       }
     }
 

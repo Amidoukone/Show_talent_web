@@ -633,7 +633,8 @@ class AppUser {
       // complet » inatteignable pour un joueur.
       case 'joueur':
         return nom.isNotEmpty &&
-            ((team?.trim().isNotEmpty ?? false) ||
+            ((football.currentClubName?.trim().isNotEmpty ?? false) ||
+                (team?.trim().isNotEmpty ?? false) ||
                 (clubActuel?.trim().isNotEmpty ?? false));
       case 'club':
         return nom.isNotEmpty && (ligue?.isNotEmpty ?? false);

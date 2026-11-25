@@ -539,4 +539,79 @@ void main() {
       },
     );
   });
+
+  group('Pass 3 coherence regressions', () {
+    test(
+      'AppUser.isMvpProfileComplete accepte currentClubName sans champ legacy',
+      () {
+        final modernPlayer = AppUser.fromMap(<String, dynamic>{
+          'uid': 'player-modern',
+          'nom': 'Ibrahima',
+          'email': 'ibrahima@example.com',
+          'role': 'joueur',
+          'currentClubName': 'Djoliba AC',
+          'dateInscription': DateTime.utc(2026, 1, 10),
+          'dernierLogin': DateTime.utc(2026, 11, 18),
+        });
+        final clublessPlayer = AppUser.fromMap(<String, dynamic>{
+          'uid': 'player-no-club',
+          'nom': 'Ibrahima',
+          'email': 'ibrahima2@example.com',
+          'role': 'joueur',
+          'dateInscription': DateTime.utc(2026, 1, 10),
+          'dernierLogin': DateTime.utc(2026, 11, 18),
+        });
+
+        expect(modernPlayer.isMvpProfileComplete, isTrue);
+        expect(clublessPlayer.isMvpProfileComplete, isFalse);
+      },
+    );
+
+    testWidgets(
+      'ManagedProfileEditDialog lit agent.licenceNumber et écrit agentLicenceNumber',
+      (tester) async {
+        Map<String, dynamic>? submittedPatch;
+        final agentUser = AppUser.fromMap(<String, dynamic>{
+          'uid': 'agent-pass3',
+          'nom': 'Agent FIFA',
+          'email': 'agent@example.com',
+          'role': 'agent',
+          'entreprise': 'Adfoot Scouting',
+          'agentLicenceNumber': 'FIFA-1234',
+          'dateInscription': DateTime.utc(2026, 1, 10),
+          'dernierLogin': DateTime.utc(2026, 11, 18),
+        });
+
+        await pumpAdminTestApp(
+          tester,
+          Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                submittedPatch = await showDialog<Map<String, dynamic>>(
+                  context: context,
+                  builder: (_) => ManagedProfileEditDialog(user: agentUser),
+                );
+              },
+              child: const Text('Ouvrir'),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Ouvrir'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('FIFA-1234'), findsOneWidget);
+        await tester.enterText(
+          find.widgetWithText(TextFormField, 'Numéro de licence'),
+          'FIFA-9999',
+        );
+        await tester.pump();
+        await tester.tap(find.text('Enregistrer'));
+        await tester.pumpAndSettle();
+
+        expect(submittedPatch, isNotNull);
+        expect(submittedPatch!['agentLicenceNumber'], 'FIFA-9999');
+        expect(submittedPatch!.containsKey('agentProfile'), isFalse);
+      },
+    );
+  });
 }

@@ -9,6 +9,7 @@ import '../config/app_environment.dart';
 import '../models/admin_action_response.dart';
 import '../models/offre.dart';
 import '../services/admin_content_service.dart';
+import 'paged_firestore_merge.dart';
 
 class OffreController extends GetxController {
   OffreController({
@@ -61,9 +62,11 @@ class OffreController extends GetxController {
   // 500+500+500. Ces pages supplémentaires ne sont PAS temps réel — un
   // changement sur une offre qui s'y trouve n'apparaît qu'au prochain
   // rechargement complet (retry/reconnexion), pas tout seul.
-  List<Offre> _firstPage = <Offre>[];
-  List<Offre> _extraPages = <Offre>[];
-  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
+  final PagedFirestoreMerge<Offre, DocumentSnapshot<Map<String, dynamic>>>
+  _paged = PagedFirestoreMerge(
+    idOf: (offre) => offre.id,
+    compare: (a, b) => b.dateCreation.compareTo(a.dateCreation),
+  );
   bool _isLoadingMore = false;
 
   final RxList<Offre> offres = <Offre>[].obs;
@@ -73,23 +76,6 @@ class OffreController extends GetxController {
 
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _offresSubscription;
-
-  /// Fusionne la page temps réel et les pages par curseur, en dédoublonnant
-  /// par id (la page temps réel l'emporte en cas de conflit, étant la plus
-  /// fraîche) : un document ne doit jamais apparaître deux fois si son
-  /// curseur de frontière a bougé entre deux "charger plus".
-  void _recomputeOffres() {
-    final byId = <String, Offre>{};
-    for (final offre in _extraPages) {
-      byId[offre.id] = offre;
-    }
-    for (final offre in _firstPage) {
-      byId[offre.id] = offre;
-    }
-    final merged = byId.values.toList()
-      ..sort((a, b) => b.dateCreation.compareTo(a.dateCreation));
-    offres.assignAll(merged);
-  }
 
   @override
   void onInit() {
@@ -124,8 +110,7 @@ class OffreController extends GetxController {
 
     isLoading.value = true;
     _offresSubscription?.cancel();
-    _extraPages = <Offre>[];
-    _lastDocument = null;
+    _paged.reset();
 
     _offresSubscription = _firestore!
         .collection('offres')
@@ -144,11 +129,12 @@ class OffreController extends GetxController {
               }
             }
 
-            _firstPage = parsed;
-            if (snapshot.docs.isNotEmpty) {
-              _lastDocument = snapshot.docs.last;
-            }
-            _recomputeOffres();
+            offres.assignAll(
+              _paged.applyFirstPage(
+                parsed,
+                snapshot.docs.isEmpty ? null : snapshot.docs.last,
+              ),
+            );
             hasMore.value = snapshot.docs.length >= _initialLoadLimit;
             lastError.value = '';
             isLoading.value = false;
@@ -167,7 +153,7 @@ class OffreController extends GetxController {
   /// déjà chargé, par curseur plutôt qu'en relisant tout depuis le début.
   Future<void> loadMoreOffres() async {
     if (!hasMore.value || _isLoadingMore) return;
-    final cursor = _lastDocument;
+    final cursor = _paged.cursor;
     if (cursor == null) return;
 
     _isLoadingMore = true;
@@ -188,12 +174,13 @@ class OffreController extends GetxController {
         }
       }
 
-      _extraPages = <Offre>[..._extraPages, ...parsed];
-      if (snapshot.docs.isNotEmpty) {
-        _lastDocument = snapshot.docs.last;
-      }
+      offres.assignAll(
+        _paged.appendPage(
+          parsed,
+          snapshot.docs.isEmpty ? null : snapshot.docs.last,
+        ),
+      );
       hasMore.value = snapshot.docs.length >= _loadMoreIncrement;
-      _recomputeOffres();
     } catch (error) {
       debugPrint('Chargement supplémentaire des offres impossible : $error');
       lastError.value =
@@ -221,9 +208,7 @@ class OffreController extends GetxController {
       lastError.value = '';
       isLoading.value = false;
       hasMore.value = false;
-      _firstPage = <Offre>[];
-      _extraPages = <Offre>[];
-      _lastDocument = null;
+      _paged.reset();
     }
   }
 

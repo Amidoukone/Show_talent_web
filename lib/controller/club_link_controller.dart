@@ -9,6 +9,7 @@ import '../config/app_environment.dart';
 import '../models/admin_action_response.dart';
 import '../models/player_club_link.dart';
 import '../services/admin_content_service.dart';
+import 'paged_firestore_merge.dart';
 
 /// Les rattachements joueur-club encore en cours, et les exceptions qu'ils
 /// portent.
@@ -49,11 +50,25 @@ class ClubLinkController extends GetxController {
   static const int _initialLoadLimit = 500;
   static const int _loadMoreIncrement = 500;
 
-  /// Voir `OffreController` pour le détail : première page en temps réel, les
-  /// suivantes en lots statiques ajoutés par curseur.
-  List<PlayerClubLink> _firstPage = <PlayerClubLink>[];
-  List<PlayerClubLink> _extraPages = <PlayerClubLink>[];
-  DocumentSnapshot<Map<String, dynamic>>? _lastDocument;
+  /// Voir [PagedFirestoreMerge] : première page en temps réel, les suivantes
+  /// en lots statiques ajoutés par curseur.
+  ///
+  /// Tri ascendant par ancienneté de l'exception, à l'inverse des listes de
+  /// contenu : une file d'arbitrage se traite par le haut, et la
+  /// contestation qui dort depuis trois semaines passe avant celle déposée
+  /// ce matin. Le tri porte sur [PlayerClubLink.exceptionRaisedAt] et non sur
+  /// `updatedAt` — ce dernier bouge à chaque passage de la cascade de
+  /// révocation, y compris sur des dossiers que personne n'a touchés, et les
+  /// ferait remonter comme s'ils venaient d'arriver.
+  final PagedFirestoreMerge<PlayerClubLink, DocumentSnapshot<Map<String, dynamic>>>
+  _paged = PagedFirestoreMerge(
+    idOf: (link) => link.id,
+    compare: (a, b) {
+      final left = a.exceptionRaisedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final right = b.exceptionRaisedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return left.compareTo(right);
+    },
+  );
   bool _isLoadingMore = false;
 
   /// Tous les rattachements en cours de la fenêtre chargée.
@@ -70,35 +85,6 @@ class ClubLinkController extends GetxController {
         .collection(collectionPath)
         .where('status', whereIn: PlayerClubLink.openStatuses)
         .orderBy('updatedAt');
-  }
-
-  /// Fusionne les pages et trie par ancienneté de l'exception.
-  ///
-  /// Ascendant, à l'inverse des listes de contenu : une file d'arbitrage se
-  /// traite par le haut, et la contestation qui dort depuis trois semaines
-  /// passe avant celle déposée ce matin. Le tri porte sur
-  /// [PlayerClubLink.exceptionRaisedAt] et non sur `updatedAt` — ce dernier
-  /// bouge à chaque passage de la cascade de révocation, y compris sur des
-  /// dossiers que personne n'a touchés, et les ferait remonter comme s'ils
-  /// venaient d'arriver.
-  void _recomputeLinks() {
-    final byId = <String, PlayerClubLink>{};
-    for (final link in _extraPages) {
-      byId[link.id] = link;
-    }
-    for (final link in _firstPage) {
-      byId[link.id] = link;
-    }
-
-    final merged = byId.values.toList()
-      ..sort((a, b) {
-        final left =
-            a.exceptionRaisedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final right =
-            b.exceptionRaisedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return left.compareTo(right);
-      });
-    openLinks.assignAll(merged);
   }
 
   /// Les joueurs portant plus d'un rattachement en cours.
@@ -165,9 +151,7 @@ class ClubLinkController extends GetxController {
       lastError.value = '';
       isLoading.value = false;
       hasMore.value = false;
-      _firstPage = <PlayerClubLink>[];
-      _extraPages = <PlayerClubLink>[];
-      _lastDocument = null;
+      _paged.reset();
     }
   }
 
@@ -181,19 +165,19 @@ class ClubLinkController extends GetxController {
 
     isLoading.value = true;
     _linksSubscription?.cancel();
-    _extraPages = <PlayerClubLink>[];
-    _lastDocument = null;
+    _paged.reset();
 
     _linksSubscription = _openLinksQuery()
         .limit(_initialLoadLimit)
         .snapshots()
         .listen(
           (snapshot) {
-            _firstPage = _parse(snapshot.docs);
-            if (snapshot.docs.isNotEmpty) {
-              _lastDocument = snapshot.docs.last;
-            }
-            _recomputeLinks();
+            openLinks.assignAll(
+              _paged.applyFirstPage(
+                _parse(snapshot.docs),
+                snapshot.docs.isEmpty ? null : snapshot.docs.last,
+              ),
+            );
             hasMore.value = snapshot.docs.length >= _initialLoadLimit;
             lastError.value = '';
             isLoading.value = false;
@@ -228,7 +212,7 @@ class ClubLinkController extends GetxController {
   /// Ajoute un lot après le dernier document chargé, par curseur.
   Future<void> loadMoreLinks() async {
     if (!hasMore.value || _isLoadingMore) return;
-    final cursor = _lastDocument;
+    final cursor = _paged.cursor;
     if (cursor == null) return;
 
     _isLoadingMore = true;
@@ -238,12 +222,13 @@ class ClubLinkController extends GetxController {
           .limit(_loadMoreIncrement)
           .get();
 
-      _extraPages = <PlayerClubLink>[..._extraPages, ..._parse(snapshot.docs)];
-      if (snapshot.docs.isNotEmpty) {
-        _lastDocument = snapshot.docs.last;
-      }
+      openLinks.assignAll(
+        _paged.appendPage(
+          _parse(snapshot.docs),
+          snapshot.docs.isEmpty ? null : snapshot.docs.last,
+        ),
+      );
       hasMore.value = snapshot.docs.length >= _loadMoreIncrement;
-      _recomputeLinks();
     } catch (error) {
       debugPrint(
         'Chargement supplementaire des rattachements impossible : $error',
@@ -277,9 +262,7 @@ class ClubLinkController extends GetxController {
     final response = await _adminContentService.endClubLink(linkId: linkId);
 
     if (response.success) {
-      _firstPage = _firstPage.where((link) => link.id != linkId).toList();
-      _extraPages = _extraPages.where((link) => link.id != linkId).toList();
-      _recomputeLinks();
+      openLinks.assignAll(_paged.removeWhere((id) => id == linkId));
     }
 
     return response;

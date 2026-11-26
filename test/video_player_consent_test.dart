@@ -47,13 +47,16 @@ Video _pendingVideo({
   DateTime? consentAt,
   String title = 'Action de jeu',
   bool optimized = true,
+  String status = 'under_review',
+  String? optimizationError,
 }) {
   return Video.fromMap(<String, dynamic>{
     'id': id,
     'uid': uid,
     'caption': title,
     'videoUrl': 'https://exemple.test/$id.mp4',
-    'status': 'under_review',
+    'status': status,
+    'optimizationError': ?optimizationError,
     'moderationStatus': 'pending',
     'optimized': optimized,
     'playerUid': ?playerUid,
@@ -154,6 +157,67 @@ void main() {
       expect(roundTripped.playerConsentDecidedAt, isNotNull);
       expect(roundTripped.awaitsPlayerConsent, isFalse);
       expect(roundTripped.approvalBlockedByPlayerConsent, isFalse);
+    });
+
+    test(
+      'un depot jamais finalise se reconnait a status == error, pas a '
+      '!optimized seul',
+      () {
+        // reapAbandonedUploadSessions (functions/src/cleanup.ts, depot
+        // mobile) pose exactement ces deux champs sur un depot jamais
+        // finalise. optimized reste a false pour toujours, comme une video
+        // qui optimise simplement encore -- optimizationFailed est ce qui
+        // distingue les deux.
+        final abandoned = Video.fromMap(<String, dynamic>{
+          'id': 'v1',
+          'uid': 'club-1',
+          'status': 'error',
+          'optimizationError': 'abandoned_upload_timeout',
+          'moderationStatus': 'pending',
+          'optimized': false,
+        });
+
+        expect(abandoned.optimizationFailed, isTrue);
+        expect(abandoned.optimizationErrorLabel, contains('abandonné'));
+
+        final stillOptimizing = Video.fromMap(<String, dynamic>{
+          'id': 'v2',
+          'uid': 'club-1',
+          'status': 'under_review',
+          'moderationStatus': 'pending',
+          'optimized': false,
+        });
+
+        expect(stillOptimizing.optimizationFailed, isFalse);
+      },
+    );
+
+    test('les trois raisons d echec ont chacune leur libelle', () {
+      String labelFor(String reason) => Video.fromMap(<String, dynamic>{
+        'id': 'v1',
+        'uid': 'club-1',
+        'status': 'error',
+        'optimizationError': reason,
+      }).optimizationErrorLabel;
+
+      expect(labelFor('abandoned_upload_timeout'), contains('abandonné'));
+      expect(labelFor('file_too_large'), contains('volumineux'));
+      expect(labelFor('invalid_file_format'), contains('MP4'));
+      expect(labelFor('une_raison_inconnue'), contains('Échec'));
+    });
+
+    test('la raison d echec survit a un aller-retour par toMap', () {
+      final video = Video.fromMap(<String, dynamic>{
+        'id': 'v1',
+        'uid': 'club-1',
+        'status': 'error',
+        'optimizationError': 'file_too_large',
+      });
+
+      final roundTripped = Video.fromMap(video.toMap());
+
+      expect(roundTripped.optimizationFailed, isTrue);
+      expect(roundTripped.optimizationErrorLabel, contains('volumineux'));
     });
 
     test('la garde d approbation est le miroir exact de celle du serveur', () {
@@ -406,6 +470,59 @@ void main() {
             .data;
 
         expect(value, '1');
+      },
+    );
+
+    testWidgets(
+      'un depot abandonne se distingue d un depot qui optimise encore',
+      (tester) async {
+        // Les deux ont optimized: false. Sans optimizationFailed, le
+        // dépôt abandonné resterait affiché « Optimisation » indéfiniment,
+        // indiscernable d'un dépôt qui vient d'arriver il y a dix secondes.
+        await _pumpReviewQueue(
+          tester,
+          videos: [
+            _pendingVideo(id: 'v1', uid: 'club-1', optimized: false),
+            _pendingVideo(
+              id: 'v2',
+              uid: 'club-1',
+              optimized: false,
+              status: 'error',
+              optimizationError: 'abandoned_upload_timeout',
+            ),
+          ],
+        );
+
+        expect(find.text('Optimisation'), findsOneWidget);
+        expect(find.text('Dépôt échoué'), findsOneWidget);
+
+        final optimizingRow = find.ancestor(
+          of: find.text('en optimisation'),
+          matching: find.byType(Row),
+        );
+        final failedRow = find.ancestor(
+          of: find.text('échec d’optimisation'),
+          matching: find.byType(Row),
+        );
+
+        expect(
+          tester
+              .widgetList<Text>(
+                find.descendant(of: optimizingRow, matching: find.byType(Text)),
+              )
+              .first
+              .data,
+          '1',
+        );
+        expect(
+          tester
+              .widgetList<Text>(
+                find.descendant(of: failedRow, matching: find.byType(Text)),
+              )
+              .first
+              .data,
+          '1',
+        );
       },
     );
   });

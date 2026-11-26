@@ -26,6 +26,7 @@ import '../widgets/admin_video_ui.dart';
 /// commutateur exhaustif sur cet enum, dans chacune de ces quatre fonctions,
 /// transforme ce risque en erreur de compilation.
 enum _VideoReviewState {
+  optimizationFailed,
   optimizing,
   refusedByPlayer,
   awaitingPlayerConsent,
@@ -33,6 +34,11 @@ enum _VideoReviewState {
 }
 
 _VideoReviewState _reviewStateOf(Video video) {
+  // Avant `!video.optimized` : un dépôt jamais finalisé (connexion coupée,
+  // fichier invalide) est AUSSI `!optimized` pour toujours, et le confondre
+  // avec un dépôt qui optimise simplement encore afficherait « optimisation
+  // en cours » indéfiniment sur une ligne que personne ne traitera jamais.
+  if (video.optimizationFailed) return _VideoReviewState.optimizationFailed;
   if (!video.optimized) return _VideoReviewState.optimizing;
   if (video.playerRefusedPublication) {
     return _VideoReviewState.refusedByPlayer;
@@ -99,6 +105,8 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
     // decide si une decision est possible aujourd'hui, et un operateur
     // regarde cette colonne pour savoir quoi faire de la ligne.
     switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizationFailed:
+        return AdminTheme.danger;
       case _VideoReviewState.optimizing:
         return AdminTheme.warning;
       case _VideoReviewState.refusedByPlayer:
@@ -123,6 +131,12 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
 
   String _statusLabel(Video video) {
     switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizationFailed:
+        // Court, comme les autres libellés de cette puce : `AdminPill` ne
+        // tronque pas et déborde sinon (voir le commentaire sur la colonne
+        // « Statut » plus bas). Le détail complet vit dans
+        // `_approvalBlockedReason`.
+        return 'Dépôt échoué';
       case _VideoReviewState.optimizing:
         return 'Optimisation';
       case _VideoReviewState.refusedByPlayer:
@@ -142,6 +156,8 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   /// le serveur refuse de publier.
   IconData _statusIcon(Video video) {
     switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizationFailed:
+        return Icons.error_outline_rounded;
       case _VideoReviewState.optimizing:
         return Icons.autorenew_rounded;
       case _VideoReviewState.refusedByPlayer:
@@ -184,6 +200,10 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   /// sera jamais publiée, et elle reste en modération avec le refus inscrit.
   String? _approvalBlockedReason(Video video) {
     switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizationFailed:
+        return '${video.optimizationErrorLabel} Ce dépôt ne se terminera '
+            'jamais tout seul : retirez-le, ou invitez son auteur à '
+            'redéposer.';
       case _VideoReviewState.optimizing:
         return 'Attendez la fin de l’optimisation avant de publier.';
       case _VideoReviewState.refusedByPlayer:
@@ -594,8 +614,16 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       // optimisées mais bloquées par le consentement ou le refus du joueur,
       // deux cas déjà comptés à côté — « en optimisation » gonflait un
       // travail serveur qui n'existait pas.
+      //
+      // Et désormais `&& !optimizationFailed` : un dépôt jamais finalisé
+      // (connexion coupée, fichier invalide) est aussi `!optimized` pour
+      // toujours, mais ce n'est pas un travail serveur en cours — compté à
+      // part ci-dessous, pour la même raison.
       final processingCount = pendingVideos
-          .where((video) => !video.optimized)
+          .where((video) => !video.optimized && !video.optimizationFailed)
+          .length;
+      final failedCount = pendingVideos
+          .where((video) => video.optimizationFailed)
           .length;
       final publishedCount = allVideos
           .where((video) => video.isApprovedPublic)
@@ -646,6 +674,11 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
             tone: readyForDecision > 0 ? AdminTheme.success : null,
           ),
           AdminStat(label: 'en optimisation', value: '$processingCount'),
+          AdminStat(
+            label: 'échec d’optimisation',
+            value: '$failedCount',
+            tone: failedCount > 0 ? AdminTheme.danger : null,
+          ),
           AdminStat(
             label: 'accord attendu',
             value: '$awaitingConsentCount',

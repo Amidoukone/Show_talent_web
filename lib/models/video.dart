@@ -195,6 +195,7 @@ class Video {
     this.reports = const [],
     this.reportCount = 0,
     this.status = 'ready',
+    this.optimizationError = '',
     this.moderationStatus = '',
     this.visibility = '',
     this.isPublic = false,
@@ -222,6 +223,16 @@ class Video {
   List<String> reports;
   int reportCount;
   String status;
+
+  /// Pourquoi l'optimisation a échoué, quand `status == 'error'`.
+  ///
+  /// Posé par le dépôt mobile dans trois cas : `abandoned_upload_timeout`
+  /// (`reapAbandonedUploadSessions`, functions/src/cleanup.ts — un dépôt qui
+  /// n'a jamais atteint `finalizeUpload`, connexion coupée ou application
+  /// fermée), `file_too_large` et `invalid_file_format`
+  /// (functions/src/index.ts). Les trois posent `status: 'error'` en même
+  /// temps : c'est ce champ-ci qui dit lequel.
+  String optimizationError;
   String moderationStatus;
   String visibility;
   bool isPublic;
@@ -320,6 +331,7 @@ class Video {
       status: readString(map['status']).isEmpty
           ? 'ready'
           : readString(map['status']),
+      optimizationError: readString(map['optimizationError']),
       moderationStatus: readString(map['moderationStatus']),
       visibility: readString(map['visibility']),
       isPublic: map['isPublic'] == true,
@@ -358,6 +370,7 @@ class Video {
       'reports': reports,
       'reportCount': reportCount,
       'status': status,
+      if (optimizationError.isNotEmpty) 'optimizationError': optimizationError,
       'moderationStatus': moderationStatus,
       'visibility': visibility,
       'isPublic': isPublic,
@@ -466,6 +479,33 @@ class Video {
 
   /// Si la vidéo a été déposée par un club sur un de ses joueurs.
   bool get isClubUpload => playerUid.isNotEmpty && playerUid != uid;
+
+  /// Si l'optimisation a échoué et ne se terminera jamais toute seule.
+  ///
+  /// `status == 'error'` est le signal du dépôt mobile — posé aussi bien par
+  /// `reapAbandonedUploadSessions` (un dépôt jamais finalisé, connexion
+  /// coupée ou application fermée, repéré après trois heures sans
+  /// changement) que par les refus `file_too_large` et
+  /// `invalid_file_format` au moment du dépôt. Distinct de
+  /// `!optimized` tout court : une vidéo qui vient d'être déposée est aussi
+  /// `!optimized`, et la confondre avec un échec afficherait « optimisation
+  /// en cours » indéfiniment sur un dépôt que personne ne traitera jamais.
+  bool get optimizationFailed => status == 'error';
+
+  /// La raison de l'échec, telle qu'un opérateur la lit.
+  String get optimizationErrorLabel {
+    switch (optimizationError) {
+      case 'abandoned_upload_timeout':
+        return 'Dépôt abandonné : connexion coupée ou application fermée '
+            'avant la fin de l’envoi.';
+      case 'file_too_large':
+        return 'Fichier trop volumineux pour être optimisé.';
+      case 'invalid_file_format':
+        return 'Ce fichier n’est pas un MP4 valide.';
+      default:
+        return 'Échec de l’optimisation.';
+    }
+  }
 
   /// Si le joueur montré a refusé la publication.
   ///

@@ -14,6 +14,35 @@ import '../widgets/admin_table.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/admin_video_ui.dart';
 
+/// L'état d'une vidéo, dans l'ordre de priorité qui décide si une
+/// approbation est possible aujourd'hui.
+///
+/// Un seul endroit évalue cette priorité : couleur, libellé, icône et
+/// message de blocage n'étaient auparavant que quatre copies de la même
+/// chaîne de conditions (`!optimized`, puis le refus du joueur, puis son
+/// attente) recopiées dans `_statusColor`, `_statusLabel`, `_statusIcon` et
+/// `_approvalBlockedReason`. Ajouter un état pouvait se faire dans trois
+/// copies et oublier la quatrième sans que rien ne le signale. Le
+/// commutateur exhaustif sur cet enum, dans chacune de ces quatre fonctions,
+/// transforme ce risque en erreur de compilation.
+enum _VideoReviewState {
+  optimizing,
+  refusedByPlayer,
+  awaitingPlayerConsent,
+  decidable,
+}
+
+_VideoReviewState _reviewStateOf(Video video) {
+  if (!video.optimized) return _VideoReviewState.optimizing;
+  if (video.playerRefusedPublication) {
+    return _VideoReviewState.refusedByPlayer;
+  }
+  if (video.awaitsPlayerConsent) {
+    return _VideoReviewState.awaitingPlayerConsent;
+  }
+  return _VideoReviewState.decidable;
+}
+
 class VideoReviewWidget extends StatefulWidget {
   const VideoReviewWidget({super.key});
 
@@ -66,45 +95,43 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   }
 
   Color _statusColor(Video video) {
-    if (!video.optimized) {
-      return AdminTheme.warning;
-    }
-
     // Le consentement passe devant l'etat de moderation : c'est lui qui
     // decide si une decision est possible aujourd'hui, et un operateur
     // regarde cette colonne pour savoir quoi faire de la ligne.
-    if (video.playerRefusedPublication) {
-      return AdminTheme.danger;
-    }
-    if (video.awaitsPlayerConsent) {
-      return AdminTheme.cyan;
-    }
-
-    switch (video.normalizedModerationStatus) {
-      case 'approved':
-        return AdminTheme.success;
-      case 'rejected':
-      case 'removed':
-        return AdminTheme.danger;
-      case 'hidden':
-        return AdminTheme.textMuted;
-      case 'pending':
-      default:
+    switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizing:
         return AdminTheme.warning;
+      case _VideoReviewState.refusedByPlayer:
+        return AdminTheme.danger;
+      case _VideoReviewState.awaitingPlayerConsent:
+        return AdminTheme.cyan;
+      case _VideoReviewState.decidable:
+        switch (video.normalizedModerationStatus) {
+          case 'approved':
+            return AdminTheme.success;
+          case 'rejected':
+          case 'removed':
+            return AdminTheme.danger;
+          case 'hidden':
+            return AdminTheme.textMuted;
+          case 'pending':
+          default:
+            return AdminTheme.warning;
+        }
     }
   }
 
   String _statusLabel(Video video) {
-    if (!video.optimized) {
-      return 'Optimisation';
+    switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizing:
+        return 'Optimisation';
+      case _VideoReviewState.refusedByPlayer:
+        return 'Refus du joueur';
+      case _VideoReviewState.awaitingPlayerConsent:
+        return 'Accord attendu';
+      case _VideoReviewState.decidable:
+        return 'Prête à publier';
     }
-    if (video.playerRefusedPublication) {
-      return 'Refus du joueur';
-    }
-    if (video.awaitsPlayerConsent) {
-      return 'Accord attendu';
-    }
-    return 'Prête à publier';
   }
 
   /// L'icône qui accompagne [_statusLabel].
@@ -114,10 +141,16 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   /// validation dès que la vidéo était optimisée — y compris sur une ligne que
   /// le serveur refuse de publier.
   IconData _statusIcon(Video video) {
-    if (!video.optimized) return Icons.autorenew_rounded;
-    if (video.playerRefusedPublication) return Icons.block_outlined;
-    if (video.awaitsPlayerConsent) return Icons.hourglass_empty_rounded;
-    return Icons.verified_outlined;
+    switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizing:
+        return Icons.autorenew_rounded;
+      case _VideoReviewState.refusedByPlayer:
+        return Icons.block_outlined;
+      case _VideoReviewState.awaitingPlayerConsent:
+        return Icons.hourglass_empty_rounded;
+      case _VideoReviewState.decidable:
+        return Icons.verified_outlined;
+    }
   }
 
   /// Le nom du joueur montré, qui n'est pas toujours l'auteur.
@@ -150,18 +183,18 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
   /// chose : une attente se laisse mûrir, un refus se traite — la vidéo ne
   /// sera jamais publiée, et elle reste en modération avec le refus inscrit.
   String? _approvalBlockedReason(Video video) {
-    if (!video.optimized) {
-      return 'Attendez la fin de l’optimisation avant de publier.';
+    switch (_reviewStateOf(video)) {
+      case _VideoReviewState.optimizing:
+        return 'Attendez la fin de l’optimisation avant de publier.';
+      case _VideoReviewState.refusedByPlayer:
+        return 'Le joueur montré a refusé la publication : cette vidéo ne '
+            'sera pas publiée.';
+      case _VideoReviewState.awaitingPlayerConsent:
+        return 'Le joueur montré n’a pas encore accepté la publication. '
+            'L’approbation reste impossible tant qu’il ne s’est pas prononcé.';
+      case _VideoReviewState.decidable:
+        return null;
     }
-    if (video.playerRefusedPublication) {
-      return 'Le joueur montré a refusé la publication : cette vidéo ne sera '
-          'pas publiée.';
-    }
-    if (video.awaitsPlayerConsent) {
-      return 'Le joueur montré n’a pas encore accepté la publication. '
-          'L’approbation reste impossible tant qu’il ne s’est pas prononcé.';
-    }
-    return null;
   }
 
   String _secondaryLabel(Video video) {

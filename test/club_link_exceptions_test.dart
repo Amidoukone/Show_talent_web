@@ -412,6 +412,76 @@ void main() {
       expect(find.text('4 j'), findsOneWidget);
     });
 
+    testWidgets(
+      'la recherche par nom resout toujours chaque ligne, pas seulement la premiere',
+      (tester) async {
+        // `_accountLabel` resout desormais par une table memoisee plutot que
+        // par un balayage par ligne : ce test verifie que la resolution
+        // reste correcte ligne par ligne, et pas seulement pour la premiere
+        // consultee.
+        final controller = _SeededClubLinkController(
+          seeded: [
+            _link(
+              id: 'l1',
+              playerUid: 'player-1',
+              clubUid: 'club-1',
+              status: PlayerClubLink.statusContested,
+              contestedAt: DateTime.now(),
+              contestReason: 'Je ne suis plus dans ce club.',
+            ),
+            _link(
+              id: 'l2',
+              playerUid: 'player-2',
+              clubUid: 'club-1',
+              status: PlayerClubLink.statusContested,
+              contestedAt: DateTime.now(),
+              contestReason: 'Mauvais club.',
+            ),
+          ],
+        );
+        addTearDown(controller.onClose);
+
+        await pumpAdminTestApp(
+          tester,
+          ClubLinkExceptionsWidget(
+            controller: controller,
+            userController: TestUserController(
+              users: [
+                buildTestUser(
+                  uid: 'player-1',
+                  nom: 'Mamadou Diabaté',
+                  email: 'mamadou@exemple.test',
+                  role: 'joueur',
+                ),
+                buildTestUser(
+                  uid: 'player-2',
+                  nom: 'Salif Keïta',
+                  email: 'salif@exemple.test',
+                  role: 'joueur',
+                ),
+                buildTestUser(
+                  uid: 'club-1',
+                  nom: 'Académie Abidjan Nord',
+                  email: 'club@exemple.test',
+                  role: 'club',
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Mamadou Diabaté'), findsOneWidget);
+        expect(find.text('Salif Keïta'), findsOneWidget);
+
+        await tester.enterText(find.byType(TextField), 'Salif');
+        await tester.pumpAndSettle();
+
+        expect(find.text('Salif Keïta'), findsOneWidget);
+        expect(find.text('Mamadou Diabaté'), findsNothing);
+      },
+    );
+
     testWidgets('un rattachement sans exception ne remplit pas la file', (
       tester,
     ) async {

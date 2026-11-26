@@ -368,6 +368,14 @@ class Video {
       if (playerConsentRequired) 'playerConsentRequired': true,
       if (playerConsentDecision.isNotEmpty)
         'playerConsentDecision': playerConsentDecision,
+      // fromMap() les relit (ci-dessus) : sans eux ici, un compte relu par
+      // AppUser.fromMap(user.toMap()) — fetchUserWithPrivateFields,
+      // user_management_widget.dart — retrouverait une vidéo déjà consentie
+      // comme encore en attente de l'accord du joueur.
+      if (playerConsentAt != null)
+        'playerConsentAt': Timestamp.fromDate(playerConsentAt!),
+      if (playerConsentDecidedAt != null)
+        'playerConsentDecidedAt': Timestamp.fromDate(playerConsentDecidedAt!),
     };
   }
 

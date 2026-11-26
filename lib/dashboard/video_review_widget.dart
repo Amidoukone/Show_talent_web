@@ -556,7 +556,14 @@ class _VideoReviewWidgetState extends State<VideoReviewWidget> {
       final refusedByPlayerCount = pendingVideos
           .where((video) => video.playerRefusedPublication)
           .length;
-      final processingCount = pendingVideos.length - readyForDecision;
+      // Directement sur `optimized`, pas `pendingVideos.length -
+      // readyForDecision` : ce compte incluait aussi les vidéos déjà
+      // optimisées mais bloquées par le consentement ou le refus du joueur,
+      // deux cas déjà comptés à côté — « en optimisation » gonflait un
+      // travail serveur qui n'existait pas.
+      final processingCount = pendingVideos
+          .where((video) => !video.optimized)
+          .length;
       final publishedCount = allVideos
           .where((video) => video.isApprovedPublic)
           .length;

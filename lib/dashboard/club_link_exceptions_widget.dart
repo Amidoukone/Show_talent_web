@@ -125,6 +125,16 @@ class _ClubLinkExceptionsWidgetState extends State<ClubLinkExceptionsWidget> {
     }
   }
 
+  /// `uid -> nom`, mémoïsé pour la durée d'une passe de construction.
+  ///
+  /// Invalidé au tout début de chaque reconstruction (voir l'`Obx` du
+  /// `build`) : sans ce cache, chaque appel à [_accountLabel] rebalayait
+  /// `userList` en entier, et le filtre de recherche l'appelle une fois par
+  /// rattachement ouvert à chaque frappe — plusieurs centaines de
+  /// rattachements multipliées par la liste des comptes chargés, recalculées
+  /// à chaque caractère tapé.
+  Map<String, String>? _accountNamesByUid;
+
   /// Le nom d'un compte, ou son identifiant.
   ///
   /// Retombe sur l'identifiant plutôt que sur « Inconnu » : la fenêtre de
@@ -132,13 +142,11 @@ class _ClubLinkExceptionsWidgetState extends State<ClubLinkExceptionsWidget> {
   /// parfaitement — l'annoncer inconnu ferait douter du dossier.
   String _accountLabel(String uid) {
     if (uid.isEmpty) return 'Identifiant absent';
-    for (final user in _userController.userList) {
-      if (user.uid == uid) {
-        final name = user.nom.trim();
-        if (name.isNotEmpty && name != 'Nom inconnu') return name;
-        break;
-      }
-    }
+    final names = _accountNamesByUid ??= {
+      for (final user in _userController.userList) user.uid: user.nom,
+    };
+    final name = names[uid]?.trim();
+    if (name != null && name.isNotEmpty && name != 'Nom inconnu') return name;
     return uid;
   }
 
@@ -552,6 +560,12 @@ class _ClubLinkExceptionsWidgetState extends State<ClubLinkExceptionsWidget> {
     );
 
     return Obx(() {
+      // Invalide le cache des noms de compte à chaque reconstruction : la
+      // première consultation ci-dessous (le filtre, en général) le
+      // reconstruit une fois, et toutes les lignes de cette passe le
+      // réutilisent ensuite.
+      _accountNamesByUid = null;
+
       if (_controller.isLoading.value) {
         return const AdminLoadingState(
           message: 'Chargement des rattachements…',

@@ -166,15 +166,20 @@ class _ContactLeakReportsWidgetState extends State<ContactLeakReportsWidget> {
     return _accountLabel(row.ownerUid);
   }
 
+  /// `uid -> nom`, mémoïsé pour la durée d'une passe de construction.
+  ///
+  /// Invalidé au tout début de chaque reconstruction (voir l'`Obx` du
+  /// `build`) : sans ce cache, [_accountLabel] rebalayait `userList` en
+  /// entier pour chaque ligne de signalement ou de profil affichée.
+  Map<String, String>? _accountNamesByUid;
+
   String _accountLabel(String uid) {
     if (uid.isEmpty) return 'Auteur inconnu';
-    for (final user in _userController.userList) {
-      if (user.uid == uid) {
-        final name = user.nom.trim();
-        if (name.isNotEmpty && name != 'Nom inconnu') return name;
-        break;
-      }
-    }
+    final names = _accountNamesByUid ??= {
+      for (final user in _userController.userList) user.uid: user.nom,
+    };
+    final name = names[uid]?.trim();
+    if (name != null && name.isNotEmpty && name != 'Nom inconnu') return name;
     return uid;
   }
 
@@ -416,6 +421,11 @@ class _ContactLeakReportsWidgetState extends State<ContactLeakReportsWidget> {
     );
 
     return Obx(() {
+      // Invalide le cache des noms de compte à chaque reconstruction : la
+      // première consultation ci-dessous le reconstruit une fois, et toutes
+      // les lignes de cette passe le réutilisent ensuite.
+      _accountNamesByUid = null;
+
       if (_controller.isLoading.value) {
         return const AdminLoadingState(message: 'Chargement des signalements…');
       }

@@ -46,6 +46,7 @@ Video _pendingVideo({
   String? consentDecision,
   DateTime? consentAt,
   String title = 'Action de jeu',
+  bool optimized = true,
 }) {
   return Video.fromMap(<String, dynamic>{
     'id': id,
@@ -54,7 +55,7 @@ Video _pendingVideo({
     'videoUrl': 'https://exemple.test/$id.mp4',
     'status': 'under_review',
     'moderationStatus': 'pending',
-    'optimized': true,
+    'optimized': optimized,
     'playerUid': ?playerUid,
     if (consentRequired) 'playerConsentRequired': true,
     'playerConsentDecision': ?consentDecision,
@@ -130,6 +131,29 @@ void main() {
       expect(video.playerConsentAt!.toUtc(), DateTime.utc(2026, 11, 17, 10));
       expect(video.playerConsentDecidedAt, isNotNull);
       expect(video.isClubUpload, isTrue);
+    });
+
+    test('l accord du joueur survit a un aller-retour par toMap', () {
+      // `AppUser.toMap()` repasse chaque video par `Video.toMap()`
+      // (fetchUserWithPrivateFields, user_management_widget.dart) : une
+      // video deja consentie mais relue sans ces deux champs redeviendrait
+      // "en attente du joueur" apres ce seul aller-retour, sans aucune
+      // nouvelle ecriture.
+      final video = _pendingVideo(
+        id: 'v1',
+        uid: 'club-1',
+        playerUid: 'player-1',
+        consentRequired: true,
+        consentDecision: 'accepted',
+        consentAt: DateTime.utc(2026, 11, 17, 10),
+      );
+
+      final roundTripped = Video.fromMap(video.toMap());
+
+      expect(roundTripped.playerConsentAt, isNotNull);
+      expect(roundTripped.playerConsentDecidedAt, isNotNull);
+      expect(roundTripped.awaitsPlayerConsent, isFalse);
+      expect(roundTripped.approvalBlockedByPlayerConsent, isFalse);
     });
 
     test('la garde d approbation est le miroir exact de celle du serveur', () {
@@ -344,5 +368,45 @@ void main() {
       expect(strip, contains('3'));
       expect(strip, contains('1'));
     });
+
+    testWidgets(
+      '« en optimisation » ne compte pas ce qui est deja optimise',
+      (tester) async {
+        // Une seule video n'est pas optimisee ; les deux autres le sont,
+        // mais bloquees par le consentement et par un refus. Les compter
+        // dans « en optimisation » aurait annonce un travail serveur qui
+        // n'existe pas, alors que ces deux-la sont deja comptees a part.
+        await _pumpReviewQueue(
+          tester,
+          videos: [
+            _pendingVideo(id: 'v1', uid: 'club-1', optimized: false),
+            _pendingVideo(
+              id: 'v2',
+              uid: 'club-1',
+              playerUid: 'player-1',
+              consentRequired: true,
+            ),
+            _pendingVideo(
+              id: 'v3',
+              uid: 'club-1',
+              playerUid: 'player-1',
+              consentRequired: true,
+              consentDecision: 'refused',
+            ),
+          ],
+        );
+
+        final row = find.ancestor(
+          of: find.text('en optimisation'),
+          matching: find.byType(Row),
+        );
+        final value = tester
+            .widgetList<Text>(find.descendant(of: row, matching: find.byType(Text)))
+            .first
+            .data;
+
+        expect(value, '1');
+      },
+    );
   });
 }

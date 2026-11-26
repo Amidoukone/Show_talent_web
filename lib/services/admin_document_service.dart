@@ -196,18 +196,25 @@ class AdminDocumentService {
   /// Lus et non déduits de la seule référence portée par l'habilitation : sans
   /// cette liste, le téléversement serait une écriture que personne ne peut
   /// relire, ce qui est exactement le défaut que ce lot corrige ailleurs.
-  Future<List<AdminStoredDocument>> listClubAgreements(String clubUid) async {
+  Future<List<AdminStoredDocument>> listClubAgreements(String clubUid) {
     final uid = clubUid.trim();
-    if (uid.isEmpty || _visualQaMode) {
+    if (uid.isEmpty) return Future.value(const <AdminStoredDocument>[]);
+    return _listFolder(clubAgreementFolder(uid));
+  }
+
+  /// Liste un dossier de pièces, du plus récemment modifié au plus ancien.
+  ///
+  /// Partagé par [listClubAgreements] et [listGuardianConsentEvidence] : même
+  /// dossier déterministe à parcourir, même coût borné par pièce (une
+  /// métadonnée par fichier), même repli silencieux quand elle manque.
+  Future<List<AdminStoredDocument>> _listFolder(String folder) async {
+    if (_visualQaMode) {
       return const <AdminStoredDocument>[];
     }
 
-    final listing = await _storage!.ref(clubAgreementFolder(uid)).listAll();
+    final listing = await _storage!.ref(folder).listAll();
     final documents = await Future.wait(
       listing.items.map((item) async {
-        // Les métadonnées valent un aller-retour par fichier. Un club en a
-        // un, parfois deux : le coût est connu et borné, et afficher une
-        // taille et une date est ce qui permet de reconnaître le bon accord.
         try {
           final metadata = await item.getMetadata();
           return AdminStoredDocument(
@@ -313,6 +320,105 @@ class AdminDocumentService {
         message:
             'Dépôt de l’accord impossible pour le moment. Vérifiez votre '
             'connexion puis réessayez.',
+      );
+    }
+  }
+
+  /// Le dossier de la preuve d'un accord parental.
+  ///
+  /// `storage.rules` du dépôt mobile réserve
+  /// `identityDocuments/{uid}/guardianConsent/` à l'administration dans les
+  /// deux sens — un mineur ne gère pas son propre compte de manière autonome,
+  /// et c'est l'administration qui recueille l'accord du représentant légal,
+  /// jamais le mineur. Même modèle que [clubAgreementFolder] ci-dessus.
+  ///
+  /// **La référence n'est volontairement pas écrite dans
+  /// `guardianConsent.evidenceReference`** : ce champ est borné à 120
+  /// caractères côté callable (`functions/src/minor_consent.ts`), et une
+  /// référence `gs://` complète — bucket, `identityDocuments/{uid}/`,
+  /// horodatage — le dépasse largement pour un UID Firebase standard. La
+  /// pièce se retrouve donc comme un accord de club : listée depuis ce
+  /// dossier déterministe, jamais par une référence stockée sur le document.
+  static String guardianConsentFolder(String uid) =>
+      'identityDocuments/${uid.trim()}/guardianConsent';
+
+  /// Les preuves déjà déposées pour ce compte, de la plus récente à la plus
+  /// ancienne.
+  Future<List<AdminStoredDocument>> listGuardianConsentEvidence(String uid) {
+    final trimmed = uid.trim();
+    if (trimmed.isEmpty) return Future.value(const <AdminStoredDocument>[]);
+    return _listFolder(guardianConsentFolder(trimmed));
+  }
+
+  /// Dépose la preuve d'un accord parental.
+  ///
+  /// Le nom de l'objet est fabriqué, jamais repris du poste de travail — voir
+  /// [guardianConsentObjectName] — et c'est la seule chose que `storage.rules`
+  /// contrôle ici : contrairement à `clubAgreements/`, le nom lui-même est
+  /// validé côté serveur, donc le gabarit produit doit lui correspondre au
+  /// caractère près.
+  Future<AdminUploadResult> uploadGuardianConsentEvidence({
+    required String uid,
+    required AdminPickedFile file,
+  }) async {
+    final trimmed = uid.trim();
+    if (trimmed.isEmpty) {
+      return const AdminUploadResult.failure(
+        message: 'Aucun compte désigné pour ce dépôt.',
+      );
+    }
+
+    final rejection = describeAgreementRejection(file);
+    if (rejection != null) {
+      return AdminUploadResult.failure(message: rejection);
+    }
+
+    if (_visualQaMode) {
+      return const AdminUploadResult.failure(
+        message: 'Dépôt indisponible pendant la revue locale.',
+      );
+    }
+
+    final objectName = guardianConsentObjectName(extension: file.extension);
+    final objectPath = '${guardianConsentFolder(trimmed)}/$objectName';
+
+    try {
+      await _storage!
+          .ref(objectPath)
+          .putData(
+            file.bytes,
+            SettableMetadata(
+              contentType: adminAgreementContentType(file.extension),
+              cacheControl: 'private, no-store',
+              customMetadata: <String, String>{'originalName': file.name},
+            ),
+          );
+
+      return AdminUploadResult.stored(
+        document: AdminStoredDocument(
+          objectPath: objectPath,
+          name: objectName,
+          sizeBytes: file.sizeBytes,
+          updatedAt: DateTime.now(),
+        ),
+        message: 'Justificatif déposé : $objectName.',
+      );
+    } on FirebaseException catch (error) {
+      if (error.code == 'unauthorized' || error.code == 'permission-denied') {
+        return const AdminUploadResult.failure(
+          message:
+              'Dépôt refusé par le stockage. Votre session n’a plus les '
+              'droits d’administration : reconnectez-vous.',
+        );
+      }
+      return AdminUploadResult.failure(
+        message: 'Dépôt du justificatif impossible (${error.code}).',
+      );
+    } catch (_) {
+      return const AdminUploadResult.failure(
+        message:
+            'Dépôt du justificatif impossible pour le moment. Vérifiez '
+            'votre connexion puis réessayez.',
       );
     }
   }

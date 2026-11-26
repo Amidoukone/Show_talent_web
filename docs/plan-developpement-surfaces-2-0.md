@@ -51,7 +51,7 @@ Côté dépôt mobile, un seul commit, `672eba0` : `reviewContractStatusProof` e
 `docs/shared-backend-contract.md`, comme ce document le prévoyait. Aucun
 changement de comportement serveur.
 
-### Les deux suites qui restent
+### Ce qui restait, et où ça en est au 25 novembre 2026
 
 **Un chemin à vérifier à la main.** Le choix du fichier de la surface 5 passe
 par `<input type="file">` et `File.arrayBuffer()`, écrits avec
@@ -60,17 +60,27 @@ pas l'exercer. Tout ce qui *décide* — validation de taille et de format, nom
 de l'objet stocké, type MIME — vit dans des fonctions pures et testées, mais
 le geste lui-même demande une ouverture dans un navigateur avant la mise en
 ligne : déposer un PDF sur un club de recette, vérifier qu'il apparaît dans la
-liste du dialogue, et l'ouvrir.
+liste du dialogue, et l'ouvrir. **Toujours à faire.**
 
-**Une pièce qui dépend du dépôt mobile.** La pièce justificative de l'accord
-parental n'est pas faisable ici. `validateGuardianConsent` accepte déjà une
-`evidenceReference` libre de 120 caractères, et
-`managed_profile_edit_dialog.dart` l'envoie — c'est une référence, pas un
-document. Or `storage.rules` ne prévoit aucun chemin pour un document de
-consentement, contrairement à `clubAgreements/{clubUid}/` et à
-`identityDocuments/{uid}/contractProofs/`, provisionnés d'avance. Ouvrir ce
-chemin est une modification du dépôt mobile, et elle doit être déployée avant
-que ce portail ne tente d'y écrire.
+**La pièce qui dépendait du dépôt mobile est réglée.** `storage.rules` ouvre
+désormais `identityDocuments/{uid}/guardianConsent/{fileName}` (commit mobile
+`1291017`, déployé sur `adfoot-staging`), sur le modèle de
+`clubAgreements/{clubUid}/` sauf que le nom de fichier y est validé côté
+serveur — `^guardian_consent_[0-9]+\.(pdf|jpg|jpeg|png)$`. Ce portail dépose
+désormais le document (`AdminDocumentService.uploadGuardianConsentEvidence`,
+`guardianConsentObjectName`, bouton dans `managed_profile_edit_dialog.dart`).
+
+**La référence `gs://` n'est volontairement pas écrite dans
+`guardianConsent.evidenceReference`.** Le document partagé l'envisageait,
+mais `validateGuardianConsent` borne ce champ à 120 caractères
+(`functions/src/minor_consent.ts`) et une référence complète — bucket,
+`identityDocuments/{uid}/guardianConsent/`, horodatage — atteint 140
+caractères pour un UID Firebase de 28 caractères : le callable la rejetterait
+systématiquement. La pièce se liste donc depuis
+`AdminDocumentService.guardianConsentFolder(uid)`, un dossier déterministe,
+exactement comme `clubAgreements/` ne passe jamais par `agreementRef` pour
+retrouver le fichier déposé. `evidenceReference` reste la note libre qu'elle
+a toujours été.
 
 ## Le préalable est levé
 
@@ -353,9 +363,9 @@ pour un pilote. **Charge : 0,5 jour.**
   à la création du compte : `managed_profile_edit_dialog.dart` envoie
   `guardianConsent` et `updateManagedAccountProfile` l'enregistre sur un compte
   existant, en posant `minorProfileApproved` et `minorMediaConsentApproved`.
-  C'est exactement ce qu'il faut quand un club déclare un mineur. Il ne reste
-  que la pièce justificative et la visibilité de qui attend. **0,5 jour au lieu
-  de 2 à 3.**
+  C'est exactement ce qu'il faut quand un club déclare un mineur. La pièce
+  justificative et la visibilité de qui attend sont réglées aussi (voir
+  « Ce qui restait » ci-dessus). **0,5 jour au lieu de 2 à 3.**
 - L'état d'habilitation dans la liste est plus petit que prévu, le modèle étant
   déjà lu.
 

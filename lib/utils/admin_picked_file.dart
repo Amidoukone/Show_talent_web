@@ -102,6 +102,20 @@ String adminAgreementObjectName({
   return 'agreement_${reference}_$stamp.$suffix';
 }
 
+/// Le nom sous lequel la preuve d'un accord parental est stockée.
+///
+/// À la différence d'[adminAgreementObjectName], aucune référence libre n'y
+/// entre : `storage.rules` du dépôt mobile valide le nom de fichier lui-même
+/// sur `identityDocuments/{uid}/guardianConsent/` —
+/// `^guardian_consent_[0-9]+\.(pdf|jpg|jpeg|png)\$` — là où `clubAgreements/`
+/// n'impose aucun nom. Un seul segment, l'horodatage, pour la même raison
+/// qu'un accord de club : un second dépôt ne doit pas écraser le premier.
+String guardianConsentObjectName({required String extension, DateTime? now}) {
+  final stamp = (now ?? DateTime.now()).toUtc().millisecondsSinceEpoch;
+  final suffix = extension.isEmpty ? 'pdf' : extension;
+  return 'guardian_consent_$stamp.$suffix';
+}
+
 /// Le type MIME à enregistrer avec l'objet.
 ///
 /// Déduit de l'extension plutôt que repris du navigateur : un navigateur

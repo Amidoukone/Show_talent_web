@@ -1,12 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../config/app_environment.dart';
 import '../models/football_vocabulary.dart';
 import '../models/player_football_profile.dart';
 import '../models/user.dart';
+import '../services/admin_document_service.dart';
+import '../theme/admin_theme.dart';
 import '../theme/admin_type.dart';
+import '../utils/admin_date_format.dart';
+import '../utils/admin_file_picker.dart';
 import '../utils/player_age.dart';
 import '../utils/season_record_label.dart';
+import 'admin_document_preview.dart';
 import 'admin_feedback.dart';
 import 'admin_ui.dart';
 
@@ -14,10 +20,14 @@ class ManagedProfileEditDialog extends StatefulWidget {
   const ManagedProfileEditDialog({
     required this.user,
     this.contactLoaded = true,
+    this.documentService,
     super.key,
   });
 
   final AppUser user;
+
+  /// Injectable pour les tests.
+  final AdminDocumentService? documentService;
 
   /// Si `users/{uid}/private/contact` a pu être lu.
   ///
@@ -59,6 +69,12 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
   String _guardianConsentMethod = 'oral_confirmation';
   bool _guardianConsentConfirmed = false;
   bool _guardianMediaAllowed = false;
+  late final AdminDocumentService _documentService;
+
+  /// Preuves déjà déposées, `null` tant que la lecture n'a pas répondu.
+  List<AdminStoredDocument>? _guardianEvidenceDocuments;
+  String? _guardianEvidenceError;
+  bool _busyOnGuardianEvidence = false;
   late final TextEditingController _teamController;
   late final TextEditingController _ligueController;
   late final TextEditingController _entrepriseController;
@@ -86,6 +102,18 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
     _licenseController = TextEditingController(
       text: _currentLicenseNumber() ?? '',
     );
+    // Construit seulement quand ce dialogue en a besoin : la plupart des
+    // comptes ne sont jamais mineurs, et `AdminDocumentService()` touche
+    // `FirebaseStorage.instance`, indisponible dans les tests qui n'ont
+    // jamais eu de raison de s'en soucier jusqu'ici.
+    if (_requiresGuardianConsent) {
+      _documentService =
+          widget.documentService ??
+          (AppEnvironmentConfig.visualQaMode
+              ? AdminDocumentService.visualQa()
+              : AdminDocumentService());
+      _loadGuardianEvidence();
+    }
   }
 
   @override
@@ -146,6 +174,177 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
   bool _hasValidGuardianConsent() =>
       _guardianNameController.text.trim().length >= 2 &&
       _guardianConsentConfirmed;
+
+  /// Lit les preuves déjà déposées pour ce compte.
+  ///
+  /// Un dossier vide n'est pas une erreur : la quasi-totalité des accords
+  /// recueillis jusqu'ici sont oraux, sans pièce à déposer.
+  Future<void> _loadGuardianEvidence() async {
+    try {
+      final documents = await _documentService.listGuardianConsentEvidence(
+        _user.uid,
+      );
+      if (!mounted) return;
+      setState(() {
+        _guardianEvidenceDocuments = documents;
+        _guardianEvidenceError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _guardianEvidenceDocuments = const <AdminStoredDocument>[];
+        _guardianEvidenceError =
+            'Impossible de lire les justificatifs déjà déposés. Un dépôt '
+            'reste possible.';
+      });
+    }
+  }
+
+  Future<void> _openGuardianEvidence(AdminStoredDocument document) async {
+    setState(() => _busyOnGuardianEvidence = true);
+    final link = await _documentService.resolvePath(document.objectPath);
+    if (!mounted) return;
+    setState(() => _busyOnGuardianEvidence = false);
+
+    if (!link.success) {
+      showAdminFeedback(
+        title: 'Ouverture impossible',
+        message: link.message,
+        tone: AdminBannerTone.danger,
+      );
+      return;
+    }
+
+    await showAdminDocumentPreview(context, link);
+  }
+
+  /// Choisit un fichier et le dépose.
+  ///
+  /// Contrairement à l'accord de club, aucune référence libre ne précède le
+  /// dépôt : le nom de l'objet est entièrement fabriqué par
+  /// [guardianConsentObjectName], parce que `storage.rules` valide ce nom au
+  /// caractère près côté serveur.
+  Future<void> _uploadGuardianEvidence() async {
+    if (!adminFilePickerSupported) {
+      showAdminFeedback(
+        title: 'Dépôt indisponible',
+        message:
+            'Le dépôt de document demande un navigateur. Ouvrez le portail '
+            'sur le web pour téléverser un justificatif.',
+        tone: AdminBannerTone.warning,
+      );
+      return;
+    }
+
+    final picked = await pickAdminFile(
+      accept: '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png',
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _busyOnGuardianEvidence = true);
+
+    final result = await _documentService.uploadGuardianConsentEvidence(
+      uid: _user.uid,
+      file: picked,
+    );
+
+    if (!mounted) return;
+    setState(() => _busyOnGuardianEvidence = false);
+
+    showAdminFeedback(
+      title: result.success ? 'Justificatif déposé' : 'Dépôt impossible',
+      message: result.message,
+      tone: result.success ? AdminBannerTone.success : AdminBannerTone.danger,
+    );
+
+    if (result.success) {
+      await _loadGuardianEvidence();
+    }
+  }
+
+  String _formatEvidenceSize(int? bytes) {
+    if (bytes == null) return '';
+    if (bytes < 1024) return '$bytes o';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).round()} Ko';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} Mo';
+  }
+
+  /// Le bloc des justificatifs déposés : ce qui existe déjà, et un dépôt.
+  Widget _buildGuardianEvidenceDocuments() {
+    final documents = _guardianEvidenceDocuments;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (documents == null)
+          const Text('Lecture du dossier…', style: AdminType.caption)
+        else if (documents.isEmpty)
+          const Text(
+            'Aucun justificatif déposé. La note ci-dessus suffit à '
+            'enregistrer l’accord ; déposer le document permet de le '
+            'relire plus tard.',
+            style: AdminType.caption,
+          )
+        else
+          for (final document in documents)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.description_outlined,
+                    size: 14,
+                    color: AdminTheme.cyan,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      document.updatedAt == null
+                          ? document.name
+                          : '${document.name} · '
+                                '${formatAdminDate(document.updatedAt!)}'
+                                '${document.sizeBytes == null ? '' : ' · ${_formatEvidenceSize(document.sizeBytes)}'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AdminType.caption,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _busyOnGuardianEvidence
+                        ? null
+                        : () => _openGuardianEvidence(document),
+                    child: const Text('Ouvrir'),
+                  ),
+                ],
+              ),
+            ),
+        if (_guardianEvidenceError != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            _guardianEvidenceError!,
+            style: AdminType.caption.copyWith(color: AdminTheme.warning),
+          ),
+        ],
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _busyOnGuardianEvidence ? null : _uploadGuardianEvidence,
+          icon: const Icon(Icons.upload_file_outlined),
+          label: Text(
+            _busyOnGuardianEvidence
+                ? 'Dépôt en cours…'
+                : 'Déposer un justificatif',
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'PDF ou photo, 8 Mo au plus. Le dossier est en lecture et en '
+          'écriture pour l’administration seule.',
+          style: AdminType.caption,
+        ),
+      ],
+    );
+  }
 
   /// Deux dates désignent-elles le même jour ?
   ///
@@ -464,6 +663,9 @@ class _ManagedProfileEditDialogState extends State<ManagedProfileEditDialog> {
                           labelText: 'Note de suivi (facultatif)',
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      _buildGuardianEvidenceDocuments(),
+                      const SizedBox(height: 4),
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
                         value: _guardianMediaAllowed,
